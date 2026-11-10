@@ -111,6 +111,32 @@ PlayerHub.ts       input de telemóveis e teclado, num só sítio
 3. Acrescenta-o à lista em `minigames/index.ts`.
 4. Testa-o diretamente: `http://localhost:5173/?minigame=<id>&mode=<modo>&players=6`.
 
+## Modo Desportos (`apps/web/src/host/sports`)
+
+```
+sports/types.ts        SportDef (nome, nº de lugares, create) e SportRun (palco 3D com play())
+sports/SportStage.ts   base: céu/luz, personagens, câmara suave, placar
+sports/index.ts        descobre os desportos em sports/<id>/sport.ts (import.meta.glob)
+sports/<id>/           cada desporto: sport.ts (definição) + <Nome>Stage.ts (jogo 3D)
+packages/game/src/sports/<id>.ts   regras puras e testadas (pontuação, contagens…)
+```
+
+- **Gestos:** o telemóvel mostra o layout `motion` e envia `swing` `{ power, dir, spin, hand }`.
+  Com sensores (HTTPS), segura-se a zona e faz-se o movimento: o pico da aceleração dá a força,
+  a aceleração lateral a direção e a rotação do pulso o efeito. Sem sensores, o arrastar dá o mesmo
+  (velocidade = força, desvio = direção, curvatura = efeito). No teclado: segurar e largar o botão.
+- **Por turnos** (bowling, golfe): `seats.awaitSwing(seat, …)` espera pelo gesto de um jogador
+  (ou decide pelo bot / jogador desligado).
+- **Em tempo real** (ténis, boxe, basebol): o palco ouve `hub.events.on('swing')` e decide se a
+  pancada acertou pelo momento em que chegou.
+
+### Como adicionar um desporto
+
+1. Regras puras (se houver contagens) em `packages/game/src/sports/<id>.ts`, com testes.
+2. `apps/web/src/host/sports/<id>/<Nome>Stage.ts` estendendo `SportStage` e implementando `play()`.
+3. `apps/web/src/host/sports/<id>/sport.ts` a exportar por omissão o `SportDef`.
+4. Testar: `http://localhost:5173/?sport=<id>&players=2` (bots completam os lugares).
+
 ## Online
 
 - Alojar: `npm install && npm run build && npm start` em qualquer serviço com Node e WebSockets.
@@ -122,6 +148,7 @@ PlayerHub.ts       input de telemóveis e teclado, num só sítio
 ## Próximos passos sugeridos
 
 - **Mais minijogos** (o género vive da variedade): cada um é um ficheiro em `minigames/`.
+- **Desportos:** modo treino com desafios e medalhas, e afinar a sensibilidade dos gestos em telemóveis reais.
 - **Mais tabuleiros** e casas especiais (loja de objetos, duelos, eventos próprios do tabuleiro).
 - **Som e música**, modelos 3D mais detalhados (`.glb`), mais animações.
 - **Guardar a festa** a meio, para sobreviver a um recarregar do ecrã principal (hoje volta ao lobby).

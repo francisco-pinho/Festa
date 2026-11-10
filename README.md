@@ -37,6 +37,44 @@ npm run dev
    Os vencedores ganham 10 moedas.
 8. **Final** — estrelas bónus (minijogos, fortuna, aventura) e pódio. Ganha quem tiver mais estrelas (desempate: moedas).
 
+## Modo Desportos 🏆
+
+No lobby, o VIP escolhe **Desportos** (ou tecla **D**) e depois o desporto. O telemóvel passa a ser
+o "comando com sensores": faz-se o gesto com o braço — ou, sem sensores, arrastando o dedo.
+
+| Desporto | Jogadores | Como se joga |
+|---|---|---|
+| 🎳 Bowling | 1–10 (sozinho joga contra um bot) | 🕹️ posiciona-te, lança com o braço; rodar o pulso dá efeito |
+| 🎾 Ténis | 4 (pares; bots completam) | As personagens correm sozinhas; tu só bates. Cedo = cruzado, tarde = para o outro lado |
+| ⛳ Golfe | 1–10 | 🕹️ aponta, a força da tacada decide a distância; 3 buracos com lagos, bunkers e vento |
+| 🥊 Boxe | 2–10 (rei do ringue) | Socos com a esquerda/direita, segura 🛡️ para defender; quedas, contagem e KO |
+| ⚾ Basebol | 2–10 (duas equipas) | Lançador: força = velocidade. Batedor: bate de lado quando a bola chega |
+
+### Sensores de movimento (HTTPS)
+
+Os browsers só dão acesso aos sensores dos telemóveis em **HTTPS**. Para os usar na rede local:
+
+```bash
+npm run dev:https
+```
+
+(ou `npm run start:https` em produção). O certificado é autoassinado: da primeira vez, o telemóvel
+mostra um aviso de segurança — escolhe "Avançar/Continuar". No iPhone aparece ainda um botão para
+autorizar o movimento. Sem HTTPS, tudo funciona com gestos de arrastar no ecrã.
+
+### Ramos (git)
+
+Cada jogo vive no seu ramo, para poder ser revisto e juntado em separado:
+
+| Ramo | Conteúdo |
+|---|---|
+| `jogo-festa` | Modo Festa (tabuleiro, minijogos) |
+| `jogo-sports` | Base do modo Desportos (escolha de modo, gestos, HTTPS) — a partir de `jogo-festa` |
+| `jogo-bowling`, `jogo-tenis`, `jogo-golfe`, `jogo-boxe`, `jogo-basebol` | Cada desporto, a partir de `jogo-sports` |
+
+Os desportos são descobertos automaticamente (`apps/web/src/host/sports/<id>/sport.ts`), por isso
+os ramos juntam-se sem conflitos.
+
 ## Modos de ligação
 
 | Modo | Como | Quem vê o ecrã |
@@ -57,6 +95,8 @@ npm run dev
 ### Ferramentas de desenvolvimento (só em `npm run dev`)
 
 - Tecla **T** no lobby: festa de **1 ronda** (para testar o final depressa).
+- `http://localhost:5173/?sport=bowling&players=2`: joga um desporto diretamente (bots completam).
+  Desportos: `bowling`, `tennis`, `golf`, `boxing`, `baseball` (cada um no seu ramo).
 - `http://localhost:5173/?minigame=sumo&mode=teams&players=8`: corre um minijogo diretamente com bots
   (`minigame`: `coin-shower`, `sumo`, `tag`; `mode`: `ffa`, `teams`, `oneVsAll`).
 - Na consola do browser, `window.festa` dá acesso ao motor, HUD e ligação.
@@ -65,7 +105,7 @@ npm run dev
 
 ```
 packages/shared   Protocolo de rede (tipos + validação zod)
-packages/game     Regras da festa: tabuleiro, dados, casas, estrela, minijogos, bots (sem gráficos, com testes)
+packages/game     Regras (sem gráficos, com testes): festa, e desportos em src/sports/
 apps/server       Node + Express + Socket.IO: salas, códigos, reconexão, encaminhamento
 apps/web          Vite: ecrã principal 3D (Three.js, index.html) e comando do telemóvel (play.html)
 docs/             Arquitetura e decisões
