@@ -726,6 +726,7 @@ export class Director {
    * Bots em todos os lugares, mais quem estiver ligado (telemóvel ou teclado).
    */
   async testMinigame(id: string, mode: MinigameMode, players = 4): Promise<void> {
+    await this.engine.wait(1.5); // deixa a lista de telemóveis sincronizar
     const humans = this.hub.players.slice(0, players);
     const bots = CHARACTERS.slice(humans.length, players);
     this.seats = [
@@ -915,6 +916,7 @@ export class Director {
   async testSport(id: string, players: number): Promise<void> {
     const def = SPORTS.find((s) => s.id === id);
     if (!def) throw new Error(`Desporto desconhecido: ${id}`);
+    await this.engine.wait(1.5); // deixa a lista de telemóveis sincronizar
     const humans = this.hub.players.slice(0, players);
     const total = Math.max(def.seatCount(humans.length), players);
     this.seats = [
