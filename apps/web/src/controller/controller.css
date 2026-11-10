@@ -1,0 +1,429 @@
+:root {
+  --bg: #140b2b;
+  --panel: #23164a;
+  --panel-light: #332266;
+  --text: #ffffff;
+  --dim: #b9a9e8;
+  --accent: #ffcc00;
+  --player: #ffcc00;
+  --danger: #ff8a8a;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+#app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+/* ── Barra superior ───────────────────────────────── */
+#bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 4px solid var(--player);
+  font-weight: bold;
+  font-size: 18px;
+}
+#bar[hidden] {
+  display: none;
+}
+#dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  flex: none;
+}
+#me {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#room {
+  color: var(--dim);
+  letter-spacing: 3px;
+}
+
+#view {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* ── Formulário / cartões ─────────────────────────── */
+.card {
+  margin: auto;
+  width: min(420px, calc(100% - 32px));
+  padding: 24px;
+  background: var(--panel);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.card.center {
+  text-align: center;
+}
+h1 {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 40px;
+  text-align: center;
+}
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--dim);
+  font-weight: bold;
+}
+input {
+  font: inherit;
+  font-size: 24px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 3px solid var(--panel-light);
+  background: var(--bg);
+  color: var(--text);
+  user-select: text;
+  -webkit-user-select: text;
+}
+#code {
+  text-transform: uppercase;
+  letter-spacing: 10px;
+  text-align: center;
+  font-size: 36px;
+}
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.error {
+  color: var(--danger);
+  min-height: 1.2em;
+  margin: 0;
+}
+button {
+  font: inherit;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+  color: var(--text);
+}
+button.primary {
+  font-size: 24px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: #241a00;
+}
+button:disabled {
+  opacity: 0.6;
+}
+
+/* ── Espera ───────────────────────────────────────── */
+.wait {
+  margin: auto;
+  text-align: center;
+  padding: 24px;
+  font-size: 22px;
+  color: var(--dim);
+}
+.pulse {
+  width: 90px;
+  height: 90px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: var(--player);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+}
+
+/* ── Escolhas ─────────────────────────────────────── */
+.choices {
+  margin: auto;
+  width: min(520px, calc(100% - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.prompt {
+  text-align: center;
+  font-size: 22px;
+  color: var(--dim);
+  margin: 0 0 6px;
+}
+.choice {
+  font-size: 26px;
+  padding: 22px;
+  border-radius: 18px;
+  background: var(--panel-light);
+  border: 4px solid var(--player);
+  transition: transform 0.08s;
+}
+.choice:active,
+.choice.chosen {
+  transform: scale(0.96);
+  background: var(--player);
+  color: #111;
+}
+
+/* ── Gamepad ──────────────────────────────────────── */
+.gamepad {
+  flex: 1;
+  display: flex;
+  touch-action: none;
+}
+.stick-zone,
+.spacer {
+  flex: 1.2;
+  position: relative;
+  touch-action: none;
+}
+.stick-zone {
+  background: radial-gradient(circle at center, #ffffff08, transparent 70%);
+}
+.stick-base {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 4px solid #ffffff40;
+  background: #ffffff10;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: opacity 0.15s;
+  opacity: 0.6;
+}
+.stick-base.active {
+  opacity: 1;
+}
+.stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: var(--player);
+  border: 4px solid #fff;
+  transform: translate(-50%, -50%);
+}
+.buttons {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 16px;
+  touch-action: none;
+}
+.hint {
+  width: 100%;
+  text-align: center;
+  color: var(--dim);
+  margin: 0;
+}
+.pad-btn {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  font-size: 24px;
+  background: var(--player);
+  color: #111;
+  border: 6px solid #fff;
+  box-shadow: 0 8px 0 #0006;
+  touch-action: none;
+}
+.pad-btn.btn-b {
+  background: var(--panel-light);
+  color: var(--text);
+}
+.pad-btn.down {
+  transform: translateY(6px);
+  box-shadow: 0 2px 0 #0006;
+}
+
+/* Em retrato, o joystick fica em cima e os botões em baixo. */
+@media (orientation: portrait) {
+  .gamepad {
+    flex-direction: column;
+  }
+}
+
+/* ── Avisos ───────────────────────────────────────── */
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: #140b2bdd;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  font-size: 20px;
+  z-index: 10;
+}
+#overlay[hidden],
+#toast[hidden] {
+  display: none;
+}
+.spinner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 6px solid #ffffff30;
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+#toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: #241a00;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-weight: bold;
+  z-index: 11;
+}
+
+/* ── Escolhas em grelha (personagens) e com cor (caminhos) ── */
+.choices .options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.choices.grid {
+  width: min(640px, calc(100% - 24px));
+}
+.choices.grid .options {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  gap: 10px;
+}
+.choices.grid .choice {
+  font-size: 20px;
+  padding: 14px 10px;
+}
+.choice[style*='--opt'] {
+  border-color: var(--opt);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.choice .swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--opt);
+  border: 3px solid #fff;
+  flex: none;
+}
+.choice[data-locked] {
+  opacity: 0.3;
+  text-decoration: line-through;
+}
+.choices {
+  overflow-y: auto;
+  max-height: 100%;
+  padding: 12px 0;
+}
+
+/* ── Dados ── */
+.dice {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 16px;
+  text-align: center;
+}
+.dice .prompt {
+  font-size: 24px;
+  color: var(--text);
+  font-weight: bold;
+}
+.roll {
+  width: min(62vw, 62vh, 300px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--player);
+  color: #111;
+  font-size: 30px;
+  border: 8px solid #fff;
+  box-shadow: 0 10px 0 #0006;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  animation: wobble 1.2s ease-in-out infinite;
+}
+.roll .die {
+  font-size: 72px;
+  line-height: 1;
+}
+.roll:active,
+.roll.rolled {
+  transform: translateY(8px);
+  box-shadow: 0 2px 0 #0006;
+  animation: none;
+}
+.roll.rolled .die {
+  animation: spin 0.5s linear 2;
+}
+@keyframes wobble {
+  50% {
+    transform: rotate(-4deg) scale(1.04);
+  }
+}
+.shake-hint {
+  color: var(--dim);
+  margin: 0;
+}
+.shake-enable {
+  background: var(--panel-light);
+  padding: 10px 16px;
+  border-radius: 12px;
+}
