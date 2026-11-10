@@ -11,6 +11,7 @@ import type {
   HostToControllerMessage,
   PlayerId,
   PlayerInfo,
+  SwingInput,
 } from '@festa/shared';
 import { Emitter } from '../common/emitter';
 import type { HostConnection } from './HostConnection';
@@ -25,6 +26,8 @@ export class HubPlayer {
   /** Joystick normalizado: x→direita, y→baixo, magnitude ≤ 1. */
   readonly stick = { x: 0, y: 0 };
   readonly held: Record<ButtonId, boolean> = { a: false, b: false };
+  /** A defender (boxe). */
+  guarding = false;
   private readonly presses = new Set<ButtonId>();
 
   constructor(
@@ -52,6 +55,7 @@ export class HubPlayer {
     this.stick.x = 0;
     this.stick.y = 0;
     this.held.a = this.held.b = false;
+    this.guarding = false;
     this.presses.clear();
   }
 
@@ -65,6 +69,9 @@ interface HubEvents {
   changed: HubPlayer[];
   choice: { player: HubPlayer; id: string };
   press: { player: HubPlayer; button: ButtonId };
+  /** Gesto de desporto (telemóvel, ou teclado: segurar e largar o botão). */
+  swing: { player: HubPlayer; swing: SwingInput };
+  guard: { player: HubPlayer; up: boolean };
 }
 
 interface KeyboardProfile {
@@ -97,6 +104,8 @@ export class PlayerHub {
   private keyboardPlayers: HubPlayer[] = [];
   private readonly lastLayout = new Map<PlayerId, string>();
   private readonly keysDown = new Set<string>();
+  /** Quando começou a segurar cada botão (para a força do gesto no teclado). */
+  private readonly chargeStart = new Map<string, number>();
 
   constructor(private readonly conn: HostConnection) {
     conn.events.on('players', (list) => this.syncPhones(list));
@@ -185,6 +194,13 @@ export class PlayerHub {
       case 'choice':
         this.events.emit('choice', { player, id: input.id });
         break;
+      case 'swing':
+        this.events.emit('swing', { player, swing: input });
+        break;
+      case 'guard':
+        player.guarding = input.up;
+        this.events.emit('guard', { player, up: input.up });
+        break;
     }
   }
 
@@ -211,6 +227,20 @@ export class PlayerHub {
         if (e.code !== prof[button]) continue;
         player.setButton(button, down);
         if (down) this.events.emit('press', { player, button });
+        // Gesto de desporto: segurar carrega a força, largar lança (A = mão direita, B = esquerda).
+        const key = `${prof.id}:${button}`;
+        if (down) this.chargeStart.set(key, performance.now());
+        else {
+          const start = this.chargeStart.get(key);
+          this.chargeStart.delete(key);
+          if (start !== undefined) {
+            const power = Math.min(1, (performance.now() - start) / 900);
+            this.events.emit('swing', {
+              player,
+              swing: { t: 'swing', power: Math.max(0.15, power), dir: player.stick.x * 0.8, spin: 0, hand: button === 'a' ? 'right' : 'left', source: 'key' },
+            });
+          }
+        }
         e.preventDefault();
       }
     }

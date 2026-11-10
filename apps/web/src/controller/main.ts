@@ -15,6 +15,7 @@ import type {
 } from '@festa/shared';
 import { ACK_TIMEOUT_MS, connectSocket } from '../common/socket';
 import { capture, createJoystick } from './joystick';
+import { renderMotion } from './motion';
 
 const SESSION_KEY = 'festa.session';
 const NAME_KEY = 'festa.name';
@@ -248,6 +249,10 @@ function renderLayout(): void {
       break;
     case 'dice':
       renderDice(l);
+      break;
+    case 'motion':
+      setView('');
+      cleanupView = renderMotion(view, l, send);
       break;
   }
   shownLayout = layout;

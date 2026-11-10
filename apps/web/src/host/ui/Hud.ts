@@ -9,8 +9,9 @@ export interface ScoreEntry {
   id: string;
   name: string;
   color: string;
-  coins: number;
-  stars: number;
+  /** Omitidos nos desportos. */
+  coins?: number;
+  stars?: number;
   active: boolean;
   isBot: boolean;
   connected: boolean;
@@ -66,9 +67,9 @@ export class Hud {
         (e) => `
         <div class="score ${e.active ? 'active' : ''} ${e.connected ? '' : 'away'}" style="--c:${e.color}">
           <span class="dot"></span>
-          <span class="name">${esc(e.name)}${e.isBot ? ' <small>CPU</small>' : ''}${e.tag ? ` <small>${esc(e.tag)}</small>` : ''}</span>
-          <span class="stars">⭐ ${e.stars}</span>
-          <span class="coins">🪙 ${e.coins}</span>
+          <span class="name">${esc(e.name)}${e.isBot ? ' <small>CPU</small>' : ''}${e.tag && e.coins !== undefined ? ` <small>${esc(e.tag)}</small>` : ''}</span>
+          <span class="stars">${e.stars !== undefined ? `⭐ ${e.stars}` : ''}</span>
+          <span class="coins">${e.coins !== undefined ? `🪙 ${e.coins}` : esc(e.tag ?? '')}</span>
         </div>`,
       )
       .join('');

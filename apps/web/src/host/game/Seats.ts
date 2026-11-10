@@ -2,7 +2,7 @@
  * Lugares na festa: humanos (telemóvel ou teclado) e bots, todos com a mesma
  * interface. Um humano desligado passa a ser controlado pelo computador até voltar.
  */
-import type { ButtonId, ControllerLayout } from '@festa/shared';
+import type { ButtonId, ControllerLayout, SwingInput } from '@festa/shared';
 import type { Engine } from '../three/Engine';
 import type { HubPlayer, PlayerHub } from '../PlayerHub';
 
@@ -101,6 +101,35 @@ export class SeatControl {
   toast(seat: Seat, text: string): void {
     const hp = this.hubPlayer(seat);
     if (hp) this.hub.toast(hp, text);
+  }
+
+  /**
+   * Pede um gesto de desporto (lançar, tacada…) e espera por ele.
+   * Bots, desligados e quem não responder a tempo usam `bot()`.
+   */
+  awaitSwing(seat: Seat, opts: { layout: ControllerLayout; bot: () => SwingInput; botDelay?: number }): Promise<SwingInput> {
+    this.setLayout(seat, opts.layout);
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (s: SwingInput) => {
+        if (done) return;
+        done = true;
+        off();
+        resolve(s);
+      };
+      const off = this.hub.events.on('swing', ({ player, swing }) => {
+        if (player.id === seat.id) finish(swing);
+      });
+      void (async () => {
+        let waited = 0;
+        const delay = opts.botDelay ?? 1.2;
+        while (!done) {
+          await this.engine.wait(0.1);
+          waited = this.isAuto(seat) ? waited + 0.1 : 0;
+          if (waited >= delay) finish(opts.bot());
+        }
+      })();
+    });
   }
 
   /** Pede uma decisão a um lugar e espera pela resposta (telemóvel, teclado ou bot). */

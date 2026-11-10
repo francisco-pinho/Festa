@@ -36,6 +36,26 @@ export const controllerInputSchema = z.discriminatedUnion('t', [
     t: z.literal('choice'),
     id: z.string().min(1).max(64),
   }),
+  /**
+   * Gesto de desporto (lançar, raquetada, tacada, soco…), por sensores de
+   * movimento ou por arrastar no ecrã. Tudo normalizado.
+   */
+  z.object({
+    t: z.literal('swing'),
+    /** Força do gesto, 0–1. */
+    power: z.number().min(0).max(1),
+    /** Direção: -1 esquerda, 0 em frente, 1 direita. */
+    dir: z.number().min(-1).max(1),
+    /** Efeito/rotação do pulso: -1 a 1. */
+    spin: z.number().min(-1).max(1),
+    hand: z.enum(['left', 'right']).optional(),
+    source: z.enum(['motion', 'touch', 'key']).optional(),
+  }),
+  /** Defesa (boxe): a segurar ou não. */
+  z.object({
+    t: z.literal('guard'),
+    up: z.boolean(),
+  }),
 ]);
 
 /** O que o ecrã principal pede ao telemóvel para mostrar. */
@@ -69,6 +89,22 @@ export const controllerLayoutSchema = z.discriminatedUnion('kind', [
       .max(12),
     /** Grelha com N colunas (por omissão, 1). */
     columns: z.number().int().min(1).max(3).optional(),
+  }),
+  /**
+   * Comando de desporto: zona para fazer o gesto (movimento do telemóvel ou
+   * arrastar), joystick opcional para apontar e botão de defesa opcional.
+   */
+  z.object({
+    kind: z.literal('motion'),
+    prompt: z.string().max(200),
+    action: z.enum(['throw', 'swing', 'punch', 'pitch', 'bat', 'putt']),
+    /** Mostra um joystick para apontar/posicionar antes do gesto. */
+    aim: z.boolean(),
+    /** Duas zonas (mão esquerda e direita), para o boxe. */
+    hands: z.boolean().optional(),
+    /** Botão de defesa a segurar. */
+    guard: z.boolean().optional(),
+    hint: z.string().max(200).optional(),
   }),
   /** Lançar dados: botão grande e, se o telemóvel deixar, abanar. Envia a escolha `roll`. */
   z.object({

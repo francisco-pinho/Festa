@@ -9,7 +9,10 @@ const director = new Director(engine, hud, hub, connection);
 
 const params = new URLSearchParams(location.search);
 const testMinigame = import.meta.env.DEV ? params.get('minigame') : null;
-const main = testMinigame
+const testSport = import.meta.env.DEV ? params.get('sport') : null;
+const main = testSport
+  ? director.testSport(testSport, Number(params.get('players') ?? 2))
+  : testMinigame
   ? director.testMinigame(
       testMinigame,
       (params.get('mode') as 'ffa' | 'teams' | 'oneVsAll' | null) ?? 'ffa',

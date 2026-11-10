@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 
 const SERVER = `http://localhost:${process.env.SERVER_PORT ?? 3000}`;
 
@@ -17,7 +18,9 @@ const controllerRoute = (): Plugin => ({
 });
 
 export default defineConfig({
-  plugins: [controllerRoute()],
+  // FESTA_HTTPS=1 (npm run dev:https): HTTPS com certificado autoassinado,
+  // necessário para os sensores de movimento dos telemóveis numa rede local.
+  plugins: [controllerRoute(), ...(process.env.FESTA_HTTPS === '1' ? [basicSsl()] : [])],
   server: {
     host: true, // acessível na rede local, para os telemóveis
     port: 5173,

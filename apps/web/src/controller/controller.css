@@ -427,3 +427,106 @@ button:disabled {
   padding: 10px 16px;
   border-radius: 12px;
 }
+
+/* ── Desportos (layout motion) ── */
+.motion {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px 12px;
+  min-height: 0;
+  touch-action: none;
+}
+.motion .prompt {
+  margin: 0;
+  text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--text);
+}
+.motion .hint {
+  margin: 0;
+  text-align: center;
+  color: var(--dim);
+}
+.aim-zone {
+  position: relative;
+  height: 26%;
+  min-height: 110px;
+  border-radius: 18px;
+  background: var(--panel);
+  touch-action: none;
+}
+.aim-zone > span {
+  position: absolute;
+  left: 12px;
+  top: 8px;
+  color: var(--dim);
+  font-size: 14px;
+}
+.pads {
+  flex: 1;
+  display: flex;
+  gap: 10px;
+  min-height: 0;
+}
+.pad {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 22px;
+  border: 4px dashed var(--player);
+  background: radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--player) 30%, transparent), var(--panel) 70%);
+  text-align: center;
+  padding: 12px;
+  touch-action: none;
+  transition: transform 0.1s;
+}
+.pad .icon {
+  font-size: 64px;
+}
+.pad .label {
+  font-size: 18px;
+  font-weight: bold;
+}
+.pad small {
+  color: var(--dim);
+}
+.pad.held {
+  border-style: solid;
+  transform: scale(0.98);
+}
+.pad.hit {
+  animation: pad-hit 0.35s;
+}
+@keyframes pad-hit {
+  30% {
+    background: var(--player);
+  }
+}
+.guard {
+  padding: 16px;
+  border-radius: 16px;
+  font-size: 22px;
+  background: var(--panel-light);
+  touch-action: none;
+}
+.guard.down {
+  background: #3fd0ff;
+  color: #111;
+}
+.mode-row {
+  text-align: center;
+  color: var(--dim);
+}
+.mode-toggle {
+  background: none;
+  color: var(--dim);
+  text-decoration: underline;
+  font-weight: normal;
+  font-size: 14px;
+}

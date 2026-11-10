@@ -20,6 +20,8 @@ import type {
 export type PlayerId = string;
 export type ButtonId = z.infer<typeof buttonIdSchema>;
 export type ControllerInput = z.infer<typeof controllerInputSchema>;
+export type SwingInput = Extract<ControllerInput, { t: 'swing' }>;
+export type MotionAction = Extract<ControllerLayout, { kind: 'motion' }>['action'];
 export type ControllerLayout = z.infer<typeof controllerLayoutSchema>;
 export type HostToControllerMessage = z.infer<typeof hostToControllerSchema>;
 export type HostSendRequest = z.infer<typeof hostSendSchema>;

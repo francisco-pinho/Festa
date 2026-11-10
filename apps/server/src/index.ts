@@ -1,5 +1,7 @@
 import { existsSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
+import { generate } from 'selfsigned';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
@@ -13,8 +15,23 @@ const PORT = Number(process.env.PORT ?? 3000);
 const PUBLIC_URL = process.env.PUBLIC_URL?.trim().replace(/\/+$/, '') || null;
 const VERSION = '0.1.0';
 
+/**
+ * HTTPS=1 usa um certificado autoassinado gerado no arranque. É preciso para os
+ * sensores de movimento dos telemóveis (modo Desportos) numa rede local.
+ * O telemóvel mostra um aviso de segurança da primeira vez: é só aceitar.
+ */
+const HTTPS = process.env.HTTPS === '1';
+
 const app = express();
-const httpServer = createServer(app);
+const httpServer = HTTPS
+  ? createHttpsServer(
+      await generate([{ name: 'commonName', value: 'festa.local' }], { keySize: 2048, algorithm: 'sha256' }).then(
+        (pems) => ({ key: pems.private, cert: pems.cert }),
+      ),
+      app,
+    )
+  : createServer(app);
+const scheme = HTTPS ? 'https' : 'http';
 
 const io: FestaServer = new Server(httpServer, {
   // Mensagens do jogo são pequenas; limitar protege o servidor.
@@ -52,7 +69,7 @@ if (existsSync(webDist)) {
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🎉 Servidor Festa na porta ${PORT}`);
   if (PUBLIC_URL) console.log(`   URL público: ${PUBLIC_URL}`);
-  for (const ip of getLanAddresses()) console.log(`   Rede local: http://${ip}:${PORT}`);
+  for (const ip of getLanAddresses()) console.log(`   Rede local: ${scheme}://${ip}:${PORT}`);
 });
 
 const shutdown = () => {
