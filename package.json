@@ -1,0 +1,25 @@
+{
+  "name": "festa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Jogo de festa para PC com telemóveis como comandos",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c magenta,cyan \"npm run dev -w @festa/server\" \"npm run dev -w @festa/web\"",
+    "build": "npm run build -w @festa/web",
+    "start": "npm run start -w @festa/server",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7",
+    "typescript": "^7.0.2"
+  }
+}
