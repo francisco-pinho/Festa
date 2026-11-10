@@ -29,10 +29,23 @@ export function sensorsAvailable(): boolean {
   return typeof window.DeviceMotionEvent !== 'undefined' && window.isSecureContext;
 }
 
+/** Já chegaram dados reais dos sensores? (Alguns browsers de PC dizem ter sensores mas não enviam nada.) */
+let sensorsSeen = false;
+if (sensorsAvailable()) {
+  const probe = (e: DeviceMotionEvent) => {
+    const a = e.accelerationIncludingGravity;
+    if (a && (a.x || a.y || a.z)) {
+      sensorsSeen = true;
+      window.removeEventListener('devicemotion', probe);
+    }
+  };
+  window.addEventListener('devicemotion', probe);
+}
+
 export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): () => void {
   const text = ACTION_TEXT[l.action];
   const canMotion = sensorsAvailable();
-  let useMotion = canMotion && localStorage.getItem(MOTION_KEY) !== 'off';
+  let useMotion = canMotion && sensorsSeen && localStorage.getItem(MOTION_KEY) !== 'off';
   const cleanups: (() => void)[] = [];
 
   view.innerHTML = `
@@ -144,10 +157,12 @@ export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): ()
       pointerId = null;
       pad.classList.remove('held');
       if (motion) {
-        const s = motion.stop();
+        const tracker = motion;
         motion = null;
-        if (s) emit(hand, s, pad);
-        return;
+        const s = tracker.stop();
+        if (s) return emit(hand, s, pad);
+        // Sem dados dos sensores: usa o gesto de arrastar como recurso.
+        if (tracker.samples > 0) return;
       }
       points.push({ x: e.clientX, y: e.clientY, t: performance.now() });
       const s = swipeToSwing(points, l.action);
@@ -197,6 +212,8 @@ class MotionTracker {
   private twist = 0;
   private lastT = 0;
   private armed = true;
+  /** Quantas leituras dos sensores chegaram. */
+  samples = 0;
   private readonly onMotion = (e: DeviceMotionEvent) => this.sample(e);
 
   constructor(
@@ -230,6 +247,8 @@ class MotionTracker {
     let ax = 0, ay = 0, az = 0;
     if (a && a.x !== null && a.y !== null && a.z !== null) [ax, ay, az] = [a.x, a.y, a.z];
     else if (g && g.x !== null && g.y !== null && g.z !== null) [ax, ay, az] = [g.x, g.y, g.z - 9.8];
+    else return; // evento vazio (sem sensor real)
+    this.samples++;
     const mag = Math.hypot(ax, ay, az);
     const now = performance.now();
     const dt = this.lastT ? (now - this.lastT) / 1000 : 0;
