@@ -72,7 +72,7 @@ import { ShowcaseStage } from '../stages/ShowcaseStage';
 import { starMesh } from '../stages/environment';
 import { Hud, esc, type ScoreEntry } from '../ui/Hud';
 import type { GameMenu } from '../ui/GameMenu';
-import { MINIGAMES, MODE_LABEL, pickMinigame } from '../minigames';
+import { MINIGAMES, MODE_LABEL, pickDuel, pickMinigame } from '../minigames';
 import type { MinigameContext, MinigameSeat } from '../minigames/types';
 import type { Seat, SeatControl } from './Seats';
 import { settings } from './Settings';
@@ -753,7 +753,7 @@ export class PartyFlow {
     this.stage.token(b.id).setAnim('block');
     await this.hud.banner(title, { sub: `${a.name} vs ${b.name} · quem perde dá ${RULES.duelCoins} 🪙 e recua ${RULES.duelStepsBack} casas`, hold: 2.2, color: '#ff6b7a' });
     const teams: MinigameTeams = { mode: 'ffa', blue: [a.id, b.id], red: [] };
-    const winners = await this.runMinigame([a, b], teams, title);
+    const winners = await this.runMinigame([a, b], teams, title, true);
     this.stage.token(a.id).setAnim('idle');
     this.stage.token(b.id).setAnim('idle');
     if (winners.length !== 1) {
@@ -939,10 +939,10 @@ export class PartyFlow {
    * Corre um minijogo com estes jogadores e devolve os vencedores.
    * `title` aparece no topo do ecrã de apresentação (duelos/VS).
    */
-  private async runMinigame(players: PartyPlayer[], teams: MinigameTeams, title: string | null): Promise<string[]> {
+  private async runMinigame(players: PartyPlayer[], teams: MinigameTeams, title: string | null, duel = false): Promise<string[]> {
     const def =
-      MINIGAMES.find((m) => m.id === this.d.forcedMinigame && m.modes.includes(teams.mode)) ??
-      pickMinigame(teams.mode, this.rng, this.lastMinigame);
+      MINIGAMES.find((m) => m.id === this.d.forcedMinigame && m.modes.includes(teams.mode) && (duel || players.length === 2 || !m.duel)) ??
+      (duel ? pickDuel(this.rng, this.lastMinigame) : pickMinigame(teams.mode, this.rng, this.lastMinigame));
     this.lastMinigame = def.id;
     const teamOf = (id: string): MinigameSeat['team'] => (teams.mode === 'ffa' ? null : teams.blue.includes(id) ? 'blue' : 'red');
     const mgSeats: MinigameSeat[] = players.map((p) => ({ id: p.id, name: p.name, characterId: p.characterId, team: teamOf(p.id) }));
@@ -1114,5 +1114,24 @@ export class PartyFlow {
     this.stage = new BoardStage(this.engine, this.state.board, this.d.seats);
     this.engine.setStage(this.stage);
     for (;;) await this.roundMinigame();
+  }
+
+  /** Desenvolvimento: duelos seguidos entre os dois primeiros jogadores. */
+  async duelLoop(boardId: string): Promise<void> {
+    await this.minigameSetup(boardId);
+    const [a, b] = this.state.players as [PartyPlayer, PartyPlayer];
+    for (;;) await this.duel(a, b, '⚔️ Duelo!');
+  }
+
+  private async minigameSetup(boardId: string): Promise<void> {
+    this.state = createParty(
+      createBoard(boardId),
+      this.d.seats.map((s) => ({ id: s.id, name: s.name, characterId: s.characterId, isBot: s.isBot })),
+      1,
+      this.rng,
+    );
+    this.stage = new BoardStage(this.engine, this.state.board, this.d.seats);
+    this.engine.setStage(this.stage);
+    await this.arrangeAll();
   }
 }

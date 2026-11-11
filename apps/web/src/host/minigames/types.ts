@@ -47,6 +47,8 @@ export interface MinigameDef {
   id: string;
   name: string;
   modes: MinigameMode[];
+  /** Só para duelos (1 contra 1). */
+  duel?: boolean;
   description(mode: MinigameMode): string;
   controls: string;
   stick: boolean;

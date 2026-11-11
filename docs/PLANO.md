@@ -169,7 +169,7 @@ Cada fase termina testada, com commit e push no seu ramo.
   - **Mina do Vulcão**: **vagonetas** em carris (atalho pago e casa de evento que te leva 4–8 casas), erupção a cada 3 rondas que fecha a cratera e queima 5 moedas a quem lá está
   - **Castelo Assombrado**: 3 andares ligados por **elevadores** e escadarias com portas que alternam a cada ronda; o fantasma vende uma estrela por 30 moedas (ou rouba 3–8)
   - **Parque de Diversões**: **roda gigante** que gira 2 casas por ronda e leva quem lá está, montanha-russa como atalho (5 moedas), corredor das barracas
-- [ ] Mais minijogos (1 contra 1 para os duelos)
+- [x] Minijogos 1 contra 1 para os duelos: **Saque Rápido** (reflexos ao «JÁ!»), **Cabo de Guerra** (A e B à vez) e **Pontaria** (parar o marcador no verde); teste em `/?minigame=saque|cabo|pontaria&players=2`
 
 ### Fase 2 — Bowling
 - [ ] Salão de bowling completo: várias pistas lado a lado (com bots a jogar ao fundo), retorno de bolas, bancos, máquina de repor pinos, luzes e decoração
@@ -240,3 +240,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-11 | Fase 0: modelos 3D com esqueleto (KayKit, 76 animações, 10 personagens recoloridas) | `fase0-fundacoes` | ✔ |
 | 2026-11-11 | Fase 1: mapas Ilha e Cidade, itens, lojas, duelos, VS, Trapaceiro, vista do mapa, cerimónia | `fase1-festa` | ✔ |
 | 2026-11-11 | Fase 1: mapas Mina do Vulcão, Castelo Assombrado e Parque de Diversões (cenários 3D, vagonetas, elevadores, montanha-russa, erupção, portas, roda, fantasma) | `fase1-festa` | ✔ |
+| 2026-11-11 | Fase 1: minijogos de duelo 1 contra 1 (Saque Rápido, Cabo de Guerra, Pontaria) | `fase1-festa` | ✔ |

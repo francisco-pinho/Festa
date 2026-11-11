@@ -15,6 +15,7 @@ import { cycleLanAddress, getJoinBaseUrl, getJoinUrl } from '../joinUrl';
 import type { Engine } from '../three/Engine';
 import { ShowcaseStage } from '../stages/ShowcaseStage';
 import { Hud, esc } from '../ui/Hud';
+import { MINIGAMES } from '../minigames';
 import { SPORTS } from '../sports';
 import type { SportDef } from '../sports/types';
 import type { GameMenu } from '../ui/GameMenu';
@@ -377,6 +378,8 @@ export class Director {
    * Bots em todos os lugares, mais quem estiver ligado (telemóvel ou teclado).
    */
   async testMinigame(id: string, mode: MinigameMode, players = 4): Promise<void> {
+    const duel = MINIGAMES.find((m) => m.id === id)?.duel ?? false;
+    if (duel) players = Math.max(4, players);
     this.menu.mode = 'game';
     await this.engine.wait(1.5); // deixa a lista de telemóveis sincronizar
     const humans = this.hub.players.slice(0, players);
@@ -387,7 +390,8 @@ export class Director {
     ];
     const colors = this.seats.map((_, i) => (mode === 'ffa' ? 'blue' : mode === 'oneVsAll' ? (i === 0 ? 'red' : 'blue') : i % 2 ? 'red' : 'blue')) as ('blue' | 'red')[];
     this.forcedMinigame = id;
-    await this.partyFlow().minigameLoop('ilha', colors);
+    if (duel) await this.partyFlow().duelLoop('ilha');
+    else await this.partyFlow().minigameLoop('ilha', colors);
   }
 
   /** Desenvolvimento: festa de N rondas diretamente num mapa, só com bots e quem estiver ligado (/?party=<mapa>). */
