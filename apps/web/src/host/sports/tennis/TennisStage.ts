@@ -125,7 +125,8 @@ export class TennisStage extends SportStage {
       this.setLayout(p.seat, {
         kind: 'motion',
         action: 'swing',
-        aim: false,
+        aim: true,
+        aimLabel: 'Correr',
         prompt: `Equipa ${TEAM_NAMES[p.team]} · bate quando a bola chegar!`,
         hint: 'Cedo = cruzada · tarde = paralela · de baixo para cima = topspin · de cima para baixo = slice',
       });
@@ -413,6 +414,36 @@ export class TennisStage extends SportStage {
       } else p.target.copy(p.home);
     }
     if (plan && this.ctx.seats.isAuto(plan.player.seat)) this.botMaybeHit(plan.player);
+    this.stickMovement();
+  }
+
+  /**
+   * Jogadores humanos correm com o joystick (direções do ecrã: a câmara está sempre do mesmo lado).
+   * Só os bots se posicionam sozinhos. Cada um fica no seu meio-campo.
+   */
+  private stickMovement(): void {
+    if (this.phase !== 'rally') return;
+    for (const p of this.tplayers) {
+      if (this.ctx.seats.isAuto(p.seat)) continue;
+      const st = this.ctx.seats.pad(p.seat).stick;
+      const mag = Math.hypot(st.x, st.y);
+      if (mag < 0.15) {
+        p.target.copy(p.pos);
+        continue;
+      }
+      const k = Math.min(1, mag) / mag;
+      const near = p.team === 0 ? 1 : -1;
+      p.target.set(
+        THREE.MathUtils.clamp(p.pos.x + st.x * k * 1.5, -HALF_W - 3, HALF_W + 3),
+        0,
+        near > 0
+          ? THREE.MathUtils.clamp(p.pos.z + st.y * k * 1.5, 0.8, HALF_L + 3)
+          : THREE.MathUtils.clamp(p.pos.z + st.y * k * 1.5, -HALF_L - 3, -0.8),
+      );
+      // Lado da pancada: direita ou esquerda conforme a bola.
+      const right = p.team === 0 ? 1 : -1;
+      p.side = (this.ball.p.x - p.pos.x) * right >= -0.3 ? 1 : -1;
+    }
   }
 
   private botMaybeHit(p: Player): void {

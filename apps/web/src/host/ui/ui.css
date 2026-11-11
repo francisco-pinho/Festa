@@ -1072,3 +1072,22 @@
   pointer-events: auto;
 }
 .lobby-join .go-online:disabled { opacity: 0.7; cursor: wait; }
+
+/* Golfe: mini-mapa do buraco com a previsão da tacada */
+.golf-minimap {
+  position: absolute;
+  left: 1.5vw; /* o medidor de força está à direita */
+  top: 13vh;
+  height: 64vh;
+  aspect-ratio: 260 / 560;
+  padding: 0.6vh;
+  border-radius: 1.6vh;
+  background: #1d1433cc;
+  border: 0.3vh solid #ffffff44;
+  box-shadow: 0 1vh 3vh #0006;
+}
+.golf-minimap canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}

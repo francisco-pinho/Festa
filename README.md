@@ -83,6 +83,24 @@ Cada jogo vive no seu ramo, para poder ser revisto e juntado em separado:
 Os desportos são descobertos automaticamente (`apps/web/src/host/sports/<id>/sport.ts`), por isso
 os ramos juntam-se sem conflitos.
 
+## App de computador (Festa.exe)
+
+```bash
+npm run app
+```
+
+Gera em `apps/desktop/release/` o **instalador** (`Festa-0.1.0-instalador.exe`) e a versão **portátil**
+(`Festa-0.1.0-portatil.exe`, corre sem instalar). A app traz tudo: o servidor, o jogo e o `cloudflared`.
+- Abre em ecrã inteiro (**F11** alterna; **Alt+F4** fecha).
+- Os telemóveis entram pelo QR, em HTTPS (para os sensores de movimento). Na rede de casa aparece uma vez
+  o aviso de ligação não privada: **Avançadas → Continuar**.
+- **🌍 Jogar online** (no lobby, com o rato) abre o túnel da Cloudflare: o QR passa a servir em casa e fora,
+  sem avisos.
+- **V** partilha o ecrã com quem está fora (sem caixa de escolha).
+- O Windows mostra o aviso do SmartScreen da primeira vez (a app não tem assinatura digital):
+  **Mais informações → Executar mesmo assim**.
+- Testar sem empacotar: `npm run app:dev`.
+
 ## Modos de ligação
 
 | Modo | Como | Quem vê o ecrã |
@@ -101,6 +119,7 @@ Detalhes, TURN da Cloudflare e compensação de atraso: [docs/ONLINE.md](docs/ON
 | `npm run build` | Compila o cliente web para `apps/web/dist` |
 | `npm start` | Produção: um só processo serve o jogo, o comando e o Socket.IO |
 | `npm run online` | Compila, arranca o servidor e abre um túnel Cloudflare para jogar com quem está fora |
+| `npm run app` | Gera o instalador e a versão portátil da app de computador (Electron) |
 | `npm test` | Testes das regras do jogo e do servidor |
 | `npm run typecheck` | Verifica tipos em todos os pacotes |
 

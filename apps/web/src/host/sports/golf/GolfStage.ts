@@ -37,6 +37,7 @@ import { disposeObject, mesh, textSprite, toon, toonUnique } from '../../three/m
 import { bush, palmTree } from '../../stages/environment';
 import { PROPS, pickProp } from '../../three/props';
 import { SportStage } from '../SportStage';
+import { GolfMiniMap } from './miniMap';
 import { rankBy, type SportContext, type SportStanding } from '../types';
 import type { Seat } from '../../game/Seats';
 
@@ -56,6 +57,8 @@ interface GolferState {
 
 export class GolfStage extends SportStage {
   private readonly golfers: GolferState[] = [];
+  /** Mini-mapa do buraco com a previsão da tacada (como no Mario Golf). */
+  private readonly miniMap = new GolfMiniMap();
   private readonly holeGroup = new THREE.Group();
   private readonly dots: THREE.Mesh[] = [];
   private readonly landRing: THREE.Mesh;
@@ -135,6 +138,7 @@ export class GolfStage extends SportStage {
   private async playHole(hole: GolfHole, index: number): Promise<void> {
     this.hole = hole;
     this.buildHole(hole, index);
+    this.miniMap.setHole(hole);
     const rng = this.ctx.rng;
     const windAngle = rng.next() * Math.PI * 2;
     const windSpeed = Math.round(rng.next() * 4);
@@ -555,9 +559,24 @@ export class GolfStage extends SportStage {
       this.landLabel.position.set(land.x, land.y + rad * 0.9 + 1, land.z);
       this.scene.add(this.landLabel);
     }
+    // Mini-mapa: bola, pontaria, trajetória e queda com o taco atual.
+    const step = Math.max(1, Math.floor(upto / 14));
+    const path: { x: number; z: number }[] = [];
+    for (let i = step; i < upto; i += step) path.push({ x: s[i]!.x, z: s[i]!.z });
+    this.miniMap.update({
+      ball: { x: g.pos.x, z: g.pos.y },
+      others: this.golfers.filter((o) => o !== g && !o.done).map((o) => ({ pos: { x: o.pos.x, z: o.pos.y }, color: getCharacter(o.seat.characterId).color })),
+      aim: this.aimAngle,
+      path,
+      landing: { x: land.x, z: land.z },
+      landingR: putt ? 0.8 : rad,
+      label: `${CLUBS[this.club].name} · ${Math.round(Math.hypot(land.x - g.pos.x, land.z - g.pos.y))} m`,
+    });
+    this.miniMap.show(true);
   }
 
   private showPreview(v: boolean): void {
+    if (!v) this.miniMap.show(false);
     for (const d of this.dots) d.visible = v;
     this.landRing.visible = v;
     if (!v && this.landLabel) {
@@ -710,6 +729,7 @@ export class GolfStage extends SportStage {
   }
 
   override dispose(): void {
+    this.miniMap.dispose();
     this.meter?.el.remove();
     for (const gs of this.golfers) gs.ball.geometry.dispose();
     this.caddie.dispose();

@@ -67,6 +67,8 @@ interface Fighter {
   stun: number;
   down: boolean;
   dodge: { dir: -1 | 1; t: number } | null;
+  /** Mão do próximo soco com o A (alterna: jab, direto, jab…). */
+  nextHand: Hand;
   dodgeCd: number;
   counterT: number;
   lastTilt: number;
@@ -110,14 +112,23 @@ export class BoxingStage extends SportStage {
   }
 
   async play(): Promise<SportStanding[]> {
-    this.offSwing = this.ctx.hub.events.on('swing', ({ player, swing }) => {
+    // Socos com os botões: A alterna jab/direto, X gancho, Y uppercut (B segura a defesa).
+    this.offSwing = this.ctx.hub.events.on('press', ({ player, button }) => {
       const f = this.fight?.find((x) => x.seat.id === player.id);
       if (!f) return;
       if (f.down) {
-        this.getUpMash++;
+        if (button === 'a' || button === 'b' || button === 'x' || button === 'y') this.getUpMash++;
         return;
       }
-      this.startPunch(f, punchKind(swing.hand ?? 'right', (swing.kind ?? 'straight') as PunchGesture), swing.hand ?? 'right', swing.power);
+      if (button === 'a') {
+        const hand = f.nextHand;
+        this.startPunch(f, punchKind(hand, 'straight'), hand, 0.7);
+        if (f.punch) f.nextHand = hand === 'left' ? 'right' : 'left';
+      } else if (button === 'x') {
+        const hand = f.nextHand;
+        this.startPunch(f, 'hook', hand, 0.8);
+        if (f.punch) f.nextHand = hand === 'left' ? 'right' : 'left';
+      } else if (button === 'y') this.startPunch(f, 'uppercut', 'right', 0.8);
     });
     this.cameraTo({ x: 7, y: 6, z: 9 }, { x: 0, y: 1.3, z: 0 }, { instant: true });
     this.cameraTo({ x: 0, y: 3, z: 7 }, { x: 0, y: 1.4, z: 0 }, { speed: 0.8 });
@@ -151,14 +162,12 @@ export class BoxingStage extends SportStage {
         p,
         f
           ? {
-              kind: 'motion',
-              action: 'punch',
-              aim: true,
-              aimLabel: 'Mover',
-              guard: true,
-              dodge: true,
-              prompt: `Contra ${f === fa ? b.name : a.name}!`,
-              hint: 'Soco em frente = direto · de lado = gancho · de baixo para cima = uppercut · inclina para esquivar',
+              kind: 'pad',
+              title: `Contra ${f === fa ? b.name : a.name}!`,
+              sub: 'Ⓑ + ◀▶ esquiva · depois de esquivar o contra-ataque dói mais',
+              stick: 'stick',
+              stickLabel: 'Mover',
+              buttons: { a: 'Soco', x: 'Gancho', y: 'Uppercut', b: 'Defender', plus: 'Menu' },
             }
           : { kind: 'wait', message: `A ver: ${a.name} 🥊 ${b.name}` },
       );
@@ -260,6 +269,7 @@ export class BoxingStage extends SportStage {
       down: false,
       dodge: null,
       dodgeCd: 0,
+      nextHand: 'left',
       counterT: 0,
       lastTilt: 0,
       bot: { timer: 1 + this.ctx.rng.next(), strafe: 1, strafeT: 1, want: 1.4, guard: 0, reacted: null },
@@ -470,12 +480,11 @@ export class BoxingStage extends SportStage {
         const pad = this.ctx.seats.pad(f.seat);
         stickX = pad.stick.x;
         stickY = pad.stick.y;
-        if (pad.consumePress('x')) this.startDodge(f, -1);
-        if (pad.consumePress('y')) this.startDodge(f, 1);
-        const tilt = this.ctx.seats.aim(f.seat);
-        if (tilt > 0.65 && f.lastTilt <= 0.65) this.startDodge(f, 1);
-        if (tilt < -0.65 && f.lastTilt >= -0.65) this.startDodge(f, -1);
-        f.lastTilt = tilt;
+        // Esquiva: segurar B (defesa) e empurrar o joystick para um lado.
+        const side = pad.held.b && Math.abs(stickX) > 0.7 ? Math.sign(stickX) : 0;
+        if (side && f.lastTilt === 0) this.startDodge(f, side as -1 | 1);
+        f.lastTilt = side;
+        if (pad.held.b) stickX = 0; // a defender não se anda de lado (o joystick é para esquivar)
       }
     }
 

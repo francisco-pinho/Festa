@@ -40,7 +40,10 @@ function createWindow(port: number): BrowserWindow {
     title: 'Festa',
     backgroundColor: '#140b2b',
     // FESTA_JANELA=1 abre numa janela normal (útil para testar).
-    fullscreen: process.env.FESTA_JANELA !== '1',
+    fullscreen: process.env.FESTA_JANELA !== '1' && process.env.FESTA_OCULTA !== '1',
+    // FESTA_OCULTA=1: a janela desenha mas não aparece (testes automáticos).
+    show: process.env.FESTA_OCULTA !== '1',
+    paintWhenInitiallyHidden: true,
     autoHideMenuBar: true,
     icon: join(__dirname, '../build/icon.png'),
     webPreferences: {
@@ -61,7 +64,8 @@ function createWindow(port: number): BrowserWindow {
     if (/^https?:\/\//.test(url)) void shell.openExternal(url);
     return { action: 'deny' };
   });
-  void w.loadURL(`https://localhost:${port}/`);
+  // FESTA_URL (desenvolvimento): abre outro endereço, ex. o servidor do Vite com uma rota de teste.
+  void w.loadURL(process.env.FESTA_URL || `https://localhost:${port}/`);
   return w;
 }
 
@@ -75,6 +79,10 @@ app.on('certificate-error', (event, _wc, url, _error, _cert, callback) => {
 
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
+
+  // O certificado do servidor é gerado pela própria app: aceita-o só para o localhost
+  // (também nos WebSockets, que o evento 'certificate-error' não cobre). O resto usa a verificação normal.
+  session.defaultSession.setCertificateVerifyProc((req, callback) => callback(req.hostname === 'localhost' ? 0 : -3));
 
   // Partilha do ecrã (tecla V): partilha logo esta janela, com o som do jogo.
   session.defaultSession.setDisplayMediaRequestHandler(
