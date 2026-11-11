@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.21.0",
     "@festa/game": "^0.1.0",
     "qrcode": "^1.5.4",
     "socket.io-client": "^4.8.4",

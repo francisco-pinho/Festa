@@ -27,4 +27,21 @@ main.catch((err: unknown) => {
 });
 
 // Em desenvolvimento: acesso pela consola do browser para depurar (window.festa).
-if (import.meta.env.DEV) Object.assign(window, { festa: { engine, hud, hub, connection, director, menu } });
+if (import.meta.env.DEV) {
+  Object.assign(window, { festa: { engine, hud, hub, connection, director, menu } });
+  // Teste rápido do motor de física: na consola, `await festa.physicsSmokeTest()`.
+  Object.assign((window as unknown as { festa: object }).festa, {
+    physicsSmokeTest: async () => {
+      const { Physics } = await import('./three/physics');
+      const p = await Physics.create();
+      const ground = p.world.createRigidBody(p.R.RigidBodyDesc.fixed());
+      p.world.createCollider(p.R.ColliderDesc.cuboid(10, 0.1, 10), ground);
+      const ball = p.world.createRigidBody(p.R.RigidBodyDesc.dynamic().setTranslation(0, 3, 0));
+      p.world.createCollider(p.R.ColliderDesc.ball(0.2).setRestitution(0.5), ball);
+      for (let i = 0; i < 240; i++) p.step(1 / 60);
+      const y = ball.translation().y;
+      p.dispose();
+      return { versao: p.R.version(), alturaFinalDaBola: Number(y.toFixed(3)) };
+    },
+  });
+}
