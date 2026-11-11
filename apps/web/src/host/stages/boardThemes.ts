@@ -147,6 +147,7 @@ class IslandTheme implements BoardTheme {
   private doorTarget = 0;
   /** Barcos a balançar na água. */
   private readonly ships: THREE.Object3D[] = [];
+  private leaves!: Particles;
 
   constructor(board: Board, scene: THREE.Scene) {
     setupSky(scene, { fog: [120, 320] });
@@ -318,6 +319,8 @@ class IslandTheme implements BoardTheme {
       tower.position.copy(ringPoint(0.58, -3));
       this.group.add(tower);
     }
+    this.leaves = new Particles('leaf', 50, { cx, cz, w: a * 2, d: b * 2, h: 12 }, '#5fbf4a');
+    this.group.add(this.leaves.mesh);
     const flag = prop('kenney-pirate/flag-pirate-high', { height: 5 });
     if (flag) {
       flag.position.copy(ringPoint(0.12, -2.5));
@@ -345,6 +348,7 @@ class IslandTheme implements BoardTheme {
       sh.position.y = this.water.mesh.position.y + (big ? -0.9 : 0.05) + Math.sin(time * 0.9 + i) * 0.15;
       sh.rotation.z = Math.sin(time * 0.7 + i * 2) * 0.04;
     });
+    this.leaves?.update(dt, time);
     this.water.update(time);
     this.clouds.update(dt);
   }
@@ -411,6 +415,56 @@ function tunnelCurve(board: Board, t: Board['tunnels'][number]): THREE.CatmullRo
   return rideCurve(new THREE.Vector3(a.x, 0.32 + (a.y ?? 0), a.z), new THREE.Vector3(b.x, 0.32 + (b.y ?? 0), b.z), kind);
 }
 
+/** Partículas leves num volume: pirilampos (flutuam e piscam), brasas (sobem) ou folhas (caem a rodar). */
+class Particles {
+  readonly mesh: THREE.InstancedMesh;
+  private readonly pos: THREE.Vector3[] = [];
+  private readonly vel: THREE.Vector3[] = [];
+  private readonly phase: number[] = [];
+  private readonly m = new THREE.Matrix4();
+  private readonly q = new THREE.Quaternion();
+  private readonly sc = new THREE.Vector3();
+
+  constructor(
+    private readonly kind: 'firefly' | 'ember' | 'leaf',
+    count: number,
+    private readonly area: { cx: number; cz: number; w: number; d: number; h: number },
+    color: string,
+  ) {
+    const geo = kind === 'leaf' ? new THREE.PlaneGeometry(0.35, 0.22) : new THREE.SphereGeometry(kind === 'firefly' ? 0.09 : 0.12, 6, 4);
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false });
+    this.mesh = new THREE.InstancedMesh(geo, mat, count);
+    this.mesh.frustumCulled = false;
+    for (let i = 0; i < count; i++) {
+      this.pos.push(new THREE.Vector3(area.cx + (Math.random() - 0.5) * area.w, Math.random() * area.h, area.cz + (Math.random() - 0.5) * area.d));
+      this.vel.push(new THREE.Vector3((Math.random() - 0.5) * 0.6, kind === 'ember' ? 1 + Math.random() * 2 : kind === 'leaf' ? -0.5 - Math.random() * 0.5 : 0, (Math.random() - 0.5) * 0.6));
+      this.phase.push(Math.random() * 10);
+    }
+  }
+
+  update(dt: number, time: number): void {
+    const a = this.area;
+    for (let i = 0; i < this.pos.length; i++) {
+      const p = this.pos[i]!;
+      const v = this.vel[i]!;
+      const ph = this.phase[i]!;
+      p.x += (v.x + Math.sin(time * 0.7 + ph) * 0.4) * dt;
+      p.z += (v.z + Math.cos(time * 0.6 + ph) * 0.4) * dt;
+      p.y += (v.y + (this.kind === 'firefly' ? Math.sin(time * 1.3 + ph) * 0.3 : 0)) * dt;
+      if (p.y > a.h) p.y = 0;
+      if (p.y < 0) p.y = a.h;
+      if (Math.abs(p.x - a.cx) > a.w / 2) p.x = a.cx - Math.sign(p.x - a.cx) * (a.w / 2);
+      if (Math.abs(p.z - a.cz) > a.d / 2) p.z = a.cz - Math.sign(p.z - a.cz) * (a.d / 2);
+      const blink = this.kind === 'firefly' ? 0.3 + 0.7 * Math.max(0, Math.sin(time * 2.5 + ph * 3)) : this.kind === 'ember' ? 1 - p.y / a.h : 1;
+      this.q.setFromEuler(new THREE.Euler(time * 2 + ph, time * 1.5 + ph, 0));
+      this.sc.setScalar(Math.max(0.05, blink));
+      this.m.compose(p, this.q, this.sc);
+      this.mesh.setMatrixAt(i, this.m);
+    }
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+
 /** Modelo de cenário rodado ao acaso; se não estiver carregado usa `fallback`. */
 function deco(keys: readonly string[], rng: ReturnType<typeof createRng>, size: { height?: number; width?: number }, fallback: () => THREE.Object3D): THREE.Object3D {
   const o = pickProp(keys, rng.next(), size) ?? fallback();
@@ -458,6 +512,7 @@ class VolcanoTheme implements BoardTheme {
   private readonly barrier: THREE.Mesh;
   private readonly rocks: { mesh: THREE.Mesh; vel: THREE.Vector3 }[] = [];
   private erupting = false;
+  private embers!: Particles;
 
   constructor(board: Board, scene: THREE.Scene) {
     this.bounds = boundsOf(board.spaces);
@@ -566,6 +621,8 @@ class VolcanoTheme implements BoardTheme {
         return tree;
       });
     }, 2.6, (x, z) => Math.hypot(x, z) < 16);
+    this.embers = new Particles('ember', 90, { cx: 0, cz: 0, w: 30, d: 30, h: 26 }, '#ffb347');
+    this.group.add(this.embers.mesh);
     // Montanhas à volta e acampamento dos mineiros junto à mina.
     const mrng = createRng(5);
     for (let i = 0; i < 12; i++) {
@@ -607,6 +664,7 @@ class VolcanoTheme implements BoardTheme {
   update(dt: number, time: number): void {
     this.glow.emissiveIntensity = (this.erupting ? 2.2 : 1.1) + Math.sin(time * 4) * 0.25;
     this.light.intensity = this.erupting ? 200 + Math.sin(time * 20) * 60 : 80;
+    this.embers?.update(dt * (this.erupting ? 3 : 1), time);
     if (this.erupting && Math.random() < dt * 14) {
       const m = mesh(new THREE.DodecahedronGeometry(0.4 + Math.random() * 0.4, 0), this.glow);
       m.position.set(0, 14, 0);
@@ -636,12 +694,13 @@ class CastleTheme implements BoardTheme {
   private readonly doors: { gate: Board['gates'][number]; door: THREE.Object3D }[] = [];
   private readonly ghost: THREE.Sprite;
   private readonly flames: THREE.MeshToonMaterial[] = [];
+  private fireflies: Particles | null = null;
 
   constructor(board: Board, scene: THREE.Scene) {
     this.bounds = boundsOf(board.spaces);
-    scene.background = new THREE.Color('#1d1433');
-    scene.fog = new THREE.Fog('#1d1433', 80, 200);
-    scene.add(new THREE.HemisphereLight('#b9a9ff', '#2a2440', 1.5));
+    scene.background = new THREE.Color('#251a44');
+    scene.fog = new THREE.Fog('#251a44', 90, 220);
+    scene.add(new THREE.HemisphereLight('#c9bcff', '#3a3458', 2.2));
     const moon = new THREE.DirectionalLight('#dfe6ff', 2);
     moon.position.set(-30, 60, 40);
     moon.castShadow = true;
@@ -652,7 +711,7 @@ class CastleTheme implements BoardTheme {
     moonDisc.position.set(-40, 50, -120);
     this.group.add(moonDisc);
 
-    const ground = mesh(new THREE.PlaneGeometry(220, 220), toon('#2f3a2a'), { cast: false, receive: true });
+    const ground = mesh(new THREE.PlaneGeometry(220, 220), toon('#3d4c37'), { cast: false, receive: true });
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.02;
     this.group.add(ground);
@@ -767,6 +826,24 @@ class CastleTheme implements BoardTheme {
         this.group.add(t);
       }
     }
+    // Luzes quentes no cemitério e pirilampos por todo o lado.
+    const lrng = createRng(31);
+    for (let i = 0; i < 8; i++) {
+      const th = (i / 8) * Math.PI * 2;
+      const x = Math.cos(th) * (b0.maxX - b0.minX) * 0.75;
+      const z = (b0.minZ + b0.maxZ) / 2 + Math.sin(th) * (b0.maxZ - b0.minZ) * 0.7;
+      const lamp = prop('kaykit-halloween/post_lantern', { height: 4 });
+      if (lamp) {
+        lamp.position.set(x, 0, z);
+        lamp.rotation.y = lrng.next() * 6;
+        this.group.add(lamp);
+      }
+      const light = new THREE.PointLight('#ffb35c', 26, 16);
+      light.position.set(x, 3.6, z);
+      this.group.add(light);
+    }
+    this.fireflies = new Particles('firefly', 120, { cx: 0, cz: (b0.minZ + b0.maxZ) / 2, w: 90, d: 90, h: 8 }, '#d8ff7a');
+    this.group.add(this.fireflies.mesh);
     const crypt = prop('kaykit-halloween/crypt', { height: 7 });
     if (crypt) {
       crypt.position.set(b0.maxX + 14, 0, b0.maxZ - 4);
@@ -800,6 +877,7 @@ class CastleTheme implements BoardTheme {
     this.ghost.position.set(Math.sin(time * 0.3) * 24, 9 + Math.sin(time * 1.3) * 1.2, -6 + Math.cos(time * 0.23) * 22);
     (this.ghost.material as THREE.SpriteMaterial).opacity = 0.55 + Math.sin(time * 2) * 0.25;
     this.flames.forEach((f, i) => (f.emissiveIntensity = 1.2 + Math.sin(time * 9 + i) * 0.4));
+    this.fireflies?.update(dt, time);
   }
 }
 
@@ -812,6 +890,7 @@ class ParkTheme implements BoardTheme {
   private wheelSpeed = 0.15;
   private readonly balloons: THREE.Object3D[] = [];
   private readonly carousel = new THREE.Group();
+  private confetti: Particles | null = null;
 
   constructor(board: Board, scene: THREE.Scene) {
     setupSky(scene, { fog: [140, 320] });
@@ -853,7 +932,8 @@ class ParkTheme implements BoardTheme {
       this.group.add(base);
     }
 
-    // Montanha-russa
+    // Montanha-russa (e pontos do percurso, para não pôr nada por baixo)
+    const coasterPts = board.tunnels.flatMap((t) => tunnelCurve(board, t).getSpacedPoints(60));
     for (const t of board.tunnels) {
       rails(tunnelCurve(board, t), '#ff3b5c', true, this.group);
       for (const id of [t.from, t.to]) {
@@ -926,7 +1006,9 @@ class ParkTheme implements BoardTheme {
         return g;
       }
       return deco([...PROPS.park.filter((k) => k.includes('tree')), ...PROPS.trees.slice(0, 4)], rng, { height: 3.5 + rng.next() * 2 }, () => palmTree(rng, 0.8 + rng.next() * 0.4));
-    }, 3);
+    }, 3, (x, z) => coasterPts.some((p) => Math.hypot(p.x - x, p.z - z) < 4.5));
+    this.confetti = new Particles('leaf', 70, { cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2, w: maxX - minX + 20, d: maxZ - minZ + 20, h: 14 }, '#ff6fb5');
+    this.group.add(this.confetti.mesh);
     // Entrada do parque junto à partida e moinhos de minigolfe.
     const start = getSpace(board, board.startId);
     const entrance = prop('kenney-coaster/park-entrance', { width: 9 });
@@ -957,6 +1039,7 @@ class ParkTheme implements BoardTheme {
     this.wheel.rotation.z += this.wheelSpeed * dt;
     this.wheelSpeed += (0.15 - this.wheelSpeed) * damp(0.8, dt);
     this.carousel.rotation.y += dt * 0.6;
+    this.confetti?.update(dt, time);
     this.balloons.forEach((b, i) => (b.position.x = Math.sin(time * 1.2 + i) * 0.2));
   }
 }

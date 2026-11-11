@@ -264,7 +264,7 @@ Cada fase termina testada, com commit e push no seu ramo.
 
 ### Fase 9 — Cenários novos (pedido 19)
 - [x] Packs de cenários CC0 (5 da KayKit e 4 da Kenney, dos sites oficiais; 174 modelos, ~6 MB) — ver `docs/ASSETS.md`
-- [~] Tabuleiros com os modelos novos: ilha (palmeiras, barcos a balançar, cais, torre), cidade (prédios, carros, candeeiros), vulcão (montanhas, rochas, acampamento), castelo (castelo e torres ao fundo, cripta, cemitério), parque (bancas, entrada, mesas, moinhos) — faltam mais luzes e partículas
+- [x] Tabuleiros com os modelos novos: ilha (palmeiras, barcos a balançar, cais, torre, folhas a cair), cidade (prédios, carros, candeeiros), vulcão (montanhas, rochas, acampamento, brasas a subir), castelo (castelo e torres ao fundo, cripta, cemitério com lanternas acesas e pirilampos), parque (bancas, entrada, mesas, moinhos, confetes; nada por baixo da montanha-russa)
 - [~] Desportos: golfe (árvores, plantas, rochas), bowling (sala de espera mobilada), ténis e basebol (árvores e candeeiros à volta) — o ringue de boxe ficou como estava
 
 ### Fase 10 — Tabuleiros mais complexos (pedido 20)
