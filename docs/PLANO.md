@@ -39,6 +39,9 @@ Vamos uma coisa de cada vez: cada tarefa tem a sua caixa `[ ]` e passa a `[x]` q
 20. **Tabuleiros muito mais complexos:** mais caminhos, cruzamentos, atalhos e interações com o cenário.
 21. **Escolher a personagem uma vez, no início** (ao entrar), e não no começo de cada jogo.
 22. **Menu principal mais bonito:** as personagens aparecem à medida que os jogadores entram; depois escolhe-se o modo (Festa ou Desportos); só no modo Festa aparecem as rondas e a dificuldade dos bots.
+23. **Jogar fora de casa:** funcionar em local, online (cada um em sua casa) ou misto — estudar a opção mais viável (ver §3.7).
+24. **Controlo nos desportos:** golfe como no golfe da Switch, **só com botões**; os outros desportos **só com movimento**. No bowling, **não é preciso largar o botão** para lançar: a bola sai no fim do gesto.
+25. **Vibração** no telemóvel em todos os jogos e na Festa, conforme o que acontece (dados, moedas, estrela, duelo, armadilha, golpes, bola, pinos…).
 
 ---
 
@@ -149,6 +152,26 @@ Fontes: [Cinevva — personagens rigged gratuitas](https://app.cinevva.com/guide
 
 ---
 
+### 3.7 Jogar fora de casa: local, online ou misto (pedido 23)
+Fontes: [Cloudflare Quick Tunnels (guia)](https://flaviocopes.com/cloudflare-quick-tunnels/), [Render — Free](https://render.com/docs/free), [Render — WebSockets no plano grátis](https://render.com/changelog/free-web-services-now-remain-active-while-receiving-websocket-messages), [Fly.io — preços](https://fly.io/docs/about/pricing/), [MDN — getDisplayMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia), [Cloudflare Realtime TURN — preços](https://developers.cloudflare.com/realtime/sfu/pricing).
+
+Hoje: o PC corre o servidor (relé Socket.IO) e o ecrã do jogo; os telemóveis ligam-se pela rede de casa. Isto já funciona para **local**.
+Para **online**, há dois problemas distintos: (1) os telemóveis de fora têm de chegar ao servidor, e (2) quem está em casa dele tem de **ver o ecrã do jogo**.
+
+| Opção | Como | Custo | Prós | Contras |
+|---|---|---|---|---|
+| **A. Túnel a partir do PC** (Cloudflare Quick Tunnel) | `npm run online` arranca o servidor e um túnel → link público `https://…trycloudflare.com` + QR | Grátis, sem conta | Liga já; HTTPS verdadeiro nos telemóveis (acaba o aviso do certificado e ajuda nos sensores); local e online na mesma sala | Link muda a cada vez; "para testes" (sem garantias); até ~200 ligações (chega bem) |
+| B. Servidor alojado (Fly.io) | Servidor + página num domínio fixo; o PC só abre o ecrã do jogo | ~2,2 $/mês (256 MB sempre ligado) | Link fixo, sempre disponível | Custo mensal; o tráfego dos jogadores locais também vai à internet (+20–60 ms) |
+| C. Render grátis | Igual a B | Grátis | Sem custo | Adormece após 15 min sem tráfego e demora ~1 min a acordar; 750 h/mês |
+
+**Ver o ecrã em casa de cada um:** o ecrã grande é que corre o jogo (host autoritativo), por isso os jogadores remotos veem um **vídeo do ecrã**:
+- No PC, botão «Convidar jogadores online» → partilha do separador do jogo (`getDisplayMedia`, 1 clique) → enviado por **WebRTC** a uma página `/ver` (no PC/TV do jogador remoto; no telemóvel, vídeo em cima e comando em baixo).
+- STUN grátis da Cloudflare; quando a ligação direta falha, **TURN** da Cloudflare (1000 GB/mês grátis — ~1 GB por hora e por espectador a 720p).
+- Alternativa sem trabalho: partilhar o ecrã por Discord/Meet.
+- **Atraso:** o vídeo chega ~150–300 ms atrasado → nos desportos de tempo (ténis, basebol, bowling) cada jogador remoto tem uma compensação de atraso medida automaticamente.
+
+**Recomendação:** começar pela **A** (grátis, resolve local + online + misto já), com o vídeo WebRTC para quem está fora; se quiserem um link fixo, passar para a **B** sem mudar o código.
+
 ## 4. Ordem de trabalho proposta
 
 Cada fase termina testada, com commit e push no seu ramo.
@@ -229,7 +252,9 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [ ] Comando único no telemóvel: direcional/joystick à esquerda, A/B/X/Y à direita, + (menu) e − (mapa); o movimento (como um Joy-Con) continua nos desportos
 - [ ] Todas as escolhas passam para o ecrã grande com cursor: caminhos, loja, itens, estrela, fantasma, VS, menus; A confirma, B volta
 - [ ] O telemóvel só mostra o que é preciso: botões ativos acendem e têm uma legenda curta (ex.: «A Lançar», «X Itens», «− Mapa»)
-- [ ] Desportos: os mesmos botões (A bater/lançar, direcional apontar, X/Y efeito/taco); o gesto com movimento é opcional
+- [ ] Desportos: **golfe só com botões** como no golfe da Switch (direcional aponta e muda de taco, A inicia/para o medidor, X/Y efeito, medidor no ecrã grande); **bowling, ténis, boxe e basebol só com movimento**
+- [ ] Bowling: a bola sai no fim do gesto, sem ter de largar o botão
+- [ ] **Vibração** em tudo, conforme o que acontece: dados, passos, moedas (+/−), estrela, duelo, armadilha, Trapaceiro, minijogos (golpes, quedas), desportos (bola, pinos, socos levados, tacada)
 - [ ] Menu principal 3D: palco onde cada jogador que entra aparece com a sua personagem (escolhida ao entrar, no próprio comando, a navegar com o direcional)
 - [ ] Depois: escolher **Festa** ou **Desportos**; só na Festa aparecem rondas, mapa e dificuldade dos bots
 - [ ] A personagem fica para todos os jogos até sair da sala (dá para trocar no menu principal)
@@ -243,6 +268,12 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [ ] Mais caminhos e cruzamentos por mapa (e caminhos de sentido único, atalhos pagos, caminhos que abrem/fecham)
 - [ ] Mais interações com o cenário: objetos em que se pode carregar ao passar (alavancas, portas, canhões, teleféricos), eventos por zona
 - [ ] Mais casas diferentes por mapa
+
+### Fase 11 — Jogar fora de casa (pedido 23, ver §3.7)
+- [ ] `npm run online`: servidor + túnel Cloudflare, link público e QR no lobby (local e online na mesma sala)
+- [ ] Vídeo do ecrã para quem está fora: partilha do separador + WebRTC (STUN/TURN Cloudflare), página `/ver`
+- [ ] Compensação de atraso por jogador nos desportos de tempo
+- [ ] (Opcional) Alojamento fixo no Fly.io com domínio próprio
 
 ## 5. Perguntas para ti (antes das fases respetivas)
 
