@@ -314,8 +314,15 @@ function renderDice(l: Extract<ControllerLayout, { kind: 'dice' }>): void {
       <button class="roll"><span class="die">🎲</span>${escapeHtml(l.label)}</button>
       <p class="shake-hint" hidden>📳 …ou abana o telemóvel!</p>
       <button class="shake-enable" hidden>📳 Ativar abanar</button>
+      ${l.extras?.length ? `<div class="dice-extras">${l.extras.map((x) => `<button class="dice-extra" data-id="${escapeHtml(x.id)}" ${x.color ? `style="--opt:${x.color}"` : ''}>${escapeHtml(x.label)}</button>`).join('')}</div>` : ''}
     </div>
   `);
+  view.querySelectorAll<HTMLButtonElement>('.dice-extra').forEach((b) =>
+    b.addEventListener('click', () => {
+      navigator.vibrate?.(15);
+      send({ t: 'choice', id: b.dataset.id! });
+    }),
+  );
   const button = view.querySelector<HTMLButtonElement>('.roll')!;
   const hint = view.querySelector<HTMLElement>('.shake-hint')!;
   const enable = view.querySelector<HTMLButtonElement>('.shake-enable')!;

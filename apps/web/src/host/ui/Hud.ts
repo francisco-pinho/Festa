@@ -100,6 +100,23 @@ export class Hud {
     this.bigEl.hidden = true;
   }
 
+  /**
+   * Roleta: as opções vão passando cada vez mais devagar até parar em `result`.
+   */
+  async roulette(title: string, options: string[], result: number, hold = 1.6): Promise<void> {
+    const render = (sel: number, done: boolean) =>
+      this.panel(`<h1>${esc(title)}</h1><div class="roulette">${options
+        .map((o, i) => `<div class="roul-item ${i === sel ? (done ? 'won' : 'sel') : ''}">${esc(o)}</div>`)
+        .join('')}</div>`);
+    const total = options.length * 3 + result;
+    for (let i = 0; i <= total; i++) {
+      render(i % options.length, i === total);
+      await this.engine.wait(0.05 + (i / total) ** 3 * 0.35);
+    }
+    await this.engine.wait(hold);
+    this.panel(null);
+  }
+
   panel(html: string | null): void {
     this.panelEl.hidden = html === null;
     this.panelEl.innerHTML = html ?? '';

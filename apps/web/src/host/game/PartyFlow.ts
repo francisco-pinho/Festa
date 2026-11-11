@@ -1,0 +1,1035 @@
+/**
+ * Modo Festa, do princípio ao fim: mapa, ordem de jogo, rondas (itens, dados,
+ * caminho com portões/túneis/lojas/estrela, duelos e casas), minijogo de cada
+ * ronda e final com cerimónia das estrelas bónus.
+ *
+ * As regras vivem em @festa/game; aqui só se encena e se pergunta aos telemóveis.
+ */
+import * as THREE from 'three';
+import {
+  ITEMS,
+  LAST_PLACE_GIFT,
+  RULES,
+  SHOP_LABEL,
+  SHOP_STOCK,
+  VILLAIN_LABELS,
+  addCoins,
+  applyBonusStars,
+  applySlowDice,
+  applyTurnOrder,
+  awardMinigame,
+  awardVs,
+  bonusStars,
+  botChooseBuy,
+  botChooseItem,
+  botChooseNext,
+  botWantsStar,
+  buyStar,
+  canBuyStar,
+  canUseShop,
+  clearSlowDice,
+  collectVs,
+  createBoard,
+  createParty,
+  decideMinigameTeams,
+  distancesTo,
+  getCharacter,
+  getPlayer,
+  getSpace,
+  isDoubles,
+  isLastRounds,
+  lastPlaceIds,
+  nearestShop,
+  openNext,
+  playersOnSpace,
+  priceFor,
+  ranking,
+  removeItem,
+  resolveDuel,
+  resolveLanding,
+  rollDieFor,
+  rollTurnOrder,
+  startRound,
+  stealCoins,
+  stealStar,
+  tunnelBetween,
+  type ItemId,
+  type MinigameTeams,
+  type PartyPlayer,
+  type PartyState,
+  type Rng,
+  type RoundEvent,
+  type ShopDef,
+} from '@festa/game';
+import type { ControllerLayout } from '@festa/shared';
+import type { Engine } from '../three/Engine';
+import type { PlayerHub } from '../PlayerHub';
+import { BoardStage } from '../stages/BoardStage';
+import { ShowcaseStage } from '../stages/ShowcaseStage';
+import { starMesh } from '../stages/environment';
+import { Hud, esc, type ScoreEntry } from '../ui/Hud';
+import type { GameMenu } from '../ui/GameMenu';
+import { MINIGAMES, MODE_LABEL, pickMinigame } from '../minigames';
+import type { MinigameContext, MinigameSeat } from '../minigames/types';
+import type { Seat, SeatControl } from './Seats';
+import { settings } from './Settings';
+
+const PATH_COLORS = ['#ffd23f', '#3fd0ff', '#ff6fb5'];
+
+export interface PartyDeps {
+  engine: Engine;
+  hud: Hud;
+  hub: PlayerHub;
+  seatsCtl: SeatControl;
+  seats: Seat[];
+  rng: Rng;
+  menu: GameMenu;
+  /** Desenvolvimento: força um minijogo. */
+  forcedMinigame?: string | null;
+}
+
+interface RollPlan {
+  dice: number;
+  bonus: number;
+  golden: boolean;
+}
+
+export class PartyFlow {
+  private state!: PartyState;
+  private stage!: BoardStage;
+  private lastMinigame: string | null = null;
+  private mapOpen = false;
+
+  constructor(private readonly d: PartyDeps) {}
+
+  // ── Atalhos ─────────────────────────────────────────────
+
+  private get engine() {
+    return this.d.engine;
+  }
+  private get hud() {
+    return this.d.hud;
+  }
+  private get ctl() {
+    return this.d.seatsCtl;
+  }
+  private get rng() {
+    return this.d.rng;
+  }
+  private seat(id: string): Seat {
+    return this.d.seats.find((s) => s.id === id)!;
+  }
+  private wait(s: number) {
+    return this.engine.wait(s);
+  }
+
+  private waitAll(message: string, except?: string): void {
+    for (const s of this.d.seats) if (s.id !== except) this.ctl.setLayout(s, { kind: 'wait', message });
+  }
+
+  private scoreboard(activeId: string | null = null): void {
+    const entries: ScoreEntry[] = this.state.players.map((p) => {
+      const hp = this.ctl.hubPlayer(this.seat(p.id));
+      return {
+        id: p.id,
+        name: p.name,
+        color: getCharacter(p.characterId).color,
+        coins: p.coins,
+        stars: p.stars,
+        active: p.id === activeId,
+        isBot: p.isBot,
+        connected: p.isBot || !!hp?.connected,
+        tag: p.items.map((i) => ITEMS[i].emoji).join('') || undefined,
+      };
+    });
+    this.hud.setScoreboard(entries);
+  }
+
+  private arrangeAll(instant = false): Promise<void> {
+    return this.stage.arrange(new Map(this.state.players.map((o) => [o.id, o.spaceId])), instant);
+  }
+
+  // ── Festa ───────────────────────────────────────────────
+
+  async play(totalRounds: number, boardId: string): Promise<PartyState> {
+    this.d.menu.mode = 'game';
+    const board = createBoard(boardId);
+    this.state = createParty(
+      board,
+      this.d.seats.map((s) => ({ id: s.id, name: s.name, characterId: s.characterId, isBot: s.isBot })),
+      totalRounds,
+      this.rng,
+    );
+    const state = this.state;
+    this.stage = new BoardStage(this.engine, board, this.d.seats);
+    this.engine.setStage(this.stage);
+    this.stage.setFlags(state.flags);
+    await this.arrangeAll(true);
+    this.stage.overview();
+    this.scoreboard();
+    this.waitAll('Olha para o ecrã 👀');
+    await this.hud.banner(board.name, { sub: board.description, hold: 3.2 });
+
+    const start = getSpace(board, board.startId);
+    this.stage.focusPoint(start.x, start.z, 1.1);
+    await this.wait(1);
+    await this.turnOrder();
+
+    const star = getSpace(board, state.starSpaceId);
+    this.stage.focusPoint(star.x, star.z, 1.2);
+    await this.wait(0.8);
+    await this.stage.placeStar(state.starSpaceId, false);
+    await this.hud.banner('A estrela está aqui!', { sub: `Passa por ela com ${RULES.starCost} 🪙 para a comprar`, hold: 2 });
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'KeyM') this.toggleMap();
+    };
+    window.addEventListener('keydown', onKey);
+    try {
+      for (state.round = 1; state.round <= state.totalRounds; state.round++) {
+        this.hud.setRound(`Ronda ${state.round} / ${state.totalRounds}`);
+        this.stage.overview();
+        const last = state.totalRounds - state.round + 1;
+        await this.hud.banner(`Ronda ${state.round}`, {
+          sub: isLastRounds(state) ? `${last === 1 ? 'Última ronda' : `Últimas ${last} rondas`}! Casas azuis e vermelhas valem o dobro` : undefined,
+          hold: 1.6,
+        });
+        await this.roundEvents(startRound(state, this.rng));
+        for (const p of state.players) await this.turn(p);
+        await this.roundMinigame();
+      }
+    } finally {
+      window.removeEventListener('keydown', onKey);
+    }
+    this.hud.setRound(null);
+    return state;
+  }
+
+  private toggleMap(): void {
+    this.mapOpen = !this.mapOpen;
+    this.stage.showMap(this.mapOpen, this.state.players.map((p) => ({ id: p.id, name: p.name })));
+    this.hud.hint(this.mapOpen ? '🗺️ Mapa · M para fechar' : null, true);
+  }
+
+  private closeMap(): void {
+    if (this.mapOpen) this.toggleMap();
+  }
+
+  private async roundEvents(events: RoundEvent[]): Promise<void> {
+    for (const ev of events) {
+      if (ev.kind === 'tide') {
+        this.stage.setFlags(this.state.flags);
+        this.stage.overview();
+        await this.hud.banner(ev.high ? '🌊 Maré alta!' : '🏖️ Maré baixa!', {
+          sub: ev.high ? 'A ponte ficou debaixo de água · o túnel da gruta abriu' : 'A ponte voltou · a gruta fechou',
+          hold: 2.6,
+          color: '#3fd0ff',
+        });
+      } else if (ev.kind === 'traffic') {
+        this.stage.setFlags(this.state.flags);
+        await this.hud.banner('🚦 Os semáforos mudaram!', {
+          sub: ev.greenNS ? 'Verde na Avenida Norte · vermelho na Oeste' : 'Verde na Avenida Oeste · vermelho na Norte',
+          hold: 2,
+        });
+      } else if (ev.kind === 'sale') {
+        const shop = this.state.board.shops.find((s) => s.id === ev.shopId)!;
+        const s = getSpace(this.state.board, shop.spaceId);
+        this.stage.focusPoint(s.x, s.z, 1.3);
+        await this.hud.banner('💥 Saldos relâmpago!', { sub: `${shop.name}: tudo a metade do preço nesta ronda`, hold: 2.2, color: '#ff6fb5' });
+      }
+    }
+  }
+
+  private async turnOrder(): Promise<void> {
+    const state = this.state;
+    await this.hud.banner('Quem começa?', { sub: 'Lancem o dado! O maior número joga primeiro', hold: 1.6 });
+    const rolls = rollTurnOrder(state, this.rng);
+    await Promise.all(
+      state.players.map(async (p) => {
+        const seat = this.seat(p.id);
+        this.stage.faceCamera(p.id);
+        await this.ctl.decide(seat, {
+          layout: { kind: 'dice', prompt: 'Lança o dado para decidir a ordem!', label: 'Lançar!' },
+          valid: ['roll'],
+          bot: () => 'roll',
+          keyboardA: 'roll',
+          botDelay: 0.6 + this.rng.next() * 1.5,
+        });
+        this.ctl.setLayout(seat, { kind: 'wait', message: `Tiraste ${rolls.get(p.id)}!` });
+        this.stage.token(p.id).setAnim('cheer');
+        this.stage.floatText(p.id, String(rolls.get(p.id)), '#ffd23f');
+        await this.wait(0.7);
+        this.stage.token(p.id).setAnim('idle');
+      }),
+    );
+    applyTurnOrder(state, rolls);
+    this.scoreboard();
+    this.hud.panel(`
+      <h1>Ordem de jogo</h1>
+      <div class="rows">${state.players
+        .map(
+          (p, i) => `<div class="row" style="animation-delay:${i * 0.08}s">
+            <span>${i + 1}.</span><span class="dot" style="background:${getCharacter(p.characterId).color}"></span>
+            <span>${esc(p.name)}</span><span>🎲 ${rolls.get(p.id)}</span><span></span></div>`,
+        )
+        .join('')}</div>`);
+    await this.wait(Math.min(5, 2 + state.players.length * 0.3));
+    this.hud.panel(null);
+  }
+
+  // ── Vez de um jogador ───────────────────────────────────
+
+  private async turn(p: PartyPlayer): Promise<void> {
+    const state = this.state;
+    const seat = this.seat(p.id);
+    this.scoreboard(p.id);
+    this.stage.focus(p.id);
+    this.waitAll(`Vez de ${p.name}`, p.id);
+    await this.hud.banner(`Vez de ${p.name}!`, { sub: p.slowDice ? '🐌 Dados preguiçosos: só 1 a 3' : undefined, hold: 1.1 });
+    this.stage.faceCamera(p.id);
+
+    // Antes de lançar: itens e mapa
+    const plan = await this.beforeRoll(p);
+
+    // Dados
+    this.stage.focus(p.id);
+    this.stage.spawnDice(p.id, plan.dice);
+    if (plan.dice > 0) await this.rollPrompt(seat, plan.dice === 3 ? 'Lança os três dados!' : 'Lança os dois dados!');
+    const values = Array.from({ length: plan.dice }, () => rollDieFor(p, this.rng));
+    clearSlowDice(p);
+    await this.stage.hitDice(p.id, values);
+    await this.wait(0.7);
+    if (plan.dice === 2 && isDoubles(values)) {
+      this.stage.token(p.id).setAnim('cheer');
+      await this.hud.banner('Dados iguais!', { sub: 'Lança o terceiro dado!', hold: 1.3, color: '#ffd23f' });
+      this.stage.token(p.id).setAnim('idle');
+      this.stage.spawnDice(p.id, 1, true);
+      await this.rollPrompt(seat, 'Dados iguais! Lança o terceiro dado!');
+      const third = rollDieFor(p, this.rng);
+      values.push(third);
+      await this.stage.hitDice(p.id, [third]);
+      await this.wait(0.7);
+    }
+    let total = values.reduce((a, b) => a + b, 0);
+    if (plan.golden) {
+      const got = addCoins(p, total);
+      this.stage.coinBurst(p.id, got);
+      await this.hud.banner(`🪙 Dado Dourado: +${got} moedas!`, { hold: 1.3, color: '#ffd23f' });
+    }
+    if (plan.bonus) {
+      total += plan.bonus;
+      this.stage.floatText(p.id, `⚡ +${plan.bonus}`, '#ffd23f');
+    }
+    await this.stage.collapseDice(p.id, total);
+    this.ctl.setLayout(seat, { kind: 'wait', message: `Andas ${total} casas!` });
+    this.scoreboard(p.id);
+    await this.wait(0.3);
+
+    // Andar
+    let steps = total;
+    while (steps > 0) {
+      const here = p.spaceId;
+      const options = openNext(state.board, state.flags, here);
+      let next = options[0]!;
+      if (options.length > 1) next = await this.chooseJunction(p, here, options);
+      const tunnel = tunnelBetween(state.board, here, next);
+      if (tunnel) {
+        if (tunnel.cost) {
+          addCoins(p, -tunnel.cost);
+          this.stage.floatText(p.id, `-${tunnel.cost} 🪙`, '#ff6b7a');
+          this.scoreboard(p.id);
+        }
+        await this.stage.travelTunnel(p.id, next, tunnel.kind);
+        this.stage.focus(p.id);
+      } else {
+        await this.stage.hop(p.id, next);
+      }
+      p.spaceId = next;
+      steps--;
+      this.stage.setStepCounter(p.id, steps > 0 ? steps : null);
+      if (next === state.starSpaceId) await this.starOffer(p);
+      const shop = state.board.shops.find((s) => s.spaceId === next);
+      if (shop) await this.shopVisit(p, shop);
+    }
+    this.stage.faceCamera(p.id);
+
+    // Chegada: duelo e casa
+    const lostDuel = await this.arrivalDuel(p);
+    if (!lostDuel) await this.land(p);
+    await this.arrangeAll();
+    this.scoreboard(p.id);
+    await this.wait(0.5);
+    this.stage.token(p.id).setAnim('idle');
+  }
+
+  private rollPrompt(seat: Seat, prompt: string): Promise<string> {
+    return this.ctl.decide(seat, {
+      layout: { kind: 'dice', prompt, label: 'Lançar!' },
+      valid: ['roll'],
+      bot: () => 'roll',
+      keyboardA: 'roll',
+      botDelay: 1.1,
+    });
+  }
+
+  /** Antes de lançar: ver o mapa, usar um item (um por vez) ou lançar. */
+  private async beforeRoll(p: PartyPlayer): Promise<RollPlan> {
+    const plan: RollPlan = { dice: 2, bonus: 0, golden: false };
+    let usedItem = false;
+    const seat = this.seat(p.id);
+    for (;;) {
+      const itemExtras = usedItem ? [] : p.items.map((i, idx) => ({ id: `item:${idx}:${i}`, label: `${ITEMS[i].emoji} ${ITEMS[i].name}`, color: '#ff6fb5' }));
+      const layout: ControllerLayout = {
+        kind: 'dice',
+        prompt: usedItem || !p.items.length ? 'Lança os dados!' : 'Usa um item ou lança os dados!',
+        label: 'Lançar!',
+        extras: [{ id: 'map', label: this.mapOpen ? '🗺️ Fechar mapa' : '🗺️ Ver mapa' }, ...itemExtras],
+      };
+      const botPlan = usedItem ? null : botChooseItem(this.state, p, this.rng, settings.botSkill);
+      const choice = await this.ctl.decide(seat, {
+        layout,
+        valid: ['roll', 'map', ...itemExtras.map((x) => x.id)],
+        bot: () => (botPlan ? `item:${p.items.indexOf(botPlan.item)}:${botPlan.item}` : 'roll'),
+        keyboardA: 'roll',
+        botDelay: 1,
+      });
+      if (choice === 'map') {
+        this.toggleMap();
+        continue;
+      }
+      this.closeMap();
+      if (choice === 'roll') return plan;
+      const item = choice.split(':')[2] as ItemId;
+      usedItem = true;
+      await this.useItem(p, item, plan, botPlan?.item === item ? botPlan.target : undefined);
+      this.scoreboard(p.id);
+      // Bots lançam logo; humanos voltam ao ecrã de lançar (podem ainda ver o mapa).
+      if (this.ctl.isAuto(seat)) return plan;
+    }
+  }
+
+  // ── Itens ───────────────────────────────────────────────
+
+  private async chooseTarget(p: PartyPlayer, item: ItemId, botTarget?: string): Promise<PartyPlayer | null> {
+    let others = this.state.players.filter((o) => o.id !== p.id);
+    if (item === 'ladraoEstrela') others = others.filter((o) => o.stars > 0);
+    if (!others.length) return null;
+    const choice = await this.ctl.decide(this.seat(p.id), {
+      layout: {
+        kind: 'choices',
+        prompt: `${ITEMS[item].emoji} ${ITEMS[item].name}: escolhe um jogador`,
+        options: others.map((o) => ({
+          id: `target:${o.id}`,
+          label: `${o.name} · ⭐${o.stars} 🪙${o.coins}`,
+          color: getCharacter(o.characterId).color,
+        })),
+      },
+      valid: others.map((o) => `target:${o.id}`),
+      bot: () => `target:${botTarget && others.some((o) => o.id === botTarget) ? botTarget : others.sort((a, b) => b.stars - a.stars || b.coins - a.coins)[0]!.id}`,
+      botDelay: 1,
+    });
+    return getPlayer(this.state, choice.slice(7));
+  }
+
+  private async useItem(p: PartyPlayer, item: ItemId, plan: RollPlan, botTarget?: string): Promise<void> {
+    const def = ITEMS[item];
+    const needsTarget = def.targetsPlayer;
+    const target = needsTarget ? await this.chooseTarget(p, item, botTarget) : null;
+    if (needsTarget && !target) {
+      await this.hud.banner(`${def.emoji} ${def.name}`, { sub: 'Não há ninguém a quem usar isto agora', hold: 1.4 });
+      return;
+    }
+    removeItem(p, item);
+    const token = this.stage.token(p.id);
+    token.setAnim('throw');
+    await this.hud.banner(`${def.emoji} ${def.name}!`, { sub: def.description, hold: 1.4, color: '#ff6fb5' });
+    switch (item) {
+      case 'turbo':
+        plan.bonus += 3;
+        break;
+      case 'dadoExtra':
+        plan.dice = 3;
+        break;
+      case 'dadoDourado':
+        plan.golden = true;
+        break;
+      case 'dadoLento':
+        applySlowDice(this.state, p);
+        for (const o of this.state.players) if (o.id !== p.id) this.stage.floatText(o.id, '🐌', '#ffffff');
+        await this.wait(1);
+        break;
+      case 'bilheteLoja': {
+        const shopSpace = nearestShop(this.state, p.spaceId);
+        if (shopSpace === null) break;
+        await this.stage.travelTunnel(p.id, shopSpace, 'metro');
+        p.spaceId = shopSpace;
+        this.stage.focus(p.id);
+        const shop = this.state.board.shops.find((s) => s.spaceId === shopSpace)!;
+        await this.shopVisit(p, shop);
+        break;
+      }
+      case 'espelho':
+        await this.swapPlayers(p, target!);
+        break;
+      case 'ima': {
+        const got = stealCoins(target!, p, this.rng.int(5, 10));
+        this.stage.coinBurst(target!.id, -got);
+        this.stage.coinBurst(p.id, got);
+        this.stage.focusPoint(this.stage.token(target!.id).root.position.x, this.stage.token(target!.id).root.position.z, 1.4);
+        await this.hud.banner(`🧲 ${p.name} roubou ${got} moedas a ${target!.name}!`, { hold: 1.8 });
+        this.stage.focus(p.id);
+        break;
+      }
+      case 'armadilha':
+        this.state.traps[p.spaceId] = p.id;
+        this.stage.setTraps(this.state.traps);
+        await this.wait(0.8);
+        break;
+      case 'luva':
+        await this.duel(p, target!, '🥊 Desafio!');
+        break;
+      case 'ladraoEstrela':
+        if (stealStar(target!, p)) {
+          await this.starFly(target!.id, p.id);
+          await this.hud.banner(`🦹 ${p.name} roubou uma estrela a ${target!.name}!`, { hold: 2, color: '#ffd23f' });
+        }
+        break;
+    }
+    token.setAnim('idle');
+    await this.arrangeAll();
+  }
+
+  /** Uma estrela voa de uma personagem para outra. */
+  private async starFly(fromId: string, toId: string): Promise<void> {
+    const from = this.stage.token(fromId).root.position.clone().add(new THREE.Vector3(0, 2.6, 0));
+    const to = this.stage.token(toId).root.position.clone().add(new THREE.Vector3(0, 2.6, 0));
+    const star = starMesh(0.6);
+    this.stage.scene.add(star);
+    this.stage.token(fromId).setAnim('sad');
+    this.stage.focusPoint((from.x + to.x) / 2, (from.z + to.z) / 2, 1.6);
+    await this.engine.tween(1.4, (k) => {
+      star.position.lerpVectors(from, to, k);
+      star.position.y += Math.sin(k * Math.PI) * 4;
+      star.rotation.y = k * 12;
+    });
+    this.stage.scene.remove(star);
+    this.stage.token(toId).setAnim('cheer');
+    await this.wait(0.8);
+    this.stage.token(fromId).setAnim('idle');
+    this.stage.token(toId).setAnim('idle');
+  }
+
+  // ── Cruzamentos, estrela e lojas ────────────────────────
+
+  private async chooseJunction(p: PartyPlayer, spaceId: number, options: number[]): Promise<number> {
+    const state = this.state;
+    const dist = distancesTo(state.board, state.starSpaceId, state.flags);
+    const info = options.map((id, i) => {
+      const tunnel = tunnelBetween(state.board, spaceId, id);
+      const d = (dist.get(id) ?? 99) + 1;
+      const name = tunnel ? (tunnel.kind === 'metro' ? 'Ⓜ️ Metro' : '🕳️ Gruta') : `Caminho ${i + 1}`;
+      const cost = tunnel?.cost ? ` · ${tunnel.cost}🪙` : '';
+      return {
+        id,
+        color: PATH_COLORS[i % PATH_COLORS.length]!,
+        label: `${name}${cost} · ⭐ a ${d}`,
+        disabled: !!tunnel?.cost && p.coins < tunnel.cost,
+      };
+    });
+    this.stage.showArrows(spaceId, info.map((o) => ({ spaceId: o.id, color: o.color })));
+    this.stage.showJunction(spaceId, info.map((o) => ({ spaceId: o.id, label: o.label, color: o.color })));
+    this.hud.hint(`${p.name}: por onde vais?`, true);
+    const enabled = info.filter((o) => !o.disabled);
+    const choice = await this.ctl.decide(this.seat(p.id), {
+      layout: {
+        kind: 'choices',
+        prompt: 'Por onde vais?',
+        options: info.map((o) => ({ id: `path:${o.id}`, label: `${this.stage.screenDirection(spaceId, o.id)}  ${o.label}`, color: o.color, disabled: o.disabled })),
+      },
+      valid: enabled.map((o) => `path:${o.id}`),
+      bot: () => `path:${botChooseNext(state, enabled.map((o) => o.id), this.rng, settings.botSkill, p.coins)}`,
+      botDelay: 1.2,
+    });
+    this.stage.hideArrows();
+    this.stage.clearJunction();
+    this.stage.focus(p.id);
+    this.hud.hint(null);
+    this.ctl.setLayout(this.seat(p.id), { kind: 'wait', message: 'A caminho…' });
+    return Number(choice.slice(5));
+  }
+
+  private async starOffer(p: PartyPlayer): Promise<void> {
+    const seat = this.seat(p.id);
+    this.stage.focus(p.id, true);
+    this.stage.faceCamera(p.id);
+    if (!canBuyStar(p)) {
+      this.stage.token(p.id).setAnim('sad');
+      await this.hud.banner('A estrela!', { sub: `${p.name} precisa de ${RULES.starCost} 🪙 (tem ${p.coins})`, hold: 2 });
+      this.stage.token(p.id).setAnim('idle');
+      this.stage.focus(p.id);
+      return;
+    }
+    const answer = await this.ctl.decide(seat, {
+      layout: {
+        kind: 'choices',
+        prompt: `Encontraste a estrela! Comprar por ${RULES.starCost} 🪙? (tens ${p.coins})`,
+        options: [
+          { id: 'buy', label: `Comprar ⭐ (${RULES.starCost} 🪙)`, color: '#ffd23f' },
+          { id: 'skip', label: 'Agora não' },
+        ],
+      },
+      valid: ['buy', 'skip'],
+      bot: () => (botWantsStar(p) ? 'buy' : 'skip'),
+      botDelay: 1.3,
+    });
+    this.ctl.setLayout(seat, { kind: 'wait', message: 'A caminho…' });
+    if (answer === 'buy' && buyStar(this.state, p, this.rng)) {
+      this.scoreboard(p.id);
+      this.ctl.vibrate(seat, [60, 40, 60, 40, 200]);
+      this.stage.coinBurst(p.id, -RULES.starCost);
+      await this.stage.collectStar(p.id);
+      await this.hud.banner(`${p.name} ganhou uma estrela!`, { hold: 1.8, color: '#ffd23f' });
+      const next = getSpace(this.state.board, this.state.starSpaceId);
+      this.stage.focusPoint(next.x, next.z, 1.4);
+      await this.stage.placeStar(this.state.starSpaceId, true);
+      await this.wait(0.8);
+    }
+    this.stage.focus(p.id);
+  }
+
+  private async shopVisit(p: PartyPlayer, shop: ShopDef): Promise<void> {
+    const state = this.state;
+    const seat = this.seat(p.id);
+    const isLast = lastPlaceIds(state).includes(p.id);
+    if (!canUseShop(shop.kind, isLast)) {
+      this.stage.floatText(p.id, '🔒 Só para o último', '#ffffff');
+      await this.wait(0.6);
+      return;
+    }
+    const s = getSpace(state.board, shop.spaceId);
+    this.stage.focusPoint(s.x, s.z, 0.8);
+    if (shop.kind === 'ultimo') {
+      const got = addCoins(p, LAST_PLACE_GIFT);
+      this.stage.coinBurst(p.id, got);
+      this.scoreboard(p.id);
+    }
+    const sale = state.saleShopId === shop.id;
+    const stock = SHOP_STOCK[shop.kind].map((item) => ({ item, price: priceFor(item, shop.kind, sale) }));
+    const full = p.items.length >= 3;
+    this.hud.panel(`
+      <h1>${shop.kind === 'luxo' ? '💎' : '🛒'} ${esc(shop.name)}</h1>
+      <h2>${esc(SHOP_LABEL[shop.kind])}${sale ? ' · 💥 SALDOS: metade do preço!' : ''} · ${esc(p.name)} tem ${p.coins} 🪙${full ? ' · inventário cheio' : ''}</h2>
+      <div class="shop-items">${stock
+        .map(({ item, price }) => {
+          const def = ITEMS[item];
+          const ok = !full && p.coins >= price;
+          const base = priceFor(item, shop.kind, false);
+          return `<div class="shop-item ${ok ? '' : 'no'}"><span class="emoji">${def.emoji}</span><span class="nm">${esc(def.name)}</span>
+            <span class="ds">${esc(def.description)}</span><span class="pr">${sale ? `<span class="old">${base}</span>` : ''}${price} 🪙</span></div>`;
+        })
+        .join('')}</div>`);
+    const options = stock.map(({ item, price }) => ({
+      id: `buy:${item}`,
+      label: `${ITEMS[item].emoji} ${ITEMS[item].name} · ${price}🪙`,
+      disabled: full || p.coins < price,
+    }));
+    const choice = await this.ctl.decide(seat, {
+      layout: { kind: 'choices', prompt: `${shop.name} · tens ${p.coins} 🪙`, columns: 2, options: [...options, { id: 'buy:none', label: '🚪 Sair da loja', disabled: false }] },
+      valid: ['buy:none', ...options.filter((o) => !o.disabled).map((o) => o.id)],
+      bot: () => {
+        const pick = botChooseBuy(state, p, stock, this.rng);
+        return pick ? `buy:${pick}` : 'buy:none';
+      },
+      botDelay: 1.6,
+    });
+    this.hud.panel(null);
+    this.ctl.setLayout(seat, { kind: 'wait', message: 'A caminho…' });
+    if (choice !== 'buy:none') {
+      const item = choice.slice(4) as ItemId;
+      const price = stock.find((x) => x.item === item)!.price;
+      addCoins(p, -price);
+      p.items.push(item);
+      this.stage.coinBurst(p.id, -price);
+      this.stage.token(p.id).setAnim('cheer');
+      this.scoreboard(p.id);
+      await this.hud.banner(`${ITEMS[item].emoji} ${p.name} comprou: ${ITEMS[item].name}`, { hold: 1.4 });
+      this.stage.token(p.id).setAnim('idle');
+    }
+    this.stage.focus(p.id);
+  }
+
+  // ── Chegada: duelo e casa ───────────────────────────────
+
+  /** Se já houver alguém na casa, há duelo. Devolve true se quem chegou perdeu. */
+  private async arrivalDuel(p: PartyPlayer): Promise<boolean> {
+    const others = playersOnSpace(this.state, p);
+    if (!others.length || p.spaceId === this.state.board.startId) return false;
+    const opponent = others.length === 1 ? others[0]! : this.rng.pick(others);
+    const winner = await this.duel(p, opponent, '⚔️ Duelo!');
+    return winner === opponent.id;
+  }
+
+  /** Duelo 1 contra 1. Devolve o id de quem ganhou (ou null em empate). */
+  private async duel(a: PartyPlayer, b: PartyPlayer, title: string): Promise<string | null> {
+    this.stage.focusPoint(this.stage.token(a.id).root.position.x, this.stage.token(a.id).root.position.z, 0.9);
+    this.stage.token(a.id).setAnim('block');
+    this.stage.token(b.id).setAnim('block');
+    await this.hud.banner(title, { sub: `${a.name} vs ${b.name} · quem perde dá ${RULES.duelCoins} 🪙 e recua ${RULES.duelStepsBack} casas`, hold: 2.2, color: '#ff6b7a' });
+    const teams: MinigameTeams = { mode: 'ffa', blue: [a.id, b.id], red: [] };
+    const winners = await this.runMinigame([a, b], teams, title);
+    this.stage.token(a.id).setAnim('idle');
+    this.stage.token(b.id).setAnim('idle');
+    if (winners.length !== 1) {
+      await this.hud.banner('Empate!', { sub: 'Ninguém recua', hold: 1.6 });
+      return null;
+    }
+    const winner = getPlayer(this.state, winners[0]!);
+    const loser = winner.id === a.id ? b : a;
+    const res = resolveDuel(this.state, winner, loser);
+    this.scoreboard();
+    this.stage.focus(loser.id);
+    this.stage.coinBurst(loser.id, -res.coins);
+    this.stage.coinBurst(winner.id, res.coins);
+    this.stage.token(winner.id).setAnim('cheer');
+    this.stage.token(loser.id).setAnim('sad');
+    await this.hud.banner(`${winner.name} ganha o duelo!`, { sub: `${loser.name} dá ${res.coins} 🪙 e recua ${RULES.duelStepsBack} casas`, hold: 2, color: '#ffd23f' });
+    await this.stage.hop(loser.id, res.loserTo, 0.6);
+    await this.arrangeAll();
+    this.stage.token(winner.id).setAnim('idle');
+    this.stage.token(loser.id).setAnim('idle');
+    return winner.id;
+  }
+
+  private async land(p: PartyPlayer): Promise<void> {
+    const state = this.state;
+    const seat = this.seat(p.id);
+    const landing = resolveLanding(state, p, this.rng);
+    const token = this.stage.token(p.id);
+    const e = landing.effect;
+
+    if (e.kind === 'coins') {
+      const good = e.amount >= 0;
+      this.stage.floatText(p.id, `${good ? '+' : ''}${e.amount} 🪙`, good ? '#ffd23f' : '#ff6b7a');
+      this.stage.coinBurst(p.id, e.amount);
+      token.setAnim(good ? 'cheer' : 'sad');
+      this.ctl.vibrate(seat, good ? 40 : [80, 60, 80]);
+      if (landing.type === 'lucky') await this.hud.banner('Casa da sorte!', { sub: `+${e.amount} moedas`, hold: 1.4, color: '#25c26b' });
+      else if (landing.type === 'unlucky') await this.hud.banner('Que azar!', { sub: `${e.amount} moedas`, hold: 1.4, color: '#b98cff' });
+      else await this.wait(1.1);
+    } else if (e.kind === 'give') {
+      const to = getPlayer(state, e.to);
+      this.stage.coinBurst(p.id, -e.amount);
+      this.stage.coinBurst(to.id, e.amount);
+      token.setAnim('sad');
+      this.stage.token(to.id).setAnim('cheer');
+      await this.hud.banner('Que azar!', { sub: `${p.name} dá ${e.amount} moedas a ${to.name}`, hold: 1.8, color: '#b98cff' });
+      this.stage.token(to.id).setAnim('idle');
+    } else if (e.kind === 'swap') {
+      const other = getPlayer(state, e.with);
+      await this.hud.banner('🌪️ Tornado!', { sub: `${p.name} troca de lugar com ${other.name}`, hold: 1.4, color: '#ffa41b' });
+      await this.swapAnimation(p.id, other.id);
+    } else if (e.kind === 'taxi') {
+      await this.hud.banner('🚕 Táxi!', { sub: 'Uma boleia até perto da estrela', hold: 1.4, color: '#ffd23f' });
+      await this.stage.travelTunnel(p.id, e.to, 'metro');
+    } else if (e.kind === 'item') {
+      const names = ['⚡ Turbo', '🎲 Dado Extra', '🧲 Íman', '🪤 Armadilha', '🎟️ Bilhete', '🪞 Espelho', '🐌 Preguiçoso'];
+      const result = e.item ? `${ITEMS[e.item].emoji} ${ITEMS[e.item].name}` : '🪙 +5 moedas';
+      const list = e.item ? names.map((n) => (n.startsWith(ITEMS[e.item!].emoji) ? result : n)) : [...names.slice(0, 6), result];
+      const idx = Math.max(0, list.indexOf(result));
+      await this.hud.roulette('🎁 Item grátis!', list, idx, 1.2);
+      token.setAnim('cheer');
+      if (!e.item) this.stage.coinBurst(p.id, e.coins);
+      await this.hud.banner(e.item ? `${p.name} ganhou: ${ITEMS[e.item].name}` : 'Inventário cheio: +5 moedas', { hold: 1.4 });
+    } else if (e.kind === 'vs') {
+      await this.vs(p);
+    } else if (e.kind === 'villain') {
+      const kinds = Object.keys(VILLAIN_LABELS) as (keyof typeof VILLAIN_LABELS)[];
+      token.setAnim('dizzy');
+      await this.hud.banner('😈 O Trapaceiro apareceu!', { sub: `Vamos ver que partida prega a ${p.name}…`, hold: 1.6, color: '#b98cff' });
+      await this.hud.roulette('😈 Partida do Trapaceiro', kinds.map((k) => VILLAIN_LABELS[k]), kinds.indexOf(e.event.kind), 1.4);
+      if (e.event.kind === 'shuffle') {
+        this.stage.overview();
+        await this.arrangeAll();
+        await this.wait(1);
+      } else if (e.event.kind === 'equalize') {
+        for (const o of state.players) this.stage.floatText(o.id, `= ${o.coins} 🪙`, '#ffd23f');
+        await this.wait(1.2);
+      } else if (e.event.kind === 'loseCoins') {
+        this.stage.coinBurst(p.id, -e.event.amount);
+        await this.wait(1);
+      } else if (e.event.kind === 'payEveryone') {
+        this.stage.coinBurst(p.id, -e.event.each * (state.players.length - 1));
+        await this.wait(1);
+      } else if (e.event.kind === 'loseStar') {
+        token.setAnim('sad');
+        await this.wait(1.2);
+      }
+      token.setAnim('idle');
+    } else {
+      await this.wait(0.6);
+    }
+    if (landing.trap) {
+      const owner = getPlayer(state, landing.trap.owner);
+      this.stage.setTraps(state.traps);
+      this.stage.coinBurst(p.id, -landing.trap.amount);
+      this.stage.coinBurst(owner.id, landing.trap.amount);
+      token.setAnim('dizzy');
+      await this.hud.banner('🪤 Armadilha!', { sub: `${p.name} paga ${landing.trap.amount} 🪙 a ${owner.name}`, hold: 1.8, color: '#ff6b7a' });
+      token.setAnim('idle');
+    }
+  }
+
+  private async swapPlayers(a: PartyPlayer, b: PartyPlayer): Promise<void> {
+    [a.spaceId, b.spaceId] = [b.spaceId, a.spaceId];
+    await this.swapAnimation(a.id, b.id);
+  }
+
+  private async swapAnimation(a: string, b: string): Promise<void> {
+    const ta = this.stage.token(a);
+    const tb = this.stage.token(b);
+    const pa = ta.root.position.clone();
+    const pb = tb.root.position.clone();
+    ta.setAnim('dizzy');
+    tb.setAnim('dizzy');
+    this.stage.overview();
+    await this.engine.tween(2.2, (t) => {
+      const lift = Math.sin(t * Math.PI) * 8;
+      ta.root.position.lerpVectors(pa, pb, t).setY(pa.y + lift);
+      tb.root.position.lerpVectors(pb, pa, t).setY(pb.y + lift);
+      ta.root.rotation.y += 0.4;
+      tb.root.rotation.y += 0.4;
+    });
+    ta.setAnim('idle');
+    tb.setAnim('idle');
+    this.stage.focus(a);
+  }
+
+  private async vs(p: PartyPlayer): Promise<void> {
+    const state = this.state;
+    const { pot } = collectVs(state);
+    for (const o of state.players) this.stage.coinBurst(o.id, -RULES.vsStake);
+    this.scoreboard();
+    await this.hud.banner('⚔️ VS!', { sub: `${p.name} chamou todos! Cada um põe ${RULES.vsStake} 🪙 · pote de ${pot} 🪙`, hold: 2.4, color: '#ffd23f' });
+    const teams: MinigameTeams = { mode: 'ffa', blue: state.players.map((o) => o.id), red: [] };
+    const winners = await this.runMinigame(state.players, teams, '⚔️ VS: o pote é de quem ganhar');
+    const got = awardVs(state, winners, pot);
+    for (const [id, v] of got) this.stage.coinBurst(id, v);
+    this.scoreboard();
+    await this.hud.banner(winners.length ? `${winners.map((id) => getPlayer(state, id).name).join(' e ')} leva${winners.length > 1 ? 'm' : ''} o pote!` : 'Ninguém ganhou — o pote perde-se!', { hold: 2 });
+  }
+
+  // ── Minijogos ───────────────────────────────────────────
+
+  private async roundMinigame(): Promise<void> {
+    const state = this.state;
+    this.scoreboard();
+    const teams = decideMinigameTeams(state, this.rng);
+    this.waitAll('Minijogo! Olha para o ecrã 👀');
+    this.stage.overview();
+    await this.hud.banner('Minijogo!', { sub: MODE_LABEL[teams.mode], hold: 1.6, color: '#ffd23f' });
+    const winners = await this.runMinigame(state.players, teams, null);
+    const awarded = awardMinigame(state, winners);
+    for (const id of winners) {
+      this.ctl.vibrate(this.seat(id), [80, 50, 80]);
+      this.ctl.toast(this.seat(id), `Ganhaste! +${awarded.get(id) ?? 0} 🪙`);
+    }
+    const sorted = [...state.players].sort((a, b) => Number(winners.includes(b.id)) - Number(winners.includes(a.id)));
+    this.hud.panel(`
+      <h1>${winners.length ? 'Vencedores!' : 'Ninguém ganhou!'}</h1>
+      <div class="rows">${sorted
+        .map((p, i) => {
+          const win = winners.includes(p.id);
+          return `<div class="row ${win ? 'win' : ''}" style="animation-delay:${i * 0.07}s">
+            <span>${win ? '🏆' : ''}</span><span class="dot" style="background:${getCharacter(p.characterId).color}"></span>
+            <span>${esc(p.name)}</span><span class="gain">${win ? `+${awarded.get(p.id) ?? 0} 🪙` : ''}</span><span>🪙 ${p.coins}</span></div>`;
+        })
+        .join('')}</div>`);
+    await this.wait(4);
+    this.hud.panel(null);
+    this.scoreboard();
+    for (const p of state.players) this.stage.token(p.id).setAnim(winners.includes(p.id) ? 'cheer' : 'idle');
+    await this.wait(1.2);
+    for (const p of state.players) this.stage.token(p.id).setAnim('idle');
+  }
+
+  /**
+   * Corre um minijogo com estes jogadores e devolve os vencedores.
+   * `title` aparece no topo do ecrã de apresentação (duelos/VS).
+   */
+  private async runMinigame(players: PartyPlayer[], teams: MinigameTeams, title: string | null): Promise<string[]> {
+    const def =
+      MINIGAMES.find((m) => m.id === this.d.forcedMinigame && m.modes.includes(teams.mode)) ??
+      pickMinigame(teams.mode, this.rng, this.lastMinigame);
+    this.lastMinigame = def.id;
+    const teamOf = (id: string): MinigameSeat['team'] => (teams.mode === 'ffa' ? null : teams.blue.includes(id) ? 'blue' : 'red');
+    const mgSeats: MinigameSeat[] = players.map((p) => ({ id: p.id, name: p.name, characterId: p.characterId, team: teamOf(p.id) }));
+    const ids = new Set(players.map((p) => p.id));
+
+    const chip = (id: string) => {
+      const p = getPlayer(this.state, id);
+      return `<span class="chip"><span class="dot" style="background:${getCharacter(p.characterId).color}"></span>${esc(p.name)}</span>`;
+    };
+    const teamsHtml =
+      teams.mode === 'ffa'
+        ? `<div class="teams"><div class="team ffa">${teams.blue.map(chip).join('')}</div></div>`
+        : `<div class="teams"><div class="team blue">${teams.blue.map(chip).join('')}</div><div class="vs">VS</div><div class="team red">${teams.red.map(chip).join('')}</div></div>`;
+    const INTRO = 7;
+    this.hud.panel(`
+      ${title ? `<h2>${esc(title)}</h2>` : ''}
+      <h1>${esc(def.name)}</h1>
+      <h2>${players.length === 2 ? '1 contra 1' : MODE_LABEL[teams.mode]}</h2>
+      ${teamsHtml}
+      <p>${esc(def.description(teams.mode))}</p>
+      <p><span class="controls">${esc(def.controls)}</span></p>
+      <div class="timerbar"><div style="animation-duration:${INTRO}s"></div></div>`);
+    for (const s of this.d.seats) {
+      if (!ids.has(s.id)) this.ctl.setLayout(s, { kind: 'wait', message: `A ver: ${def.name}` });
+      else
+        this.ctl.setLayout(s, {
+          kind: 'gamepad',
+          stick: def.stick,
+          buttons: def.buttons,
+          hint: teams.mode === 'ffa' ? def.name : `${def.name} · equipa ${teamOf(s.id) === 'blue' ? '🔵 azul' : '🔴 vermelha'}`,
+        });
+    }
+    await this.wait(INTRO);
+    this.hud.panel(null);
+
+    const ctx: MinigameContext = {
+      engine: this.engine,
+      mode: teams.mode,
+      seats: mgSeats,
+      rng: this.rng,
+      pad: (id) => this.ctl.pad(this.seat(id)),
+      botPad: (id) => this.seat(id).botPad,
+      isBot: (id) => this.ctl.needsBot(this.seat(id)),
+      vibrate: (id, ms) => this.ctl.vibrate(this.seat(id), ms),
+      botSkill: settings.botSkill,
+    };
+    for (const s of this.d.seats) s.botPad.reset();
+    this.d.hub.clearPresses();
+    const run = def.create(ctx);
+    this.engine.setStage(run, false);
+
+    const updateHud = () => {
+      const scores = new Map(run.scores().map((s) => [s.id, s.value]));
+      this.hud.setRound(`⏱ ${Math.ceil(run.timeLeft())}`);
+      this.hud.setScoreboard(
+        players.map((p) => ({
+          id: p.id,
+          name: p.name,
+          color: getCharacter(p.characterId).color,
+          coins: p.coins,
+          stars: p.stars,
+          active: false,
+          isBot: p.isBot,
+          connected: true,
+          tag: scores.get(p.id),
+        })),
+      );
+    };
+    updateHud();
+    for (const n of ['3', '2', '1']) await this.hud.big(n, 0.8);
+    run.start();
+    void this.hud.big('JÁ!', 0.6);
+    while (!run.finished) {
+      updateHud();
+      await this.wait(0.2);
+    }
+    updateHud();
+    this.waitAll('Fim do minijogo!');
+    await this.hud.big('FIM!', 1.4);
+    const winners = run.winners();
+    run.dispose();
+    this.engine.setStage(this.stage, false);
+    this.hud.setRound(`Ronda ${this.state.round} / ${this.state.totalRounds}`);
+    this.scoreboard();
+    return winners;
+  }
+
+  // ── Final ───────────────────────────────────────────────
+
+  async finale(state: PartyState): Promise<void> {
+    this.d.menu.mode = 'off';
+    this.waitAll('Fim da festa! Olha para o ecrã 👀');
+    this.hud.setScoreboard(null);
+    await this.hud.banner('Fim da festa!', { sub: 'Hora das estrelas bónus…', hold: 2.4, color: '#ffd23f' });
+
+    // Cerimónia: cada estrela bónus entregue em palco
+    const ceremony = new ShowcaseStage();
+    this.engine.setStage(ceremony);
+    ceremony.view({ distance: 11, height: 3.5, orbitSpeed: 0.05 });
+    for (const bonus of bonusStars(state)) {
+      const winners = bonus.winners.map((id) => getPlayer(state, id));
+      ceremony.setLineup(winners.map((w) => ({ key: w.id, characterId: w.characterId, label: w.name, labelColor: '#ffd23f' })));
+      await this.hud.banner(`⭐ ${bonus.title}`, { sub: bonus.description, hold: 2, color: '#ffd23f' });
+      // Estrelas a descer do céu até cada vencedor
+      const stars = winners.map(() => starMesh(0.7));
+      stars.forEach((s) => ceremony.scene.add(s));
+      await this.engine.tween(1.4, (k) => {
+        stars.forEach((s, i) => {
+          const r = 8.5;
+          const n = winners.length;
+          const spread = Math.min(1.25, 0.15 + n * 0.11);
+          const a = n === 1 ? 0 : -spread / 2 + (i / (n - 1)) * spread;
+          s.position.set(Math.sin(a) * r, 12 - k * 9, -Math.cos(a) * r + 6);
+          s.rotation.y = k * 10;
+        });
+      });
+      applyBonusStars(state, [bonus]);
+      for (const w of winners) ceremony.setAnim(w.id, 'cheer');
+      stars.forEach((s) => ceremony.scene.remove(s));
+      await this.hud.banner(winners.map((w) => w.name).join(', '), { sub: '+1 ⭐', hold: 1.8, color: '#ffffff' });
+    }
+    ceremony.dispose();
+
+    const ranked = ranking(state);
+    const stage = new ShowcaseStage();
+    this.engine.setStage(stage);
+    stage.showPodium(ranked.map((r) => ({ key: r.player.id, characterId: r.player.characterId, rank: r.rank, name: r.player.name })));
+    const winners = ranked.filter((r) => r.rank === 1).map((r) => r.player.name);
+    await this.hud.banner(winners.length > 1 ? `${winners.join(' e ')} empatam!` : `${winners[0]} é a estrela da festa!`, { hold: 3, color: '#ffd23f' });
+    this.hud.panel(`
+      <h1>Classificação</h1>
+      <div class="rows">${ranked
+        .map(
+          (r, i) => `<div class="row ${r.rank === 1 ? 'win' : ''}" style="animation-delay:${i * 0.07}s">
+            <span>${r.rank}.</span><span class="dot" style="background:${getCharacter(r.player.characterId).color}"></span>
+            <span>${esc(r.player.name)}</span><span>⭐ ${r.player.stars}</span><span>🪙 ${r.player.coins}</span></div>`,
+        )
+        .join('')}</div>`);
+    const panel = this.hud.panelElement();
+    panel.classList.add('compact');
+    for (const r of ranked) this.ctl.setLayout(this.seat(r.player.id), { kind: 'wait', message: `Ficaste em ${r.rank}.º lugar com ${r.player.stars} ⭐!` });
+    this.hud.hint('Enter ou o VIP no telemóvel: voltar ao lobby', true);
+    const vip = this.d.hub.vip;
+    if (vip) this.d.hub.setLayout({ kind: 'choices', prompt: 'Obrigado por jogares!', options: [{ id: 'lobby', label: 'Voltar ao lobby' }] }, vip);
+    await new Promise<void>((resolve) => {
+      const off = this.d.hub.events.on('choice', ({ player, id }) => player.isVip && id === 'lobby' && done());
+      const onKey = (e: KeyboardEvent) => e.code === 'Enter' && done();
+      window.addEventListener('keydown', onKey);
+      function done() {
+        off();
+        window.removeEventListener('keydown', onKey);
+        resolve();
+      }
+    });
+    panel.classList.remove('compact');
+    this.hud.panel(null);
+    this.hud.hint(null);
+  }
+
+  /** Desenvolvimento: só o minijogo de ronda, em ciclo (usado por /?minigame=…). */
+  async minigameLoop(boardId: string, colors: ('blue' | 'red')[]): Promise<void> {
+    this.state = createParty(
+      createBoard(boardId),
+      this.d.seats.map((s) => ({ id: s.id, name: s.name, characterId: s.characterId, isBot: s.isBot })),
+      1,
+      this.rng,
+    );
+    this.state.players.forEach((p, i) => (p.color = colors[i] ?? 'blue'));
+    this.stage = new BoardStage(this.engine, this.state.board, this.d.seats);
+    this.engine.setStage(this.stage);
+    for (;;) await this.roundMinigame();
+  }
+}

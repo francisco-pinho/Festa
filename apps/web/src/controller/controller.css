@@ -768,3 +768,19 @@ button:disabled {
     font-size: 20px;
   }
 }
+
+/* Botões extra no ecrã dos dados (mapa, itens) */
+.dice-extras {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.dice-extra {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--panel-light);
+  border: 3px solid var(--opt, transparent);
+  font-size: 16px;
+}

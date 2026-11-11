@@ -111,6 +111,11 @@ export const controllerLayoutSchema = z.discriminatedUnion('kind', [
     kind: z.literal('dice'),
     prompt: z.string().max(200),
     label: z.string().max(30),
+    /** Botões extra (ex.: "Ver mapa", usar item). Enviam a escolha com o seu id. */
+    extras: z
+      .array(z.object({ id: z.string().min(1).max(64), label: z.string().min(1).max(40), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional() }))
+      .max(5)
+      .optional(),
   }),
 ]);
 

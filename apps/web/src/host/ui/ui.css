@@ -409,6 +409,75 @@
   height: 2.4vh;
 }
 
+/* Roleta */
+.roulette {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22vh, 1fr));
+  gap: 1vh 1vw;
+  margin-top: 2vh;
+}
+.roul-item {
+  padding: 2vh 1vw;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 3px solid transparent;
+  font-size: clamp(16px, 2.8vh, 34px);
+  font-weight: bold;
+  text-align: center;
+  transition: transform 0.08s;
+}
+.roul-item.sel {
+  border-color: #fff;
+  transform: scale(1.06);
+}
+.roul-item.won {
+  border-color: var(--gold);
+  background: rgba(255, 210, 63, 0.25);
+  transform: scale(1.12);
+  animation: banner-in 0.4s;
+}
+
+/* Loja */
+.shop-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(26vh, 1fr));
+  gap: 1.4vh 1vw;
+  margin-top: 1.5vh;
+}
+.shop-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5vh;
+  padding: 1.6vh 1vw;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+  text-align: center;
+}
+.shop-item .emoji {
+  font-size: 6vh;
+}
+.shop-item .nm {
+  font-size: 2.6vh;
+  font-weight: bold;
+}
+.shop-item .ds {
+  font-size: 1.8vh;
+  color: #b9a9e8;
+}
+.shop-item .pr {
+  font-size: 2.6vh;
+  font-weight: bold;
+  color: var(--gold);
+}
+.shop-item.no {
+  opacity: 0.4;
+}
+.shop-item .old {
+  text-decoration: line-through;
+  color: #b9a9e8;
+  margin-right: 0.5vw;
+}
+
 /* Escolha de desporto */
 .sports {
   display: grid;

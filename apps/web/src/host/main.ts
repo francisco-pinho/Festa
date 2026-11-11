@@ -20,7 +20,10 @@ const ready = loadCharacterAssets((done, total) => {
   if (el) el.textContent = `A carregar personagens… ${done}/${total}`;
 }).then(() => hud.panel(null));
 
-const main = ready.then(() => testSport
+const testParty = import.meta.env.DEV ? params.get('party') : null;
+const main = ready.then(() => testParty
+  ? director.testParty(testParty, Number(params.get('players') ?? 4), Number(params.get('rounds') ?? 2))
+  : testSport
   ? director.testSport(testSport, Number(params.get('players') ?? 2))
   : testMinigame
   ? director.testMinigame(

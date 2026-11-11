@@ -3,13 +3,14 @@
  * Expõe operações animadas (async) que o Realizador encadeia.
  */
 import * as THREE from 'three';
-import { createRng, getCharacter, getSpace, type Board, type SpaceType } from '@festa/game';
+import { getCharacter, getSpace, type Board, type SpaceType } from '@festa/game';
 import type { Engine, Stage } from '../three/Engine';
 import { CharacterModel } from '../three/CharacterModel';
 import { Dice } from '../three/Dice';
 import { canvasTexture, disposeObject, FONT, mesh, textSprite, toon } from '../three/materials';
 import { damp, ease, lerp } from '../three/tweens';
-import { Clouds, Water, bush, palmTree, rock, setupSky, starMesh } from './environment';
+import { starMesh } from './environment';
+import { createBoardTheme, type BoardTheme } from './boardThemes';
 
 const TILE_R = 1.15;
 const TILE_TOP = 0.32;
@@ -22,6 +23,10 @@ const SPACE_STYLE: Record<SpaceType, { color: string; symbol: string }> = {
   lucky: { color: '#25c26b', symbol: '♣' },
   unlucky: { color: '#7b3fd1', symbol: '!' },
   event: { color: '#ffa41b', symbol: '?' },
+  shop: { color: '#1fd1c1', symbol: '🛒' },
+  item: { color: '#ff6fb5', symbol: '🎁' },
+  vs: { color: '#ffd23f', symbol: 'VS' },
+  villain: { color: '#3b2a4d', symbol: '😈' },
 };
 
 export interface Seat3D {
@@ -40,9 +45,16 @@ export class BoardStage implements Stage {
   readonly camera = new THREE.PerspectiveCamera(42, 16 / 9, 0.1, 500);
   readonly tokens = new Map<string, CharacterModel>();
 
-  private readonly water = new Water();
-  private readonly clouds: Clouds;
+  private readonly theme: BoardTheme;
   private readonly star = new THREE.Group();
+  private readonly mapLabels = new THREE.Group();
+  private readonly trapSprites = new Map<number, THREE.Sprite>();
+  private readonly coinGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.08, 16);
+  private readonly coinMat = new THREE.MeshStandardMaterial({ color: '#ffd23f', emissive: '#c98a00', emissiveIntensity: 0.5, metalness: 0.1, roughness: 0.35 });
+  private mapOpen = false;
+  private afterMap: (() => void) | null = null;
+  private followBeforeMap: CharacterModel | null = null;
+  private starSpaceId = 0;
   private readonly starBeam: THREE.Mesh;
   private readonly dice: Dice[] = [];
   private readonly floaters: Floater[] = [];
@@ -61,14 +73,10 @@ export class BoardStage implements Stage {
     readonly board: Board,
     seats: Seat3D[],
   ) {
-    setupSky(this.scene);
-    this.scene.add(this.water.mesh);
-    this.clouds = new Clouds(createRng(7));
-    this.scene.add(this.clouds.group);
-    this.buildIsland();
-    this.buildPaths();
+    this.theme = createBoardTheme(board, this.scene);
+    this.theme.setFlags(board.initialFlags);
     this.buildSpaces();
-    this.buildDecorations();
+    this.scene.add(this.mapLabels);
 
     this.star.add(starMesh(0.8));
     this.starBeam = new THREE.Mesh(
@@ -99,17 +107,19 @@ export class BoardStage implements Stage {
   // ── Câmara ──────────────────────────────────────────────
 
   overview(): void {
-    this.follow = null;
-    this.camTargetPos.set(0, 52, 46);
-    this.camTargetLook.set(0, 0, -2);
+    if (this.deferWhileMap(() => this.overview())) return;
+    const { minX, maxX, minZ, maxZ } = this.theme.bounds;
+    this.frame((minX + maxX) / 2, (minZ + maxZ) / 2, maxX - minX, maxZ - minZ);
   }
 
   focus(seatId: string, close = false): void {
+    if (this.deferWhileMap(() => this.focus(seatId, close))) return;
     this.follow = this.tokens.get(seatId) ?? null;
     this.followDistance = close ? 0.65 : 1;
   }
 
   focusPoint(x: number, z: number, distance = 1): void {
+    if (this.deferWhileMap(() => this.focusPoint(x, z, distance))) return;
     this.follow = null;
     this.camTargetLook.set(x, 0.8, z);
     this.camTargetPos.set(x, 12 * distance + 1, z + 14 * distance);
@@ -275,6 +285,7 @@ export class BoardStage implements Stage {
   // ── Estrela ─────────────────────────────────────────────
 
   async placeStar(spaceId: number, animate: boolean): Promise<void> {
+    this.starSpaceId = spaceId;
     const s = getSpace(this.board, spaceId);
     const target = new THREE.Vector3(s.x, 0, s.z);
     if (!animate || !this.star.visible) {
@@ -357,8 +368,8 @@ export class BoardStage implements Stage {
 
   update(dt: number, time: number): void {
     this.time = time;
-    this.water.update(time);
-    this.clouds.update(dt);
+    this.theme.update(dt, time);
+    for (const l of this.mapLabels.children) l.position.y += Math.sin(time * 3 + l.id) * 0.004;
     for (const t of this.tokens.values()) t.update(dt);
     for (const d of this.dice) d.update(dt);
 
@@ -401,65 +412,186 @@ export class BoardStage implements Stage {
     disposeObject(this.scene);
   }
 
-  // ── Construção do cenário ───────────────────────────────
+  // ── Mapa: vistas, interruptores, túneis, armadilhas ─────
 
-  private islandShape(a: number, b: number): THREE.Shape {
-    const shape = new THREE.Shape();
-    const P = 3;
-    for (let i = 0; i <= 96; i++) {
-      const th = (i / 96) * Math.PI * 2;
-      const c = Math.cos(th);
-      const s = Math.sin(th);
-      const wobble = 1 + Math.sin(th * 5) * 0.03 + Math.sin(th * 11) * 0.015;
-      const x = a * wobble * Math.sign(c) * Math.abs(c) ** (2 / P);
-      const y = b * wobble * Math.sign(s) * Math.abs(s) ** (2 / P);
-      if (i === 0) shape.moveTo(x, y);
-      else shape.lineTo(x, y);
+  /** Enquadra a câmara para ver uma zona inteira (cx, cz, largura, profundidade). */
+  private frame(cx: number, cz: number, w: number, d: number, tilt = 0.55): void {
+    this.follow = null;
+    // Distância para caber a largura e a profundidade, conforme o formato do ecrã.
+    const aspect = this.camera.aspect || 16 / 9;
+    const half = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
+    const need = Math.max((d / 2 + 4) * 1.15, (w / 2 + 4) / aspect) / half;
+    const h = need / Math.sqrt(1 + tilt * tilt);
+    this.camTargetLook.set(cx, 0, cz);
+    this.camTargetPos.set(cx, h, cz + h * tilt);
+  }
+
+  /** Com o mapa aberto, mudanças de câmara ficam para quando fechar. */
+  private deferWhileMap(apply: () => void): boolean {
+    if (!this.mapOpen) return false;
+    this.afterMap = apply;
+    return true;
+  }
+
+  /** Mudou a maré / o semáforo: atualiza o cenário. */
+  setFlags(flags: Record<string, boolean>): void {
+    this.theme.setFlags(flags);
+  }
+
+  /**
+   * Vista do mapa inteiro: estrela, lojas, túneis e nomes dos jogadores.
+   * `on = false` volta à câmara anterior.
+   */
+  showMap(on: boolean, players: { id: string; name: string }[] = []): void {
+    for (const l of [...this.mapLabels.children]) {
+      this.mapLabels.remove(l);
+      disposeObject(l);
     }
-    return shape;
-  }
-
-  private buildIsland(): void {
-    const layer = (a: number, b: number, depth: number, top: number, color: string) => {
-      const geo = new THREE.ExtrudeGeometry(this.islandShape(a, b), { depth, bevelEnabled: false, curveSegments: 1 });
-      geo.rotateX(Math.PI / 2);
-      const m = mesh(geo, toon(color), { cast: false, receive: true });
-      m.position.y = top;
-      this.scene.add(m);
+    if (!on) {
+      this.mapOpen = false;
+      const pending = this.afterMap;
+      this.afterMap = null;
+      if (pending) pending();
+      else if (this.followBeforeMap) this.follow = this.followBeforeMap;
+      this.followBeforeMap = null;
+      return;
+    }
+    this.followBeforeMap = this.follow;
+    const { minX, maxX, minZ, maxZ } = this.theme.bounds;
+    this.frame((minX + maxX) / 2, (minZ + maxZ) / 2, maxX - minX, maxZ - minZ, 0.35);
+    this.mapOpen = true;
+    const label = (text: string, x: number, z: number, y: number, h = 1.6, color = '#ffffff') => {
+      const s = textSprite(text, { height: h, color });
+      s.position.set(x, y, z);
+      this.mapLabels.add(s);
     };
-    layer(34, 25, 3, -0.25, '#f2d58b'); // areia
-    layer(31.5, 22.5, 3, 0, '#7ccf5b'); // relva
+    const star = getSpace(this.board, this.starSpaceId);
+    label('⭐', star.x, star.z, 7, 5, '#ffd23f');
+    for (const shop of this.board.shops) {
+      const s = getSpace(this.board, shop.spaceId);
+      label(`🛒 ${shop.name}`, s.x, s.z, 6, 2.4, '#7dffe9');
+    }
+    for (const t of this.board.tunnels) {
+      const s = getSpace(this.board, t.from);
+      label(t.kind === 'metro' ? 'Ⓜ️' : '🕳️', s.x, s.z, 5, 2.6);
+    }
+    for (const [i, p] of players.entries()) {
+      const r = this.token(p.id).root.position;
+      label(p.name, r.x, r.z, 5 + (i % 3) * 1.6, 2.3, '#ffffff');
+    }
   }
 
-  private buildPaths(): void {
-    const ringSize = 36;
-    for (const s of this.board.spaces) {
-      for (const n of s.next) {
-        const t = getSpace(this.board, n);
-        const dx = t.x - s.x;
-        const dz = t.z - s.z;
-        const len = Math.hypot(dx, dz);
-        const isBridge = (s.id >= ringSize + 8 || t.id >= ringSize + 8) && (s.id >= ringSize || t.id >= ringSize);
-        const strip = mesh(
-          new THREE.BoxGeometry(isBridge ? 1.6 : 1.1, isBridge ? 0.25 : 0.08, len),
-          toon(isBridge ? '#a8743f' : '#e8d3a2'),
-          { cast: isBridge, receive: true },
-        );
-        strip.position.set(s.x + dx / 2, isBridge ? 0.05 : 0.05, s.z + dz / 2);
-        strip.rotation.y = Math.atan2(dx, dz);
-        this.scene.add(strip);
-        if (isBridge) {
-          for (const side of [-1, 1]) {
-            const post = mesh(new THREE.CylinderGeometry(0.12, 0.12, 1.8), toon('#7a4f28'));
-            const nx = (dz / len) * 0.85 * side;
-            const nz = (-dx / len) * 0.85 * side;
-            post.position.set(s.x + nx, -0.2, s.z + nz);
-            this.scene.add(post);
-          }
-        }
+  /** Num cruzamento: câmara aérea que mostra cada caminho e a distância até à estrela. */
+  showJunction(fromId: number, options: { spaceId: number; label: string; color: string }[]): void {
+    const pts: { x: number; z: number }[] = [getSpace(this.board, fromId)];
+    for (const o of options) {
+      let cur = o.spaceId;
+      for (let i = 0; i < 7; i++) {
+        const s = getSpace(this.board, cur);
+        pts.push(s);
+        cur = s.next[0]!;
+      }
+      const tipId = (() => {
+        let c = o.spaceId;
+        for (let i = 0; i < 3; i++) c = getSpace(this.board, c).next[0]!;
+        return c;
+      })();
+      const tip = getSpace(this.board, tipId);
+      const s = textSprite(o.label, { height: 1.8, color: o.color });
+      s.position.set(tip.x, 3.5, tip.z);
+      this.mapLabels.add(s);
+    }
+    const xs = pts.map((p) => p.x);
+    const zs = pts.map((p) => p.z);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minZ = Math.min(...zs);
+    const maxZ = Math.max(...zs);
+    this.frame((minX + maxX) / 2, (minZ + maxZ) / 2, maxX - minX, maxZ - minZ);
+  }
+
+  clearJunction(): void {
+    for (const l of [...this.mapLabels.children]) {
+      this.mapLabels.remove(l);
+      disposeObject(l);
+    }
+  }
+
+  /** Viagem por túnel/metro: desce na entrada e sobe na saída. */
+  async travelTunnel(id: string, toSpace: number, kind: 'cave' | 'metro'): Promise<void> {
+    const t = this.token(id);
+    const to = getSpace(this.board, toSpace);
+    const y0 = t.root.position.y;
+    t.setAnim('jump');
+    await this.engine.tween(0.45, (k) => {
+      t.root.position.y = y0 - k * 3;
+      t.root.scale.setScalar(1 - k * 0.6);
+    });
+    this.floatTextAt(kind === 'metro' ? '🚇' : '🕳️', t.root.position.x, t.root.position.z);
+    this.focusPoint(to.x, to.z, 1);
+    await this.engine.wait(kind === 'metro' ? 1.1 : 0.8);
+    t.root.position.set(to.x, TILE_TOP - 3, to.z);
+    await this.engine.tween(0.45, (k) => {
+      t.root.position.y = TILE_TOP - 3 + k * 3;
+      t.root.scale.setScalar(0.4 + k * 0.6);
+    }, ease.backOut);
+    t.setAnim('idle');
+  }
+
+  /** Armadilhas no tabuleiro (casa → dono). */
+  setTraps(traps: Record<number, string>): void {
+    for (const [id, sprite] of this.trapSprites) {
+      if (!traps[id]) {
+        this.scene.remove(sprite);
+        disposeObject(sprite);
+        this.trapSprites.delete(id);
       }
     }
+    for (const key of Object.keys(traps)) {
+      const id = Number(key);
+      if (this.trapSprites.has(id)) continue;
+      const s = getSpace(this.board, id);
+      const sprite = textSprite('🪤', { height: 0.9 });
+      sprite.position.set(s.x + 0.7, 0.9, s.z + 0.7);
+      this.scene.add(sprite);
+      this.trapSprites.set(id, sprite);
+    }
   }
+
+  /** Moedas a saltar de (perda) ou para (ganho) uma personagem. */
+  coinBurst(id: string, amount: number): void {
+    const root = this.token(id).root;
+    const n = Math.min(12, Math.abs(amount));
+    const gain = amount > 0;
+    for (let i = 0; i < n; i++) {
+      const coin = new THREE.Mesh(this.coinGeo, this.coinMat);
+      coin.rotation.x = Math.PI / 2;
+      const a = (i / n) * Math.PI * 2;
+      const far = new THREE.Vector3(root.position.x + Math.cos(a) * 2.2, root.position.y + 0.5, root.position.z + Math.sin(a) * 2.2);
+      const near = new THREE.Vector3(root.position.x, root.position.y + 1.6, root.position.z);
+      const [from, to] = gain ? [far, near] : [near, far];
+      coin.position.copy(from);
+      this.scene.add(coin);
+      void this.engine
+        .tween(0.55 + i * 0.03, (k) => {
+          coin.position.lerpVectors(from, to, k);
+          coin.position.y += Math.sin(k * Math.PI) * 2;
+          coin.rotation.z = k * 10;
+          coin.scale.setScalar(gain ? 1 - k * 0.5 : 1);
+        })
+        .then(() => this.scene.remove(coin));
+    }
+  }
+
+  private floatTextAt(text: string, x: number, z: number): void {
+    const sprite = textSprite(text, { height: 1.2 });
+    sprite.position.set(x, 2.5, z);
+    this.scene.add(sprite);
+    this.floaters.push({ sprite, life: 1.2, vy: 1.2 });
+  }
+
+
+  // ── Construção do cenário ───────────────────────────────
 
   private buildSpaces(): void {
     const side = new Map<SpaceType, THREE.Material>();
@@ -490,38 +622,4 @@ export class BoardStage implements Stage {
       this.scene.add(tile);
     }
   }
-
-  private buildDecorations(): void {
-    const rng = createRng(99);
-    const segs: [number, number, number, number][] = [];
-    for (const s of this.board.spaces) for (const n of s.next) {
-      const t = getSpace(this.board, n);
-      segs.push([s.x, s.z, t.x, t.z]);
-    }
-    const clear = (x: number, z: number, margin: number) =>
-      segs.every(([ax, az, bx, bz]) => distToSegment(x, z, ax, az, bx, bz) > margin);
-    const inIsland = (x: number, z: number, a: number, b: number) => Math.abs(x / a) ** 3 + Math.abs(z / b) ** 3 < 1;
-
-    let placed = 0;
-    for (let tries = 0; tries < 2000 && placed < 70; tries++) {
-      const x = (rng.next() - 0.5) * 64;
-      const z = (rng.next() - 0.5) * 46;
-      if (!inIsland(x, z, 30, 21) || !clear(x, z, 2.6)) continue;
-      const r = rng.next();
-      const obj = r < 0.4 ? palmTree(rng, 0.8 + rng.next() * 0.5) : r < 0.8 ? bush(rng) : rock(rng);
-      obj.position.x = x;
-      obj.position.z = z;
-      obj.rotation.y = rng.next() * Math.PI * 2;
-      this.scene.add(obj);
-      placed++;
-    }
-  }
-}
-
-function distToSegment(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
-  const dx = bx - ax;
-  const dz = bz - az;
-  const l2 = dx * dx + dz * dz;
-  const t = l2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l2));
-  return Math.hypot(px - (ax + t * dx), pz - (az + t * dz));
 }

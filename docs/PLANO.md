@@ -156,14 +156,14 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [x] Integrar o Rapier (3.2)
 
 ### Fase 1 — Festa
-- [ ] **Vista do mapa**: ao lançar os dados, botão "🗺️ Ver mapa" (telemóvel e PC) que mostra o mapa todo com a estrela, as lojas e os jogadores; nos cruzamentos, câmara aérea que mostra os caminhos com a distância até à estrela
-- [ ] **Itens e inventário** (máx. 3 por jogador), usados antes de lançar os dados. Nomes nossos, por exemplo:
+- [x] **Vista do mapa**: ao lançar os dados, botão "🗺️ Ver mapa" (telemóvel e PC) que mostra o mapa todo com a estrela, as lojas e os jogadores; nos cruzamentos, câmara aérea que mostra os caminhos com a distância até à estrela
+- [x] **Itens e inventário** (máx. 3 por jogador), usados antes de lançar os dados. Nomes nossos, por exemplo:
   Turbo (+3 casas), Dado Duplo, Dado Triplo, Dado Dourado (moedas = número tirado), Dado Preguiçoso (os outros só tiram 1–3), Bilhete da Loja, Espelho Troca-Lugar, Íman de Moedas, Armadilha de Moedas/Estrela, Luva de Desafio
-- [ ] **Lojas** como casas no mapa (passar por elas dá para comprar); loja do último lugar; saldos relâmpago
-- [ ] **Duelo na casa ocupada**: quem chega desafia quem lá está para um minijogo 1 contra 1 (regra do prémio por decidir, ver Q3)
-- [ ] **Novas casas**: Loja, Túnel/Teleporte, VS (todos apostam), Evento do mapa, Vilão (perde moedas/estrela, baralha posições), Duelo
-- [ ] **Animações de eventos**: estrelas bónus com cerimónia (holofote, personagem a receber a estrela, confetes), compra de estrela, tornado, loja, itens
-- [ ] **Mapas maiores** (60–90 casas, 3–4 cruzamentos, zonas diferentes) e **4 mapas novos**, cada um com a sua mecânica (ideias, todas nossas):
+- [x] **Lojas** como casas no mapa (passar por elas dá para comprar); loja do último lugar; saldos relâmpago
+- [x] **Duelo na casa ocupada**: quem chega desafia quem lá está para um minijogo 1 contra 1 — quem perde dá 5 moedas e recua 3 casas
+- [x] **Novas casas**: Loja, Túnel/Teleporte, VS (todos apostam), Evento do mapa, Vilão (perde moedas/estrela, baralha posições), Duelo
+- [x] **Animações de eventos** (roletas, moedas a voar, estrela roubada, cerimónia das estrelas bónus em palco; falta som): estrelas bónus com cerimónia (holofote, personagem a receber a estrela, confetes), compra de estrela, tornado, loja, itens
+- [~] **Mapas maiores** (60–90 casas, 3–4 cruzamentos, zonas diferentes) — feitos: Ilha renovada (85 casas) e Cidade Néon (75 casas); faltam os outros 3, cada um com a sua mecânica (ideias, todas nossas):
   - **Ilha do Coqueiro (renovada)**: a maré sobe/desce a cada 3 rondas e abre/fecha a ponte; gruta com túnel
   - **Cidade Néon**: muitas lojas, saldos, **metro** (túneis entre estações que custam moedas), semáforos que fecham ruas
   - **Mina do Vulcão**: **vagonetas** em carris que te levam longe, erupção que espalha moedas e fecha caminhos, túneis escuros
@@ -221,7 +221,10 @@ Cada fase termina testada, com commit e push no seu ramo.
 ## 5. Perguntas para ti (antes das fases respetivas)
 
 - **Q1 (bowling):** na regra oficial, a 10.ª jogada só tem 3.º lançamento se fizeres strike ou spare. Queres a regra oficial, ou **3 lançamentos sempre** na última jogada? E viste algum caso em que fizeste strike/spare e não te deu o 3.º?
-- ~~**Q2 (modelos):**~~ Respondida: KayKit (cartoon). preferes um estilo **realista** (proporções humanas, Quaternius "Regular") ou **estilizado/cartoon mais detalhado** (KayKit)? Os packs gratuitos com muitas animações são mais estilizados.
+- ~~**Q2 (modelos):**~~ Respondida: KayKit (cartoon).
+- ~~**Q3 (duelo)**~~ Respondida: obrigatório; quem perde recua 3 casas e dá 5 moedas.
+- ~~**Q4 (itens)**~~ Respondida: máx. 3 itens; há o Ladrão de Estrelas (40 moedas).
+- ~~**Q5 (mapas)**~~ Respondida: Ilha renovada + Cidade Néon primeiro. preferes um estilo **realista** (proporções humanas, Quaternius "Regular") ou **estilizado/cartoon mais detalhado** (KayKit)? Os packs gratuitos com muitas animações são mais estilizados.
 - **Q3 (duelo):** quando cais numa casa ocupada, o que vale o duelo? Proposta: quem perde recua 3 casas e dá 5 moedas a quem ganha. O duelo é obrigatório ou quem chega pode escolher?
 - **Q4 (itens):** quantos itens no máximo por jogador (proposta: 3)? Podem roubar-se estrelas com itens?
 - **Q5 (mapas):** concordas com os 5 temas propostos? Por qual começamos?
@@ -235,3 +238,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-11 | Plano criado | `jogos-todos` | ✔ |
 | 2026-11-11 | Fase 0: dica Android, horizontal, sensores, pausa/definições, dificuldade, Rapier | `fase0-fundacoes` | ✔ |
 | 2026-11-11 | Fase 0: modelos 3D com esqueleto (KayKit, 76 animações, 10 personagens recoloridas) | `fase0-fundacoes` | ✔ |
+| 2026-11-11 | Fase 1: mapas Ilha e Cidade, itens, lojas, duelos, VS, Trapaceiro, vista do mapa, cerimónia | `fase1-festa` | ✔ (faltam 3 mapas) |
