@@ -268,9 +268,10 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [~] Desportos: golfe (árvores, plantas, rochas), bowling (sala de espera mobilada), ténis e basebol (árvores e candeeiros à volta) — o ringue de boxe ficou como estava
 
 ### Fase 10 — Tabuleiros mais complexos (pedido 20)
-- [ ] Mais caminhos e cruzamentos por mapa (e caminhos de sentido único, atalhos pagos, caminhos que abrem/fecham)
-- [ ] Mais interações com o cenário: objetos em que se pode carregar ao passar (alavancas, portas, canhões, teleféricos), eventos por zona
-- [ ] Mais casas diferentes por mapa
+- [x] Mais caminhos e cruzamentos por mapa: um caminho novo por mapa com portão de alavanca (selva, becos em obras, ponte de lava, passagem secreta atrás de uma estante, labirinto dos espelhos); portagens com dono (quem paga recebe a próxima)
+- [x] Mais interações com o cenário: alavancas (quem passa decide se puxa), canhões/géiser que disparam para outra zona, cofre/banco; eventos por zona (baú do tesouro na praia/selva/mina/pátio/feira, derrocada na cratera)
+- [x] Casas novas: 🏦 banco, 💥 canhão, 🎚️ alavanca
+- Ferramenta: `npx tsx tools/board-svg.ts` desenha os mapas em `/dev-boards.html` para planear caminhos
 
 ### Fase 11 — Jogar fora de casa (pedido 23, ver §3.7)
 - [ ] `npm run online`: servidor + túnel Cloudflare, link público e QR no lobby (local e online na mesma sala)
@@ -310,3 +311,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-12 | Fase 8: comando único estilo Switch, menus no ecrã grande, menu principal com personagens, golfe por botões, gestos no fim do movimento, vibração; corrige a cabeça a abanar nas animações triste/tonto | `fase8-comando` | ✔ (testado com telemóvel simulado e teclado) |
 | 2026-11-12 | Narrador com corpo e voz; comandos nas pontas do telemóvel; câmara e cordas do boxe | `fase8-comando` | ✔ (voz não confirmada a ouvir) |
 | 2026-11-12 | Fase 9: cenários com modelos CC0 (KayKit e Kenney) nos 5 tabuleiros e em 4 desportos | `fase9-cenarios` | ✔ (primeira passagem) |
+| 2026-11-12 | Fase 10: alavancas e portões, portagens com dono, canhões/géiser, banco, baús e derrocadas por zona, um caminho novo por mapa | `fase10-tabuleiros` | ✔ (testado com bots) |
