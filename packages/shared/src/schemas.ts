@@ -50,6 +50,8 @@ export const controllerInputSchema = z.discriminatedUnion('t', [
     spin: z.number().min(-1).max(1),
     hand: z.enum(['left', 'right']).optional(),
     source: z.enum(['motion', 'touch', 'key']).optional(),
+    /** Tipo de soco pelo gesto (boxe). */
+    kind: z.enum(['straight', 'hook', 'uppercut']).optional(),
   }),
   /** Ângulo de pontaria pela inclinação do telemóvel: -1 esquerda … 1 direita. */
   z.object({
@@ -109,6 +111,8 @@ export const controllerLayoutSchema = z.discriminatedUnion('kind', [
     hands: z.boolean().optional(),
     /** Botão de defesa a segurar. */
     guard: z.boolean().optional(),
+    /** Botões de esquiva (A = esquerda, B = direita) e esquiva a inclinar o telemóvel. */
+    dodge: z.boolean().optional(),
     hint: z.string().max(200).optional(),
   }),
   /** Lançar dados: botão grande e, se o telemóvel deixar, abanar. Envia a escolha `roll`. */

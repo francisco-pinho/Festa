@@ -180,14 +180,14 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [x] Rever a última jogada (ver Q1): o código segue a regra oficial (3.ª bola só com strike ou spare na 10.ª) e está correto; muda-se se preferires 3 bolas sempre
 
 ### Fase 3 — Boxe (refazer)
-- [ ] Personagens com esqueleto e **luvas nas mãos**
-- [ ] **Mexer o boneco**: joystick (ou inclinar) para avançar/recuar/rodar; inclinar para **esquivar**
-- [ ] Socos pelo gesto: **direto, gancho, uppercut** (com distância a contar)
-- [ ] **Barra de soco** (energia) e contra-ataque depois de esquivar
-- [ ] **Dano bem visível**: flash vermelho, faíscas de impacto, cabeça a recuar, número de dano, câmara a tremer, vibração forte no telemóvel de quem leva
-- [ ] Placar novo: barras de vida grandes no topo (lutador vs lutador), barra de energia, quedas, rondas e tempo
-- [ ] Bots com "sinais" antes de atacar (dá para os ler e esquivar)
-- [ ] Arena com público animado, árbitro, sino entre rondas
+- [x] Personagens com esqueleto e **luvas nas mãos** (presas ao osso da mão, seguem as animações)
+- [x] **Mexer o boneco**: joystick para avançar/recuar/rodar à volta do adversário; inclinar o telemóvel (ou ⬅️➡️) para **esquivar**
+- [x] Socos pelo gesto: **direto (jab com a esquerda), gancho, uppercut**, com alcance (longe falha, colado tira força). No ecrã: tocar / arrastar de lado / arrastar para cima — *classificação por movimento por afinar no telemóvel*
+- [x] **Barra de soco** (energia) e contra-ataque depois de esquivar (×1,6)
+- [x] **Dano bem visível**: flash vermelho, faíscas de impacto, cabeça a recuar, número de dano, câmara a tremer, vibração forte no telemóvel de quem leva
+- [x] Placar novo: barras de vida grandes no topo (lutador vs lutador), barra de energia, quedas, rondas e tempo
+- [x] Bots com "sinais" antes de atacar (luva a brilhar, agachar para o uppercut; mais longos nos bots fáceis)
+- [x] Arena com público animado (reage aos golpes), árbitro (conta as quedas, levanta o braço do vencedor), sino entre rondas; no chão, dar socos levanta-te mais depressa
 
 ### Fase 4 — Basebol (refazer)
 - [ ] Estádio completo: bancadas, placar eletrónico, defesas em todas as posições (9), bases e banco
@@ -242,3 +242,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-11 | Fase 1: mapas Mina do Vulcão, Castelo Assombrado e Parque de Diversões (cenários 3D, vagonetas, elevadores, montanha-russa, erupção, portas, roda, fantasma) | `fase1-festa` | ✔ |
 | 2026-11-11 | Fase 1: minijogos de duelo 1 contra 1 (Saque Rápido, Cabo de Guerra, Pontaria) | `fase1-festa` | ✔ |
 | 2026-11-11 | Fase 2: bowling novo (salão, placar suspenso, física Rapier, pêndulo + inclinação, câmara lenta e repetição) | `fase2-bowling` | ✔ (falta testar no telemóvel) |
+| 2026-11-11 | Fase 3: boxe refeito (luvas nas mãos, mover, 4 socos com alcance, energia, esquiva + contra-ataque, dano visível, árbitro, público, placar) | `fase3-boxe` | ✔ (falta testar no telemóvel) |

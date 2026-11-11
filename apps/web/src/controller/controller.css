@@ -719,12 +719,15 @@ button:disabled {
     grid-row: 2;
   }
   .motion:not(:has(.aim-zone)) .pads,
-  .motion:not(:has(.aim-zone)) .guard {
+  .motion:not(:has(.aim-zone)) .defense {
     grid-column: 1 / -1;
   }
-  .motion .guard {
+  .motion .defense {
     grid-column: 2;
     grid-row: 3;
+  }
+  .motion .guard,
+  .motion .dodge {
     padding: 10px;
   }
   .pad .icon {
@@ -806,4 +809,27 @@ button:disabled {
   display: inline-block;
   font-size: 26px;
   transition: transform 0.08s linear;
+}
+
+/* Boxe: esquivas e defesa na mesma linha */
+.motion .defense {
+  display: flex;
+  gap: 8px;
+}
+.motion .defense .guard {
+  flex: 2;
+}
+.motion .dodge {
+  flex: 1;
+  border: 0;
+  border-radius: 14px;
+  padding: 12px 8px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+}
+.motion .dodge.down {
+  background: #3fd0ff;
+  color: #10223a;
 }

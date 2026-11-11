@@ -35,13 +35,13 @@ export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): ()
   view.innerHTML = `
     <div class="motion">
       <p class="prompt">${esc(l.prompt)}</p>
-      ${l.aim ? '<div class="aim-zone"><span>🕹️ Posição</span><button class="tilt-aim" hidden><span class="tilt-arrow">⬆️</span><small>Roda o telemóvel para apontar · toca para centrar</small></button></div>' : ''}
+      ${l.aim ? `<div class="aim-zone"><span>🕹️ ${l.dodge ? 'Mover' : 'Posição'}</span><button class="tilt-aim" hidden><span class="tilt-arrow">⬆️</span><small>${l.dodge ? 'Inclina para os lados para esquivar' : 'Roda o telemóvel para apontar'} · toca para centrar</small></button></div>` : ''}
       <div class="pads ${l.hands ? 'two' : ''}">
         ${(l.hands ? (['left', 'right'] as Hand[]) : (['right'] as Hand[]))
           .map((h) => `<div class="pad" data-hand="${h}"><span class="icon">${text.icon}</span><span class="label"></span>${l.hands ? `<small>${h === 'left' ? 'Esquerda' : 'Direita'}</small>` : ''}</div>`)
           .join('')}
       </div>
-      ${l.guard ? '<button class="guard">🛡️ Defender (segura)</button>' : ''}
+      ${l.guard || l.dodge ? `<div class="defense">${l.dodge ? '<button class="dodge" data-b="a">⬅️ Esquiva</button>' : ''}${l.guard ? '<button class="guard">🛡️ Defender (segura)</button>' : ''}${l.dodge ? '<button class="dodge" data-b="b">Esquiva ➡️</button>' : ''}</div>` : ''}
       ${l.hint ? `<p class="hint">${esc(l.hint)}</p>` : ''}
       <div class="mode-row">
         ${canMotion ? '<button class="mode-toggle"></button>' : '<small>Movimento indisponível (precisa de HTTPS) — usa o dedo</small>'}
@@ -88,13 +88,16 @@ export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): ()
   const tiltBox = view.querySelector<HTMLElement>('.tilt-aim');
   const tiltArrow = view.querySelector<HTMLElement>('.tilt-arrow');
   let holding = false;
+  let lastPunchAt = 0;
   if (tiltBox && canMotion) {
     let base: { x: number; y: number } | null = null;
     let last = 0;
     let lastSent = 0;
     cleanups.push(
       sensors.onSample((s) => {
-        if (!useMotion || holding) return;
+        if (!useMotion || (holding && !l.dodge)) return;
+        // Logo a seguir a um soco a inclinação não é de confiança.
+        if (l.dodge && performance.now() - lastPunchAt < 350) return;
         if (Math.hypot(s.gx, s.gy) < 3) return; // telemóvel deitado: não dá para saber
         tiltBox.hidden = false;
         base ??= { x: s.gx, y: s.gy };
@@ -132,7 +135,24 @@ export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): ()
     cleanups.push(() => set(false));
   }
 
+  // Esquivas (botões)
+  for (const b of view.querySelectorAll<HTMLButtonElement>('.dodge')) {
+    const button = b.dataset.b as 'a' | 'b';
+    b.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      b.classList.add('down');
+      send({ t: 'button', button, pressed: true });
+    });
+    const up = () => {
+      b.classList.remove('down');
+      send({ t: 'button', button, pressed: false });
+    };
+    b.addEventListener('pointerup', up);
+    b.addEventListener('pointercancel', up);
+  }
+
   const emit = (hand: Hand, s: Omit<SwingInput, 't' | 'hand'>, pad: HTMLElement) => {
+    lastPunchAt = performance.now();
     navigator.vibrate?.(Math.round(20 + s.power * 60));
     pad.classList.remove('hit');
     void pad.offsetWidth;
@@ -162,9 +182,6 @@ export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): ()
       if (useMotion) {
         motion = new MotionTracker(l.action === 'punch', (s) => emit(hand, s, pad));
         motion.start();
-      } else if (l.action === 'punch') {
-        // No toque, um toque simples já é um soco (força média).
-        emit(hand, { power: 0.55, dir: 0, spin: 0, source: 'touch' }, pad);
       }
     });
     pad.addEventListener('pointermove', (e) => {
@@ -186,9 +203,9 @@ export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): ()
         if (tracker.samples > 0) return;
       }
       points.push({ x: e.clientX, y: e.clientY, t: performance.now() });
+      if (l.action === 'punch') return emit(hand, touchPunch(points), pad);
       const s = swipeToSwing(points, l.action);
-      if (s && l.action !== 'punch') emit(hand, s, pad);
-      else if (s && l.action === 'punch' && s.power > 0.6) emit(hand, s, pad);
+      if (s) emit(hand, s, pad);
     };
     pad.addEventListener('pointerup', end);
     pad.addEventListener('pointercancel', end);
@@ -226,11 +243,28 @@ export function swipeToSwing(
   return { power, dir, spin, source: 'touch' };
 }
 
+/** Soco no ecrã: tocar = direto, arrastar de lado = gancho, arrastar para cima = uppercut. */
+export function touchPunch(points: { x: number; y: number; t: number }[]): Omit<SwingInput, 't' | 'hand'> {
+  const first = points[0]!;
+  const last = points[points.length - 1]!;
+  const dx = last.x - first.x;
+  const dy = first.y - last.y; // para cima = positivo
+  const dist = Math.hypot(dx, dy);
+  const dt = Math.max(30, last.t - first.t);
+  const power = clamp(0.45 + (dist / dt) * 0.25, 0.3, 1);
+  let kind: SwingInput['kind'] = 'straight';
+  if (dist > 28) kind = Math.abs(dx) > dy * 1.1 ? 'hook' : dy > 0 ? 'uppercut' : 'straight';
+  return { power, dir: 0, spin: 0, source: 'touch', kind };
+}
+
 /** Lê os sensores enquanto a zona está segura; deteta o pico do gesto. */
 class MotionTracker {
   private peak = 0;
   private lateral = 0;
   private twist = 0;
+  /** No pico: fração da aceleração na vertical e rotação (para saber o tipo de soco). */
+  private vertical = 0;
+  private spinRate = 0;
   private armed = true;
   /** Quantas leituras dos sensores chegaram. */
   samples = 0;
@@ -259,6 +293,7 @@ class MotionTracker {
       dir: clamp(this.lateral / Math.max(8, this.peak) * 2),
       spin: clamp(this.twist / 120),
       source: 'motion',
+      kind: this.repeat ? (this.vertical > 0.65 ? 'uppercut' : this.spinRate > 260 ? 'hook' : 'straight') : undefined,
     };
   }
 
@@ -271,6 +306,9 @@ class MotionTracker {
     if (mag > this.peak) {
       this.peak = mag;
       this.lateral = ax;
+      const g = Math.hypot(s.gx, s.gy, s.gz) || 1;
+      this.vertical = Math.abs((s.x * s.gx + s.y * s.gy + s.z * s.gz) / g) / (mag || 1);
+      this.spinRate = s.rot;
     }
     if (this.repeat) {
       if (this.armed && mag > 14) {

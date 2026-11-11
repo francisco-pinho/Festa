@@ -571,3 +571,99 @@
   color: #6f5fa8;
   font-size: clamp(12px, 1.8vh, 20px);
 }
+
+/* ── Boxe: placar do combate ─────────────────────────── */
+.fight-hud {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(96vw, 1100px);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 18px;
+  align-items: start;
+  pointer-events: none;
+}
+.fight-hud .fighter .name {
+  font-weight: 800;
+  font-size: clamp(16px, 2.2vw, 26px);
+  color: #fff;
+  text-shadow: 0 2px 0 #0008;
+  margin-bottom: 4px;
+}
+.fight-hud .fighter .kd {
+  font-size: 0.6em;
+  color: #ff6b7a;
+  letter-spacing: 2px;
+}
+.fight-hud .fighter.right {
+  text-align: right;
+}
+.fight-hud .hp,
+.fight-hud .en {
+  position: relative;
+  border-radius: 999px;
+  background: #0009;
+  border: 3px solid #fff;
+  overflow: hidden;
+}
+.fight-hud .hp {
+  height: clamp(18px, 2.4vw, 28px);
+}
+.fight-hud .en {
+  height: 10px;
+  margin-top: 5px;
+  border-width: 2px;
+  width: 70%;
+}
+.fight-hud .right .hp .fill,
+.fight-hud .right .hp .trail,
+.fight-hud .right .en .fill {
+  right: 0;
+  left: auto;
+}
+.fight-hud .right .en {
+  margin-left: auto;
+}
+.fight-hud .fill,
+.fight-hud .trail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+}
+.fight-hud .hp .trail {
+  background: #fff;
+}
+.fight-hud .hp .fill {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 70%, #fff), var(--c));
+}
+.fight-hud .en .fill {
+  background: #ffd23f;
+}
+.fight-hud .en .fill.full {
+  background: #fff36b;
+  box-shadow: 0 0 12px #ffd23f;
+}
+.fight-hud .fighter.counter .name::after {
+  content: ' CONTRA-ATAQUE!';
+  color: #ff6fb5;
+  font-size: 0.7em;
+}
+.fight-hud .mid {
+  text-align: center;
+  color: #fff;
+  background: #0008;
+  border: 3px solid #fff;
+  border-radius: 16px;
+  padding: 4px 14px;
+}
+.fight-hud .mid .rnd {
+  font-size: 14px;
+  opacity: 0.85;
+}
+.fight-hud .mid .time {
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 800;
+}

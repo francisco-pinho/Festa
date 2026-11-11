@@ -36,7 +36,14 @@ export type CharacterAnim =
   | 'fall'
   | 'lie'
   | 'getUp'
-  | 'sit';
+  | 'sit'
+  | 'fightIdle'
+  | 'hook'
+  | 'uppercut'
+  | 'blockHit'
+  | 'strafeLeft'
+  | 'strafeRight'
+  | 'walkBack';
 
 interface AnimSpec {
   clip: string;
@@ -68,6 +75,13 @@ const ANIMS: Record<CharacterAnim, AnimSpec> = {
   lie: { clip: 'Lie_Idle', loop: true },
   getUp: { clip: 'Lie_StandUp', loop: false, speed: 1.3, thenIdle: true },
   sit: { clip: 'Sit_Floor_Idle', loop: true },
+  fightIdle: { clip: 'Unarmed_Idle', loop: true },
+  hook: { clip: '1H_Melee_Attack_Slice_Horizontal', loop: false, speed: 1.9, thenIdle: true },
+  uppercut: { clip: 'Spellcast_Raise', loop: false, speed: 2.2, thenIdle: true },
+  blockHit: { clip: 'Block_Hit', loop: false, speed: 1.4, thenIdle: true },
+  strafeLeft: { clip: 'Running_Strafe_Left', loop: true, speed: 0.7 },
+  strafeRight: { clip: 'Running_Strafe_Right', loop: true, speed: 0.7 },
+  walkBack: { clip: 'Walking_Backwards', loop: true },
 };
 
 /** Altura final das personagens no mundo (topo da cabeça). */
@@ -77,6 +91,8 @@ export class CharacterModel {
   readonly root = new THREE.Group();
   readonly def: CharacterDef;
   anim: CharacterAnim = 'idle';
+  /** Animação para onde se volta depois das animações de uma vez (ex.: guarda no boxe). */
+  restAnim: CharacterAnim = 'idle';
 
   private readonly body = new THREE.Group();
   private readonly model: THREE.Object3D;
@@ -89,6 +105,9 @@ export class CharacterModel {
   private propeller: THREE.Object3D | null = null;
   private targetYaw = 0;
   private t = Math.random() * 10;
+  private flashTime = 0;
+  /** Recuo da cabeça ao levar um soco (rad), decai sozinho. */
+  private headKick = new THREE.Vector2();
 
   constructor(def: CharacterDef) {
     this.def = def;
@@ -113,8 +132,9 @@ export class CharacterModel {
     });
     this.bones.head = this.model.getObjectByName('head');
     this.bones.chest = this.model.getObjectByName('chest');
-    this.bones.left = this.model.getObjectByName('handslot.l');
-    this.bones.right = this.model.getObjectByName('handslot.r');
+    // O GLTFLoader tira os pontos dos nomes: 'handslot.l' passa a 'handslotl'.
+    this.bones.left = this.model.getObjectByName('handslotl') ?? this.model.getObjectByName('handslot.l');
+    this.bones.right = this.model.getObjectByName('handslotr') ?? this.model.getObjectByName('handslot.r');
 
     // Escala normalizada + forma do corpo
     const s = TARGET_HEIGHT / asset.height;
@@ -128,7 +148,7 @@ export class CharacterModel {
     this.mixer = new THREE.AnimationMixer(this.model);
     for (const [name, clip] of asset.clips) this.actions.set(name, this.mixer.clipAction(clip));
     this.mixer.addEventListener('finished', () => {
-      if (ANIMS[this.anim].thenIdle) this.setAnim('idle');
+      if (ANIMS[this.anim].thenIdle) this.setAnim(this.restAnim);
     });
     this.play('idle', 0);
     this.mixer.update(Math.random() * 2); // cada um começa num ponto diferente
@@ -187,6 +207,25 @@ export class CharacterModel {
     if (instant) this.root.rotation.y = yaw;
   }
 
+  /** Flash de cor (ex.: vermelho ao levar um soco). */
+  flash(color: THREE.ColorRepresentation = '#ff2a2a', seconds = 0.25): void {
+    this.flashTime = seconds;
+    for (const m of this.materials) m.emissive.set(color);
+  }
+
+  /** A cabeça recua (x = para trás, y = para o lado), como num soco. */
+  kickHead(back: number, side = 0): void {
+    this.headKick.set(back, side);
+  }
+
+  /** Posição da cabeça no mundo. */
+  headPosition(target = new THREE.Vector3()): THREE.Vector3 {
+    const head = this.bones.head ?? this.root;
+    head.getWorldPosition(target);
+    if (!this.bones.head) target.y += 1.8;
+    return target;
+  }
+
   /** Personagem "apagada" (eliminada / apanhada). */
   setFaded(faded: boolean): void {
     for (const m of this.materials) {
@@ -211,6 +250,18 @@ export class CharacterModel {
     } else if (this.anim === 'dizzy') {
       this.bones.head?.rotateZ(Math.sin(this.t * 6) * 0.3);
       this.bones.chest?.rotateZ(Math.sin(this.t * 6 + 1) * 0.12);
+    }
+    if (this.headKick.lengthSq() > 1e-4) {
+      this.bones.head?.rotateX(-this.headKick.x);
+      this.bones.head?.rotateZ(this.headKick.y);
+      this.bones.chest?.rotateX(-this.headKick.x * 0.35);
+      this.headKick.multiplyScalar(1 - damp(7, dt));
+    }
+    if (this.flashTime > 0) {
+      this.flashTime -= dt;
+      const k = Math.max(0, this.flashTime / 0.25);
+      for (const m of this.materials) m.emissiveIntensity = k * 0.9;
+      if (this.flashTime <= 0) for (const m of this.materials) m.emissive.set('#000000');
     }
     if (this.propeller) this.propeller.rotation.y += dt * (this.anim === 'cheer' ? 30 : 8);
   }
