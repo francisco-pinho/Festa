@@ -1017,3 +1017,217 @@ button:disabled {
 .golf .mode-toggle {
   width: 100%;
 }
+
+/* ── Comando único (estilo Switch) ───────────────────────── */
+.pad {
+  --accent: var(--player, #ffd23f);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 6px 10px 10px;
+  box-sizing: border-box;
+  gap: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.pad-top {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+}
+.pad-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  line-height: 1.2;
+}
+.pad-title b {
+  font-size: 17px;
+}
+.pad-title small {
+  color: var(--dim);
+  font-size: 13px;
+}
+.pad-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(150px, 30%) 1fr minmax(170px, 32%);
+  gap: 10px;
+  min-height: 0;
+}
+.pad-left,
+.pad-center,
+.pad-face {
+  position: relative;
+  min-height: 0;
+}
+.pad-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.pad-left .stick-zone {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  border-radius: 20px;
+  background: var(--panel);
+}
+.stick-label {
+  color: var(--dim);
+  margin-top: 4px;
+  text-align: center;
+}
+.dpad {
+  display: grid;
+  grid-template: 'a u b' 1fr 'l c r' 1fr 'd e f' 1fr / 1fr 1fr 1fr;
+  width: min(100%, 46vh);
+  aspect-ratio: 1;
+  gap: 4px;
+}
+.db {
+  border: 0;
+  border-radius: 12px;
+  background: var(--panel-light);
+  color: var(--text);
+  font-size: 22px;
+  touch-action: none;
+}
+.db-up { grid-area: u; }
+.db-left { grid-area: l; }
+.db-right { grid-area: r; }
+.db-down { grid-area: d; }
+.db.down,
+.pb.down {
+  transform: scale(0.92);
+  filter: brightness(1.3);
+}
+.pad-face {
+  display: grid;
+  grid-template: '. x .' 1fr 'y . a' 1fr '. b .' 1fr / 1fr 1fr 1fr;
+  gap: 4px;
+  align-items: center;
+  justify-items: center;
+}
+.pb {
+  position: relative;
+  border: 0;
+  color: #1d1433;
+  font: inherit;
+  touch-action: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.pad-face .pb {
+  width: min(100%, 17vh);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #eee;
+  box-shadow: 0 4px 0 #0005;
+}
+.pb .glyph {
+  font-weight: 900;
+  font-size: 22px;
+  line-height: 1;
+}
+.pb .legend {
+  position: absolute;
+  bottom: -2px;
+  transform: translateY(100%);
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+  text-shadow: 0 1px 2px #000;
+}
+.pb-a { grid-area: a; background: #ff5a5f !important; }
+.pb-b { grid-area: b; background: #ffd23f !important; }
+.pb-x { grid-area: x; background: #3fa7ff !important; }
+.pb-y { grid-area: y; background: #4cd964 !important; }
+.pb.off {
+  opacity: 0.22;
+}
+.pad-top .pb {
+  min-width: 52px;
+  height: 36px;
+  border-radius: 18px;
+  background: var(--panel-light);
+  color: var(--text);
+  flex-direction: row;
+  gap: 6px;
+  padding: 0 10px;
+}
+.pad-top .pb .legend {
+  position: static;
+  transform: none;
+}
+.pad-center {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+.motion-zone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 20px;
+  border: 3px dashed var(--accent);
+  background: var(--panel);
+  text-align: center;
+  padding: 8px;
+  touch-action: none;
+}
+.motion-zone.hit {
+  animation: mz-hit 0.3s ease-out;
+}
+@keyframes mz-hit {
+  from { background: var(--accent); }
+}
+.mz-icon {
+  font-size: 34px;
+}
+.mz-enable {
+  border: 0;
+  border-radius: 12px;
+  padding: 8px 12px;
+  background: var(--accent);
+  color: #1d1433;
+  font: inherit;
+  font-weight: 800;
+}
+.tilt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--dim);
+}
+.tilt-arrow {
+  font-size: 26px;
+  transition: transform 0.08s linear;
+}
+.shake-hint {
+  text-align: center;
+  color: var(--dim);
+  margin: 0;
+}
+@media (orientation: portrait) {
+  .pad-main {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr auto;
+  }
+  .pad-center {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

@@ -249,15 +249,15 @@ Cada fase termina testada, com commit e push no seu ramo.
 ---
 
 ### Fase 8 — Comando ao estilo Switch + menu principal novo (pedidos 18, 21, 22)
-- [ ] Comando único no telemóvel: direcional/joystick à esquerda, A/B/X/Y à direita, + (menu) e − (mapa); o movimento (como um Joy-Con) continua nos desportos
-- [ ] Todas as escolhas passam para o ecrã grande com cursor: caminhos, loja, itens, estrela, fantasma, VS, menus; A confirma, B volta
-- [ ] O telemóvel só mostra o que é preciso: botões ativos acendem e têm uma legenda curta (ex.: «A Lançar», «X Itens», «− Mapa»)
-- [ ] Desportos: **golfe só com botões** como no golfe da Switch (direcional aponta e muda de taco, A inicia/para o medidor, X/Y efeito, medidor no ecrã grande); **bowling, ténis, boxe e basebol só com movimento**
-- [ ] Bowling: a bola sai no fim do gesto, sem ter de largar o botão
-- [ ] **Vibração** em tudo, conforme o que acontece: dados, passos, moedas (+/−), estrela, duelo, armadilha, Trapaceiro, minijogos (golpes, quedas), desportos (bola, pinos, socos levados, tacada)
-- [ ] Menu principal 3D: palco onde cada jogador que entra aparece com a sua personagem (escolhida ao entrar, no próprio comando, a navegar com o direcional)
-- [ ] Depois: escolher **Festa** ou **Desportos**; só na Festa aparecem rondas, mapa e dificuldade dos bots
-- [ ] A personagem fica para todos os jogos até sair da sala (dá para trocar no menu principal)
+- [x] Comando único no telemóvel (layout `pad`): cruz ou joystick à esquerda, A/B/X/Y à direita, + (menu) e − (mapa); o movimento (como um Joy-Con) nos desportos
+- [x] Todas as escolhas passam para o ecrã grande com cursor (`ScreenMenus`): caminhos, loja, itens (X), estrela, fantasma, alvos, menus; A confirma, B volta; os bots mexem o cursor à vista
+- [x] O telemóvel só mostra o que é preciso: botões ativos acendem e têm legenda curta (ex.: «A Lançar», «X Itens», «− Mapa»)
+- [x] Desportos: **golfe só com botões** (joystick aponta, X/Y mudam de taco, A inicia o medidor no ecrã grande, A/X/Y param: normal/topspin/backspin); **bowling, ténis, boxe e basebol com movimento** (arrastar o dedo só como recurso sem sensores)
+- [x] Bowling: a bola sai no fim do gesto, sem ter de largar o botão (o gesto deteta-se quando a aceleração cai depois do pico)
+- [x] **Vibração** em tudo, conforme o que acontece: dados, passos, moedas (+/−), estrela, duelo, trocas, Trapaceiro, desportos (pinos, tacada, água, pontos, socos), botões do comando
+- [x] Menu principal 3D: cada jogador que entra aparece com a sua personagem (◀ ▶ no comando, A pronto); quem fica numa personagem já escolhida salta para uma livre
+- [x] Depois: o VIP escolhe **Festa**, **Desportos** ou **Definições**; só na Festa aparecem mapa, rondas e bots
+- [x] A personagem fica para todos os jogos até sair da sala (dá para trocar no menu principal com B)
 
 ### Fase 9 — Cenários novos (pedido 19)
 - [ ] Packs de cenários CC0 (KayKit, Kenney, Quaternius — descarregados dos sites oficiais) para árvores, rochas, casas, mobiliário, adereços
@@ -304,3 +304,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-12 | Fase 5: golfe novo (7 tacos, medidor com zona vermelha, efeito, curva/altura, balançar, relevo, 5 buracos, caddie) | `fase5-golfe` | ✔ (falta testar no telemóvel) |
 | 2026-11-12 | Fase 6: ténis (física com Magnus, voleis e smashes, topspin/slice pelo gesto, serviço com faltas, estádio) | `fase6-tenis` | ✔ (falta testar no telemóvel) |
 | 2026-11-12 | Fase 7: sons e música gerados (Web Audio), volume nas definições | `fase7-polimento` | ✔ (falta testar com telemóveis reais) |
+| 2026-11-12 | Fase 8: comando único estilo Switch, menus no ecrã grande, menu principal com personagens, golfe por botões, gestos no fim do movimento, vibração; corrige a cabeça a abanar nas animações triste/tonto | `fase8-comando` | ✔ (testado com telemóvel simulado e teclado) |

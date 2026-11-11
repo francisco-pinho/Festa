@@ -116,6 +116,9 @@ export class CharacterModel {
   private readonly bones: { head?: THREE.Object3D; chest?: THREE.Object3D; left?: THREE.Object3D; right?: THREE.Object3D } = {};
   private propeller: THREE.Object3D | null = null;
   private targetYaw = 0;
+  /** Posição de base da cabeça e do peito (repostas a cada imagem, para as poses extra não se acumularem). */
+  private restHead: THREE.Quaternion | null = null;
+  private restChest: THREE.Quaternion | null = null;
   private t = Math.random() * 10;
   private flashTime = 0;
   /** Recuo da cabeça ao levar um soco (rad), decai sozinho. */
@@ -144,6 +147,8 @@ export class CharacterModel {
     });
     this.bones.head = this.model.getObjectByName('head');
     this.bones.chest = this.model.getObjectByName('chest');
+    if (this.bones.head) this.restHead = this.bones.head.quaternion.clone();
+    if (this.bones.chest) this.restChest = this.bones.chest.quaternion.clone();
     // O GLTFLoader tira os pontos dos nomes: 'handslot.l' passa a 'handslotl'.
     this.bones.left = this.model.getObjectByName('handslotl') ?? this.model.getObjectByName('handslot.l');
     this.bones.right = this.model.getObjectByName('handslotr') ?? this.model.getObjectByName('handslot.r');
@@ -265,15 +270,19 @@ export class CharacterModel {
     dy = Math.atan2(Math.sin(dy), Math.cos(dy));
     this.root.rotation.y += dy * damp(10, dt);
 
+    // Repor cabeça e peito: se a animação não mexer neles, as poses extra
+    // de imagens anteriores somavam-se e a cabeça ficava a girar/abanar sem parar.
+    if (this.restHead) this.bones.head!.quaternion.copy(this.restHead);
+    if (this.restChest) this.bones.chest!.quaternion.copy(this.restChest);
     this.mixer.update(dt);
 
-    // Poses extra por cima da animação
+    // Poses extra por cima da animação (suaves)
     if (this.anim === 'sad') {
-      this.bones.head?.rotateX(0.45);
-      this.bones.chest?.rotateX(0.18);
+      this.bones.head?.rotateX(0.35);
+      this.bones.chest?.rotateX(0.12);
     } else if (this.anim === 'dizzy') {
-      this.bones.head?.rotateZ(Math.sin(this.t * 6) * 0.3);
-      this.bones.chest?.rotateZ(Math.sin(this.t * 6 + 1) * 0.12);
+      this.bones.head?.rotateZ(Math.sin(this.t * 2.6) * 0.16);
+      this.bones.chest?.rotateZ(Math.sin(this.t * 2.6 + 1) * 0.06);
     }
     if (this.headKick.lengthSq() > 1e-4) {
       this.bones.head?.rotateX(-this.headKick.x);

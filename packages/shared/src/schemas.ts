@@ -18,7 +18,10 @@ export const roomCodeSchema = z
 export const tokenSchema = z.string().min(16).max(128);
 export const playerIdSchema = z.string().min(1).max(64);
 
-export const buttonIdSchema = z.enum(['a', 'b']);
+/** Botões do comando: A/B/X/Y, + (menu), − (mapa) e a cruz direcional. */
+export const buttonIdSchema = z.enum(['a', 'b', 'x', 'y', 'plus', 'minus', 'up', 'down', 'left', 'right']);
+
+export const motionActionSchema = z.enum(['throw', 'swing', 'punch', 'pitch', 'bat']);
 
 /** Input enviado pelo telemóvel. */
 export const controllerInputSchema = z.discriminatedUnion('t', [
@@ -67,89 +70,44 @@ export const controllerInputSchema = z.discriminatedUnion('t', [
   }),
 ]);
 
-/** O que o ecrã principal pede ao telemóvel para mostrar. */
+const legend = z.string().max(16).optional();
+
+/**
+ * O que o ecrã principal pede ao telemóvel para mostrar. O telemóvel é sempre o mesmo
+ * comando (como os da Switch): joystick ou cruz, A/B/X/Y, + e −. As escolhas aparecem no
+ * ecrã grande; o comando só diz o que cada botão faz agora (legenda) e apaga os inativos.
+ */
 export const controllerLayoutSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('wait'),
     message: z.string().max(200),
   }),
   z.object({
-    kind: z.literal('gamepad'),
-    stick: z.boolean(),
-    buttons: z
-      .array(z.object({ id: buttonIdSchema, label: z.string().max(12) }))
-      .max(2),
-    hint: z.string().max(200).optional(),
-  }),
-  z.object({
-    kind: z.literal('choices'),
-    prompt: z.string().max(200),
-    options: z
-      .array(
-        z.object({
-          id: z.string().min(1).max(64),
-          label: z.string().min(1).max(60),
-          /** Cor de destaque do botão (ex.: cor da personagem). */
-          color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-          disabled: z.boolean().optional(),
-        }),
-      )
-      .min(1)
-      .max(12),
-    /** Grelha com N colunas (por omissão, 1). */
-    columns: z.number().int().min(1).max(3).optional(),
-  }),
-  /**
-   * Comando de desporto: zona para fazer o gesto (movimento do telemóvel ou
-   * arrastar), joystick opcional para apontar e botão de defesa opcional.
-   */
-  z.object({
-    kind: z.literal('motion'),
-    prompt: z.string().max(200),
-    action: z.enum(['throw', 'swing', 'punch', 'pitch', 'bat', 'putt']),
-    /** Mostra um joystick para apontar/posicionar antes do gesto. */
-    aim: z.boolean(),
-    /** Duas zonas (mão esquerda e direita), para o boxe. */
-    hands: z.boolean().optional(),
-    /** Botão de defesa a segurar. */
-    guard: z.boolean().optional(),
-    /** Botões de esquiva (A = esquerda, B = direita) e esquiva a inclinar o telemóvel. */
-    dodge: z.boolean().optional(),
-    /** Escolhas rápidas (ex.: tipo de lançamento); tocar envia `choice`. */
-    picks: z
-      .array(z.object({ id: z.string().min(1).max(32), label: z.string().max(40) }))
-      .max(4)
+    kind: z.literal('pad'),
+    /** Linha principal (o que se está a fazer). */
+    title: z.string().max(120),
+    sub: z.string().max(160).optional(),
+    /** Lado esquerdo: joystick analógico, cruz direcional ou nada. */
+    stick: z.enum(['stick', 'dpad', 'none']),
+    stickLabel: z.string().max(30).optional(),
+    /** Legendas dos botões ativos (ausente = botão apagado). */
+    buttons: z.object({ a: legend, b: legend, x: legend, y: legend, plus: legend, minus: legend }),
+    /** Abanar o telemóvel = carregar em A. */
+    shake: z.boolean().optional(),
+    /**
+     * Desportos com movimento: o gesto com o telemóvel envia `swing` no fim de cada gesto.
+     * `hold: 'a'` = só conta com A carregado (como segurar o botão no bowling); `'none'` = sempre.
+     * `tilt`: a inclinação envia `aim` (apontar ou esquivar).
+     */
+    motion: z
+      .object({
+        action: motionActionSchema,
+        hold: z.enum(['a', 'none']),
+        tilt: z.enum(['aim', 'dodge']).optional(),
+      })
       .optional(),
-    /** Escolha atual (fica destacada). */
-    picked: z.string().max(32).optional(),
-    /** Texto do joystick (por omissão "Posição"). */
-    aimLabel: z.string().max(40).optional(),
-    hint: z.string().max(200).optional(),
-  }),
-  /**
-   * Golfe: escolha do taco (envia `choice` "club:<id>"), joystick para apontar, medidor de força
-   * (toca para começar, toca para parar; parar com ⬆️/⬇️ dá topspin/backspin) e, com o medidor a andar,
-   * joystick para curva/altura. Também dá para balançar o telemóvel como um taco.
-   * Ao começar o medidor envia o botão A; no fim envia `swing` (power até 1.1, dir = curva, loft, spin).
-   */
-  z.object({
-    kind: z.literal('golf'),
-    prompt: z.string().max(200),
-    clubs: z.array(z.object({ id: z.string().min(1).max(16), label: z.string().max(40) })).max(8),
-    club: z.string().max(16),
-    putter: z.boolean(),
-    hint: z.string().max(200).optional(),
-  }),
-  /** Lançar dados: botão grande e, se o telemóvel deixar, abanar. Envia a escolha `roll`. */
-  z.object({
-    kind: z.literal('dice'),
-    prompt: z.string().max(200),
-    label: z.string().max(30),
-    /** Botões extra (ex.: "Ver mapa", usar item). Enviam a escolha com o seu id. */
-    extras: z
-      .array(z.object({ id: z.string().min(1).max(64), label: z.string().min(1).max(40), color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional() }))
-      .max(5)
-      .optional(),
+    /** Cor de destaque (cor da personagem). */
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   }),
 ]);
 

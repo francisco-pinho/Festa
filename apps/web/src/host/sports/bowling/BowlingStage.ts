@@ -57,6 +57,7 @@ export class BowlingStage extends SportStage {
   private readonly benchSpots: THREE.Vector3[] = [];
 
   private aiming: Seat | null = null;
+  private thrower: Seat | null = null;
   private aimX = 0;
   private aimAngle = 0;
   private botTarget: { x: number; angle: number } | null = null;
@@ -216,6 +217,7 @@ export class BowlingStage extends SportStage {
     await this.wait(0.28);
     this.handBall.visible = false;
     phys.launch(t);
+    this.thrower = seat;
     sound.play('roll');
     this.ball.visible = true;
     this.syncPins = true;
@@ -440,6 +442,7 @@ export class BowlingStage extends SportStage {
           this.slowmo = 0.45;
           this.ctx.engine.timeScale = this.baseTimeScale * 0.3;
           sound.play('pins');
+          if (this.thrower) this.ctx.seats.vibrate(this.thrower, [40, 30, 120]);
         }
         // Grava para a repetição.
         if (b.z < PIN_Z + 6) {

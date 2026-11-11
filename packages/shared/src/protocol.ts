@@ -14,6 +14,7 @@ import type {
   hostResumeSchema,
   hostSendSchema,
   hostToControllerSchema,
+  motionActionSchema,
   playerJoinSchema,
 } from './schemas';
 
@@ -21,7 +22,8 @@ export type PlayerId = string;
 export type ButtonId = z.infer<typeof buttonIdSchema>;
 export type ControllerInput = z.infer<typeof controllerInputSchema>;
 export type SwingInput = Extract<ControllerInput, { t: 'swing' }>;
-export type MotionAction = Extract<ControllerLayout, { kind: 'motion' }>['action'];
+export type MotionAction = z.infer<typeof motionActionSchema>;
+export type PadLayout = Extract<ControllerLayout, { kind: 'pad' }>;
 export type ControllerLayout = z.infer<typeof controllerLayoutSchema>;
 export type HostToControllerMessage = z.infer<typeof hostToControllerSchema>;
 export type HostSendRequest = z.infer<typeof hostSendSchema>;

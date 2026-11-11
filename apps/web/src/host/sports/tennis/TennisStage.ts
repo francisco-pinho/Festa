@@ -173,6 +173,7 @@ export class TennisStage extends SportStage {
         this.phase = 'over';
         this.plan = null;
         if (why) void this.ctx.hud.banner(why, { hold: 0.9 });
+        for (const p of this.tplayers) this.ctx.seats.vibrate(p.seat, p.team === winner ? 40 : [90, 40, 90]);
         sound.play('cheer', { vol: 0.5, pitch: 0.7 });
         void this.wait(1.1).then(() => resolve(winner));
       };

@@ -1,7 +1,7 @@
 /**
  * Menu de pausa e definições.
  *
- * - Durante um jogo (`mode = 'game'`): Esc no PC ou ☰ no telemóvel do VIP abre a pausa.
+ * - Durante um jogo (`mode = 'game'`): Esc no PC ou + em qualquer comando abre a pausa.
  *   O tempo do jogo para (Engine.paused) e os telemóveis mostram "Pausa".
  * - No lobby (`mode = 'lobby'`): Esc abre só as definições.
  * - Noutros ecrãs (`mode = 'off'`): o menu não abre.
@@ -10,7 +10,7 @@
  * telemóveis voltam sozinhos.
  */
 import type { Engine } from '../three/Engine';
-import type { PlayerHub } from '../PlayerHub';
+import type { HubPlayer, PlayerHub } from '../PlayerHub';
 import { ANIM_SPEEDS, BOT_LEVELS, VOLUMES, settings } from '../game/Settings';
 import { sound } from '../audio/Sound';
 import { esc } from './Hud';
@@ -28,6 +28,8 @@ export class GameMenu {
   private open = false;
   private screen: Screen = 'main';
   private selected = 0;
+  /** Quem abriu o menu (só esse comando navega). */
+  private controller: HubPlayer | null = null;
   private readonly el: HTMLElement;
 
   constructor(
@@ -41,10 +43,24 @@ export class GameMenu {
 
     // Captura antes dos outros atalhos do jogo, para não "passarem" para trás do menu.
     window.addEventListener('keydown', (e) => this.onKey(e), { capture: true });
-    hub.events.on('choice', ({ player, id }) => {
-      if (!player.isVip) return;
-      if (id === 'menu') this.toggle();
-      else if (this.open && id.startsWith('menu:')) this.phoneAction(id.slice(5));
+    // Comando: + abre/fecha; com o menu aberto, a cruz, A e B de quem o abriu navegam.
+    hub.events.on('press', ({ player, button }) => {
+      if (button === 'plus') {
+        if (!this.open) this.controller = player;
+        this.toggle();
+        return;
+      }
+      if (!this.open || (this.controller && player !== this.controller)) return;
+      const items = this.items();
+      if (button === 'down') this.selected = (this.selected + 1) % items.length;
+      else if (button === 'up') this.selected = (this.selected + items.length - 1) % items.length;
+      else if (button === 'a') return items[this.selected]?.run();
+      else if (button === 'b') {
+        if (this.screen === 'main' || this.mode === 'lobby') this.close();
+        else this.goto('main');
+        return;
+      } else return;
+      this.render();
     });
     settings.events.on('changed', () => {
       this.engine.timeScale = settings.value.animSpeed;
@@ -69,8 +85,7 @@ export class GameMenu {
     this.selected = 0;
     if (this.mode === 'game') {
       this.engine.paused = true;
-      this.hub.suspendLayouts({ kind: 'wait', message: '⏸ Jogo em pausa' });
-      this.sendVipMenu();
+      this.hub.suspendLayouts({ kind: 'pad', title: '⏸ Pausa', sub: 'Menu no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher', b: 'Voltar', plus: 'Continuar' } });
     }
     this.el.hidden = false;
     this.render();
@@ -133,7 +148,7 @@ export class GameMenu {
         ? 'O jogo atual acaba. Os jogadores continuam na sala.'
         : this.screen === 'settings'
           ? `Os bots ${BOT_LEVELS.map((l) => l.label).join(' · ')}: mais precisos e rápidos nos níveis altos.`
-          : 'Esc ou ☰ no telemóvel do VIP para continuar';
+          : 'Esc ou + no comando para continuar';
     this.el.innerHTML = `
       <div class="menu-card">
         <h1>${title}</h1>
@@ -143,42 +158,19 @@ export class GameMenu {
             .map((it, i) => `<button class="menu-item ${i === this.selected ? 'sel' : ''}" data-i="${i}">${esc(it.label)}</button>`)
             .join('')}
         </div>
-        <p class="menu-keys">↑ ↓ escolher · Enter confirmar · Esc fechar</p>
+        <p class="menu-keys">✚ escolher · Ⓐ confirmar · Ⓑ ou + fechar (no PC: setas, Enter, Esc)</p>
       </div>`;
     this.el.querySelectorAll<HTMLButtonElement>('.menu-item').forEach((b) =>
       b.addEventListener('click', () => this.items()[Number(b.dataset.i)]?.run()),
     );
-    if (this.mode === 'game') this.sendVipMenu();
   }
 
-  /** Telemóvel do VIP: as mesmas opções em botões. */
-  private sendVipMenu(): void {
-    const vip = this.hub.vip;
-    if (!vip) return;
-    const options =
-      this.screen === 'confirm'
-        ? [
-            { id: 'menu:exit-yes', label: '✅ Sim, sair' },
-            { id: 'menu:main', label: '↩ Não' },
-          ]
-        : [
-            { id: 'menu:resume', label: '▶ Continuar' },
-            { id: 'menu:bots', label: `🤖 Bots: ${settings.botLevelLabel}` },
-            { id: 'menu:exit', label: '🚪 Sair para o lobby' },
-          ];
-    this.hub.sendTemporaryLayout(vip, { kind: 'choices', prompt: '⏸ Pausa', options });
-  }
-
-  private phoneAction(action: string): void {
-    if (action === 'resume') this.close();
-    else if (action === 'bots') settings.cycleBotLevel();
-    else if (action === 'exit') this.goto('confirm');
-    else if (action === 'exit-yes') location.reload();
-    else if (action === 'main') this.goto('main');
-  }
+  /** Há um menu no ecrã a usar o teclado (o Esc é dele). */
+  keyboardBusy: () => boolean = () => false;
 
   private onKey(e: KeyboardEvent): void {
     if (!this.open) {
+      if (this.keyboardBusy()) return;
       if (e.code === 'Escape' && this.mode !== 'off') {
         e.stopImmediatePropagation();
         e.preventDefault();

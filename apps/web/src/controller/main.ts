@@ -1,7 +1,7 @@
 /**
  * Comando no telemóvel. Página web simples (sem instalar nada):
  * entra na sala com código + nome e depois mostra o que o ecrã principal pedir
- * (gamepad, escolhas ou espera).
+ * (o comando, sempre igual, ou um ecrã de espera).
  */
 import './controller.css';
 import { ROOM_CODE_LENGTH } from '@festa/shared';
@@ -14,9 +14,7 @@ import type {
   PlayerInfo,
 } from '@festa/shared';
 import { ACK_TIMEOUT_MS, connectSocket } from '../common/socket';
-import { capture, createJoystick } from './joystick';
-import { renderMotion } from './motion';
-import { renderGolf } from './golf';
+import { renderPad } from './pad';
 import { sensors } from './sensors';
 
 const SESSION_KEY = 'festa.session';
@@ -77,7 +75,10 @@ app.innerHTML = `
 const $ = <T extends HTMLElement>(sel: string) => app.querySelector<T>(sel)!;
 const view = $('#view');
 $('#sensor').addEventListener('click', openSensorSheet);
-$('#menu').addEventListener('click', () => send({ t: 'choice', id: 'menu' }));
+$('#menu').addEventListener('click', () => {
+  send({ t: 'button', button: 'plus', pressed: true });
+  send({ t: 'button', button: 'plus', pressed: false });
+});
 $('#rotate').addEventListener('click', goLandscape);
 // Qualquer toque durante o jogo tenta voltar a ecrã inteiro/horizontal (após recarregar a página).
 document.addEventListener('pointerdown', () => {
@@ -263,144 +264,12 @@ function renderLayout(): void {
     case 'wait':
       setView(`<div class="wait"><div class="pulse"></div><p>${escapeHtml(l.message)}</p></div>`);
       break;
-    case 'choices':
-      renderChoices(l);
-      break;
-    case 'gamepad':
-      renderGamepad(l);
-      break;
-    case 'dice':
-      renderDice(l);
-      break;
-    case 'motion':
+    case 'pad':
       setView('');
-      cleanupView = renderMotion(view, l, send);
-      break;
-    case 'golf':
-      setView('');
-      cleanupView = renderGolf(view, l, send);
+      cleanupView = renderPad(view, l, send, stickSender);
       break;
   }
   shownLayout = layout;
-}
-
-function renderChoices(l: Extract<ControllerLayout, { kind: 'choices' }>): void {
-  const cols = l.columns ?? 1;
-  setView(`
-    <div class="choices ${cols > 1 ? 'grid' : ''}" style="--cols:${cols}">
-      <p class="prompt">${escapeHtml(l.prompt)}</p>
-      <div class="options">
-        ${l.options
-          .map(
-            (o) => `<button class="choice" data-id="${escapeHtml(o.id)}" ${o.disabled ? 'disabled data-locked' : ''}
-              ${o.color ? `style="--opt:${o.color}"` : ''}>${o.color ? '<span class="swatch"></span>' : ''}${escapeHtml(o.label)}</button>`,
-          )
-          .join('')}
-      </div>
-    </div>
-  `);
-  const buttons = [...view.querySelectorAll<HTMLButtonElement>('.choice')];
-  buttons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      navigator.vibrate?.(15);
-      send({ t: 'choice', id: btn.dataset.id! });
-      btn.classList.add('chosen');
-      buttons.forEach((b) => (b.disabled = true));
-      setTimeout(() => buttons.forEach((b) => (b.disabled = b.hasAttribute('data-locked'))), 800);
-    });
-  });
-}
-
-/** Lançar dados: botão grande ou abanar o telemóvel. */
-function renderDice(l: Extract<ControllerLayout, { kind: 'dice' }>): void {
-  setView(`
-    <div class="dice">
-      <p class="prompt">${escapeHtml(l.prompt)}</p>
-      <button class="roll"><span class="die">🎲</span>${escapeHtml(l.label)}</button>
-      <p class="shake-hint" hidden>📳 …ou abana o telemóvel!</p>
-      <button class="shake-enable" hidden>📳 Ativar abanar</button>
-      ${l.extras?.length ? `<div class="dice-extras">${l.extras.map((x) => `<button class="dice-extra" data-id="${escapeHtml(x.id)}" ${x.color ? `style="--opt:${x.color}"` : ''}>${escapeHtml(x.label)}</button>`).join('')}</div>` : ''}
-    </div>
-  `);
-  view.querySelectorAll<HTMLButtonElement>('.dice-extra').forEach((b) =>
-    b.addEventListener('click', () => {
-      navigator.vibrate?.(15);
-      send({ t: 'choice', id: b.dataset.id! });
-    }),
-  );
-  const button = view.querySelector<HTMLButtonElement>('.roll')!;
-  const hint = view.querySelector<HTMLElement>('.shake-hint')!;
-  const enable = view.querySelector<HTMLButtonElement>('.shake-enable')!;
-  let rolled = false;
-  let offShake: (() => void) | null = null;
-  const roll = () => {
-    if (rolled) return;
-    rolled = true;
-    offShake?.();
-    navigator.vibrate?.([30, 30, 60]);
-    send({ t: 'choice', id: 'roll' });
-    button.disabled = true;
-    button.classList.add('rolled');
-  };
-  button.addEventListener('click', roll);
-
-  const startShake = () => {
-    hint.hidden = false;
-    enable.hidden = true;
-    offShake = sensors.onShake(roll);
-  };
-  if (sensors.active) startShake();
-  else if (sensors.supported) {
-    // Pode ainda não ter chegado nenhuma leitura (Android) ou precisar de autorização (iPhone).
-    const offChange = sensors.onChange(() => sensors.active && !offShake && startShake());
-    enable.hidden = false;
-    enable.addEventListener('click', async () => {
-      if (await sensors.enable()) startShake();
-      else enable.textContent = '📵 Sensor indisponível — usa o botão';
-    });
-    cleanupView = () => {
-      offChange();
-      offShake?.();
-    };
-    return;
-  }
-  cleanupView = () => offShake?.();
-}
-
-function renderGamepad(l: Extract<ControllerLayout, { kind: 'gamepad' }>): void {
-  setView(`
-    <div class="gamepad">
-      ${l.stick ? '<div class="stick-zone"></div>' : '<div class="spacer"></div>'}
-      <div class="buttons">
-        ${l.hint ? `<p class="hint">${escapeHtml(l.hint)}</p>` : ''}
-        ${l.buttons.map((b) => `<button class="pad-btn btn-${b.id}" data-id="${b.id}">${escapeHtml(b.label || b.id.toUpperCase())}</button>`).join('')}
-      </div>
-    </div>
-  `);
-  const cleanups: (() => void)[] = [];
-  const zone = view.querySelector<HTMLElement>('.stick-zone');
-  if (zone) cleanups.push(createJoystick(zone, { onChange: stickSender }));
-
-  view.querySelectorAll<HTMLButtonElement>('.pad-btn').forEach((btn) => {
-    const button = btn.dataset.id as 'a' | 'b';
-    let down = false;
-    const set = (pressed: boolean) => {
-      if (pressed === down) return;
-      down = pressed;
-      btn.classList.toggle('down', pressed);
-      if (pressed) navigator.vibrate?.(10);
-      send({ t: 'button', button, pressed });
-    };
-    btn.addEventListener('pointerdown', (e) => {
-      set(true);
-      capture(btn, e.pointerId);
-      e.preventDefault();
-    });
-    btn.addEventListener('pointerup', () => set(false));
-    btn.addEventListener('pointercancel', () => set(false));
-    cleanups.push(() => set(false));
-  });
-  cleanupView = () => cleanups.forEach((fn) => fn());
 }
 
 // ── Avisos ────────────────────────────────────────────────

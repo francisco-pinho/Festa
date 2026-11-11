@@ -153,11 +153,11 @@ export class BoxingStage extends SportStage {
               kind: 'motion',
               action: 'punch',
               aim: true,
-              hands: true,
+              aimLabel: 'Mover',
               guard: true,
               dodge: true,
               prompt: `Contra ${f === fa ? b.name : a.name}!`,
-              hint: 'Tocar = direto · arrastar de lado = gancho · para cima = uppercut · inclina ou ⬅️➡️ para esquivar',
+              hint: 'Soco em frente = direto · de lado = gancho · de baixo para cima = uppercut · inclina para esquivar',
             }
           : { kind: 'wait', message: `A ver: ${a.name} 🥊 ${b.name}` },
       );
@@ -290,7 +290,8 @@ export class BoxingStage extends SportStage {
     if (f.down || f.punch || f.dodge) return false;
     if (f.bot.guard > 0) return true;
     if (this.ctx.seats.isAuto(f.seat)) return false;
-    return this.ctx.seats.hubPlayer(f.seat)?.guarding ?? false;
+    const hp = this.ctx.seats.hubPlayer(f.seat);
+    return !!hp && (hp.guarding || hp.held.b);
   }
 
   private startPunch(f: Fighter, kind: PunchKind, hand: Hand, gesturePower: number, tell = 0): void {
@@ -468,8 +469,8 @@ export class BoxingStage extends SportStage {
         const pad = this.ctx.seats.pad(f.seat);
         stickX = pad.stick.x;
         stickY = pad.stick.y;
-        if (pad.consumePress('a')) this.startDodge(f, -1);
-        if (pad.consumePress('b')) this.startDodge(f, 1);
+        if (pad.consumePress('x')) this.startDodge(f, -1);
+        if (pad.consumePress('y')) this.startDodge(f, 1);
         const tilt = this.ctx.seats.aim(f.seat);
         if (tilt > 0.65 && f.lastTilt <= 0.65) this.startDodge(f, 1);
         if (tilt < -0.65 && f.lastTilt >= -0.65) this.startDodge(f, -1);

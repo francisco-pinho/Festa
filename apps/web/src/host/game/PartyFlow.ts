@@ -65,7 +65,6 @@ import {
   type RoundEvent,
   type ShopDef,
 } from '@festa/game';
-import type { ControllerLayout } from '@festa/shared';
 import type { Engine } from '../three/Engine';
 import type { PlayerHub } from '../PlayerHub';
 import { BoardStage } from '../stages/BoardStage';
@@ -75,7 +74,7 @@ import { Hud, esc, type ScoreEntry } from '../ui/Hud';
 import type { GameMenu } from '../ui/GameMenu';
 import { MINIGAMES, MODE_LABEL, pickDuel, pickMinigame } from '../minigames';
 import type { MinigameContext, MinigameSeat } from '../minigames/types';
-import type { Seat, SeatControl } from './Seats';
+import type { DiceLayout, Seat, SeatControl } from './Seats';
 import { settings } from './Settings';
 
 const PATH_COLORS = ['#ffd23f', '#3fd0ff', '#ff6fb5'];
@@ -219,6 +218,18 @@ export class PartyFlow {
     if (this.mapOpen) this.toggleMap();
   }
 
+  /** Moedas a voar + vibração no comando de quem ganha (curta) ou perde (forte). */
+  private coinBurst(id: string, amount: number): void {
+    this.stage.coinBurst(id, amount);
+    const seat = this.d.seats.find((x) => x.id === id);
+    if (seat && amount) this.ctl.vibrate(seat, amount > 0 ? [20, 30, 20] : [90, 50, 90]);
+  }
+
+  private buzz(id: string, pattern: number | number[]): void {
+    const seat = this.d.seats.find((x) => x.id === id);
+    if (seat) this.ctl.vibrate(seat, pattern);
+  }
+
   private async roundEvents(events: RoundEvent[]): Promise<void> {
     for (const ev of events) {
       if (ev.kind === 'tide') {
@@ -243,7 +254,7 @@ export class PartyFlow {
           for (const b of ev.burned) {
             this.stage.focus(b.id, true);
             this.stage.token(b.id).setAnim('hurt');
-            this.stage.coinBurst(b.id, -b.amount);
+            this.coinBurst(b.id, -b.amount);
             this.stage.floatText(b.id, `🔥 -${b.amount} 🪙`, '#ff6b7a');
             this.ctl.vibrate(this.seat(b.id), [120, 60, 120]);
             await this.wait(1.1);
@@ -330,6 +341,7 @@ export class PartyFlow {
     if (plan.dice > 0) await this.rollPrompt(seat, plan.dice === 3 ? 'Lança os três dados!' : 'Lança os dois dados!');
     const values = Array.from({ length: plan.dice }, () => rollDieFor(p, this.rng));
     clearSlowDice(p);
+    this.buzz(p.id, [30, 30, 60]);
     await this.stage.hitDice(p.id, values);
     await this.wait(0.7);
     if (plan.dice === 2 && isDoubles(values)) {
@@ -346,7 +358,7 @@ export class PartyFlow {
     let total = values.reduce((a, b) => a + b, 0);
     if (plan.golden) {
       const got = addCoins(p, total);
-      this.stage.coinBurst(p.id, got);
+      this.coinBurst(p.id, got);
       await this.hud.banner(`🪙 Dado Dourado: +${got} moedas!`, { hold: 1.3, color: '#ffd23f' });
     }
     if (plan.bonus) {
@@ -375,6 +387,7 @@ export class PartyFlow {
         await this.stage.travelTunnel(p.id, next, tunnel.kind);
         this.stage.focus(p.id);
       } else {
+        this.buzz(p.id, 12);
         await this.stage.hop(p.id, next);
       }
       p.spaceId = next;
@@ -412,7 +425,7 @@ export class PartyFlow {
     const seat = this.seat(p.id);
     for (;;) {
       const itemExtras = usedItem ? [] : p.items.map((i, idx) => ({ id: `item:${idx}:${i}`, label: `${ITEMS[i].emoji} ${ITEMS[i].name}`, color: '#ff6fb5' }));
-      const layout: ControllerLayout = {
+      const layout: DiceLayout = {
         kind: 'dice',
         prompt: usedItem || !p.items.length ? 'Lança os dados!' : 'Usa um item ou lança os dados!',
         label: 'Lançar!',
@@ -506,8 +519,8 @@ export class PartyFlow {
         break;
       case 'ima': {
         const got = stealCoins(target!, p, this.rng.int(5, 10));
-        this.stage.coinBurst(target!.id, -got);
-        this.stage.coinBurst(p.id, got);
+        this.coinBurst(target!.id, -got);
+        this.coinBurst(p.id, got);
         this.stage.focusPoint(this.stage.token(target!.id).root.position.x, this.stage.token(target!.id).root.position.z, 1.4);
         await this.hud.banner(`🧲 ${p.name} roubou ${got} moedas a ${target!.name}!`, { hold: 1.8 });
         this.stage.focus(p.id);
@@ -618,7 +631,7 @@ export class PartyFlow {
       this.ctl.setLayout(seat, { kind: 'wait', message: '👻' });
       if (answer === 'buy' && ghostSellStar(p)) {
         bought = true;
-        this.stage.coinBurst(p.id, -RULES.ghostStarPrice);
+        this.coinBurst(p.id, -RULES.ghostStarPrice);
         token.setAnim('cheer');
         this.ctl.vibrate(seat, [60, 40, 200]);
         this.scoreboard(p.id);
@@ -628,7 +641,7 @@ export class PartyFlow {
     if (!bought) {
       const lost = ghostSteal(p, this.rng);
       token.setAnim('sad');
-      this.stage.coinBurst(p.id, -lost);
+      this.coinBurst(p.id, -lost);
       this.ctl.vibrate(seat, [80, 60, 80]);
       this.scoreboard();
       await this.hud.banner('👻 O fantasma roubou-te!', { sub: lost ? `${p.name} perdeu ${lost} moedas` : 'Mas não tinhas moedas…', hold: 1.6, color: '#b98cff' });
@@ -664,7 +677,7 @@ export class PartyFlow {
     if (answer === 'buy' && buyStar(this.state, p, this.rng)) {
       this.scoreboard(p.id);
       this.ctl.vibrate(seat, [60, 40, 60, 40, 200]);
-      this.stage.coinBurst(p.id, -RULES.starCost);
+      this.coinBurst(p.id, -RULES.starCost);
       await this.stage.collectStar(p.id);
       await this.hud.banner(`${p.name} ganhou uma estrela!`, { hold: 1.8, color: '#ffd23f' });
       const next = getSpace(this.state.board, this.state.starSpaceId);
@@ -688,7 +701,7 @@ export class PartyFlow {
     this.stage.focusPoint(s.x, s.z, 0.8);
     if (shop.kind === 'ultimo') {
       const got = addCoins(p, LAST_PLACE_GIFT);
-      this.stage.coinBurst(p.id, got);
+      this.coinBurst(p.id, got);
       this.scoreboard(p.id);
     }
     const sale = state.saleShopId === shop.id;
@@ -727,7 +740,7 @@ export class PartyFlow {
       const price = stock.find((x) => x.item === item)!.price;
       addCoins(p, -price);
       p.items.push(item);
-      this.stage.coinBurst(p.id, -price);
+      this.coinBurst(p.id, -price);
       this.stage.token(p.id).setAnim('cheer');
       this.scoreboard(p.id);
       await this.hud.banner(`${ITEMS[item].emoji} ${p.name} comprou: ${ITEMS[item].name}`, { hold: 1.4 });
@@ -749,6 +762,8 @@ export class PartyFlow {
 
   /** Duelo 1 contra 1. Devolve o id de quem ganhou (ou null em empate). */
   private async duel(a: PartyPlayer, b: PartyPlayer, title: string): Promise<string | null> {
+    this.buzz(a.id, [60, 40, 60]);
+    this.buzz(b.id, [60, 40, 60]);
     this.stage.focusPoint(this.stage.token(a.id).root.position.x, this.stage.token(a.id).root.position.z, 0.9);
     this.stage.token(a.id).setAnim('block');
     this.stage.token(b.id).setAnim('block');
@@ -766,8 +781,8 @@ export class PartyFlow {
     const res = resolveDuel(this.state, winner, loser);
     this.scoreboard();
     this.stage.focus(loser.id);
-    this.stage.coinBurst(loser.id, -res.coins);
-    this.stage.coinBurst(winner.id, res.coins);
+    this.coinBurst(loser.id, -res.coins);
+    this.coinBurst(winner.id, res.coins);
     this.stage.token(winner.id).setAnim('cheer');
     this.stage.token(loser.id).setAnim('sad');
     await this.hud.banner(`${winner.name} ganha o duelo!`, { sub: `${loser.name} dá ${res.coins} 🪙 e recua ${RULES.duelStepsBack} casas`, hold: 2, color: '#ffd23f' });
@@ -788,7 +803,7 @@ export class PartyFlow {
     if (e.kind === 'coins') {
       const good = e.amount >= 0;
       this.stage.floatText(p.id, `${good ? '+' : ''}${e.amount} 🪙`, good ? '#ffd23f' : '#ff6b7a');
-      this.stage.coinBurst(p.id, e.amount);
+      this.coinBurst(p.id, e.amount);
       token.setAnim(good ? 'cheer' : 'sad');
       this.ctl.vibrate(seat, good ? 40 : [80, 60, 80]);
       if (landing.type === 'lucky') await this.hud.banner('Casa da sorte!', { sub: `+${e.amount} moedas`, hold: 1.4, color: '#25c26b' });
@@ -796,8 +811,8 @@ export class PartyFlow {
       else await this.wait(1.1);
     } else if (e.kind === 'give') {
       const to = getPlayer(state, e.to);
-      this.stage.coinBurst(p.id, -e.amount);
-      this.stage.coinBurst(to.id, e.amount);
+      this.coinBurst(p.id, -e.amount);
+      this.coinBurst(to.id, e.amount);
       token.setAnim('sad');
       this.stage.token(to.id).setAnim('cheer');
       await this.hud.banner('Que azar!', { sub: `${p.name} dá ${e.amount} moedas a ${to.name}`, hold: 1.8, color: '#b98cff' });
@@ -822,11 +837,12 @@ export class PartyFlow {
       const idx = Math.max(0, list.indexOf(result));
       await this.hud.roulette('🎁 Item grátis!', list, idx, 1.2);
       token.setAnim('cheer');
-      if (!e.item) this.stage.coinBurst(p.id, e.coins);
+      if (!e.item) this.coinBurst(p.id, e.coins);
       await this.hud.banner(e.item ? `${p.name} ganhou: ${ITEMS[e.item].name}` : 'Inventário cheio: +5 moedas', { hold: 1.4 });
     } else if (e.kind === 'vs') {
       await this.vs(p);
     } else if (e.kind === 'villain') {
+      this.buzz(p.id, [150, 60, 150]);
       const kinds = Object.keys(VILLAIN_LABELS) as (keyof typeof VILLAIN_LABELS)[];
       token.setAnim('dizzy');
       await this.hud.banner('😈 O Trapaceiro apareceu!', { sub: `Vamos ver que partida prega a ${p.name}…`, hold: 1.6, color: '#b98cff' });
@@ -839,10 +855,10 @@ export class PartyFlow {
         for (const o of state.players) this.stage.floatText(o.id, `= ${o.coins} 🪙`, '#ffd23f');
         await this.wait(1.2);
       } else if (e.event.kind === 'loseCoins') {
-        this.stage.coinBurst(p.id, -e.event.amount);
+        this.coinBurst(p.id, -e.event.amount);
         await this.wait(1);
       } else if (e.event.kind === 'payEveryone') {
-        this.stage.coinBurst(p.id, -e.event.each * (state.players.length - 1));
+        this.coinBurst(p.id, -e.event.each * (state.players.length - 1));
         await this.wait(1);
       } else if (e.event.kind === 'loseStar') {
         token.setAnim('sad');
@@ -855,8 +871,8 @@ export class PartyFlow {
     if (landing.trap) {
       const owner = getPlayer(state, landing.trap.owner);
       this.stage.setTraps(state.traps);
-      this.stage.coinBurst(p.id, -landing.trap.amount);
-      this.stage.coinBurst(owner.id, landing.trap.amount);
+      this.coinBurst(p.id, -landing.trap.amount);
+      this.coinBurst(owner.id, landing.trap.amount);
       token.setAnim('dizzy');
       await this.hud.banner('🪤 Armadilha!', { sub: `${p.name} paga ${landing.trap.amount} 🪙 a ${owner.name}`, hold: 1.8, color: '#ff6b7a' });
       token.setAnim('idle');
@@ -869,6 +885,8 @@ export class PartyFlow {
   }
 
   private async swapAnimation(a: string, b: string): Promise<void> {
+    this.buzz(a, [40, 40, 40]);
+    this.buzz(b, [40, 40, 40]);
     const ta = this.stage.token(a);
     const tb = this.stage.token(b);
     const pa = ta.root.position.clone();
@@ -891,13 +909,13 @@ export class PartyFlow {
   private async vs(p: PartyPlayer): Promise<void> {
     const state = this.state;
     const { pot } = collectVs(state);
-    for (const o of state.players) this.stage.coinBurst(o.id, -RULES.vsStake);
+    for (const o of state.players) this.coinBurst(o.id, -RULES.vsStake);
     this.scoreboard();
     await this.hud.banner('⚔️ VS!', { sub: `${p.name} chamou todos! Cada um põe ${RULES.vsStake} 🪙 · pote de ${pot} 🪙`, hold: 2.4, color: '#ffd23f' });
     const teams: MinigameTeams = { mode: 'ffa', blue: state.players.map((o) => o.id), red: [] };
     const winners = await this.runMinigame(state.players, teams, '⚔️ VS: o pote é de quem ganhar');
     const got = awardVs(state, winners, pot);
-    for (const [id, v] of got) this.stage.coinBurst(id, v);
+    for (const [id, v] of got) this.coinBurst(id, v);
     this.scoreboard();
     await this.hud.banner(winners.length ? `${winners.map((id) => getPlayer(state, id).name).join(' e ')} leva${winners.length > 1 ? 'm' : ''} o pote!` : 'Ninguém ganhou — o pote perde-se!', { hold: 2 });
   }
@@ -1088,19 +1106,9 @@ export class PartyFlow {
     const panel = this.hud.panelElement();
     panel.classList.add('compact');
     for (const r of ranked) this.ctl.setLayout(this.seat(r.player.id), { kind: 'wait', message: `Ficaste em ${r.rank}.º lugar com ${r.player.stars} ⭐!` });
-    this.hud.hint('Enter ou o VIP no telemóvel: voltar ao lobby', true);
     const vip = this.d.hub.vip;
-    if (vip) this.d.hub.setLayout({ kind: 'choices', prompt: 'Obrigado por jogares!', options: [{ id: 'lobby', label: 'Voltar ao lobby' }] }, vip);
-    await new Promise<void>((resolve) => {
-      const off = this.d.hub.events.on('choice', ({ player, id }) => player.isVip && id === 'lobby' && done());
-      const onKey = (e: KeyboardEvent) => e.code === 'Enter' && done();
-      window.addEventListener('keydown', onKey);
-      function done() {
-        off();
-        window.removeEventListener('keydown', onKey);
-        resolve();
-      }
-    });
+    if (vip) this.d.hub.setLayout({ kind: 'pad', title: 'Obrigado por jogares!', sub: 'Escolhe no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher' } }, vip);
+    await this.ctl.menus.ask({ player: vip ?? null, keyboard: true, title: 'Fim da festa', options: [{ id: 'lobby', label: '↩ Voltar ao menu principal' }] });
     panel.classList.remove('compact');
     this.hud.panel(null);
     this.hud.hint(null);

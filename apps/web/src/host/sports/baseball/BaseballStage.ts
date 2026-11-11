@@ -167,8 +167,13 @@ export class BaseballStage extends SportStage {
 
   async play(): Promise<SportStanding[]> {
     this.offs.push(
-      this.ctx.hub.events.on('choice', ({ player, id }) => {
-        if (this.aiming && player.id === this.aiming.seat.id && (PITCH_IDS as string[]).includes(id)) this.aiming.type = id as PitchType;
+      this.ctx.hub.events.on('press', ({ player, button }) => {
+        const a = this.aiming;
+        if (!a || player.id !== a.seat.id || button !== 'x') return;
+        a.type = PITCH_IDS[(PITCH_IDS.indexOf(a.type) + 1) % PITCH_IDS.length]!;
+        this.setLayout(a.seat, this.pitchLayout(a.type));
+        this.lastPitchText = `${PITCHES[a.type].emoji} ${PITCHES[a.type].label}`;
+        this.drawBoard();
       }),
     );
     this.cameraTo({ x: 30, y: 30, z: 40 }, { x: 0, y: 0, z: -40 }, { instant: true });
@@ -310,16 +315,7 @@ export class BaseballStage extends SportStage {
     this.zoneTarget.visible = !autoPitcher;
     this.batBar.visible = true;
     const swing = await this.ctx.seats.awaitSwing(pitcher, {
-      layout: {
-        kind: 'motion',
-        action: 'pitch',
-        aim: true,
-        aimLabel: 'Zona',
-        picks: PITCH_IDS.map((id) => ({ id, label: `${PITCHES[id].emoji} ${PITCHES[id].label}` })),
-        picked: 'fastball',
-        prompt: `Lança a ${batter.name}! Escolhe o lançamento e aponta`,
-        hint: 'Gesto mais rápido = bola mais rápida · a curva e a screwball fogem para lados opostos',
-      },
+      layout: this.pitchLayout('fastball'),
       bot: () => ({ t: 'swing', power: plan.power, dir: 0, spin: 0, source: 'key' }),
       botDelay: 1.3,
     });
@@ -377,6 +373,7 @@ export class BaseballStage extends SportStage {
         if (c) {
           hit = { c, at: this.ball.position.clone() };
           sound.play('bat');
+          this.ctx.seats.vibrate(batter, [30, 20, 90]);
           break;
         }
         if (this.pitchT > (swingAt as number) + 0.05) swingAt = Number.NaN; // falhou: não tenta outra vez
@@ -640,6 +637,18 @@ export class BaseballStage extends SportStage {
     }
     next[0] = this.newRunner(batter, 1);
     this.runners = next;
+  }
+
+  private pitchLayout(type: PitchType): import('../../game/Seats').MotionLayout {
+    return {
+      kind: 'motion',
+      action: 'pitch',
+      aim: true,
+      aimLabel: 'Zona',
+      pick: `${PITCHES[type].emoji} ${PITCHES[type].label}`,
+      prompt: 'Aponta a zona, X muda o lançamento, segura A e lança!',
+      hint: 'Gesto mais rápido = bola mais rápida · a curva e a screwball fogem para lados opostos',
+    };
   }
 
   private botPitch(): { type: PitchType; x: number; y: number; power: number } {

@@ -72,7 +72,7 @@ export class GolfStage extends SportStage {
   private botAim: number | null = null;
   private previewAt = 0;
   private path: THREE.Vector2[] = [];
-  private offChoice: (() => void) | null = null;
+  private meter: { el: HTMLElement; fill: HTMLElement; t: number; max: number; period: number; running: boolean } | null = null;
 
   constructor(ctx: SportContext) {
     super(ctx);
@@ -123,15 +123,6 @@ export class GolfStage extends SportStage {
   }
 
   async play(): Promise<SportStanding[]> {
-    this.offChoice = this.ctx.hub.events.on('choice', ({ player, id }) => {
-      if (!this.aiming || this.aimLocked || player.id !== this.aiming.seat.id || !id.startsWith('club:')) return;
-      const c = id.slice(5) as Club;
-      if (CLUB_ORDER.includes(c)) {
-        this.club = c;
-        this.previewAt = 0;
-        this.say(CLUBS[c].name);
-      }
-    });
     for (let h = 0; h < this.course.length; h++) await this.playHole(this.course[h]!, h);
     this.ctx.hud.setRound(null);
     const ranked = rankBy(this.golfers, (g) => g.total, false);
@@ -224,19 +215,8 @@ export class GolfStage extends SportStage {
       botShot.power = Math.max(0.05, Math.min(1, botShot.power * (1 + gauss() * (1 - skill) * (onGreen ? 0.32 : 0.18))));
       this.botAim = botShot.angle;
     }
-    const clubs = (onGreen ? (['putter', 'wedge'] as Club[]) : dist < 18 ? CLUB_ORDER : CLUB_ORDER.filter((c) => c !== 'putter')).map((id) => ({ id, label: CLUBS[id].name }));
-    const swing = await this.ctx.seats.awaitSwing(g.seat, {
-      layout: {
-        kind: 'golf',
-        prompt: `${Math.round(dist)} m até ao buraco · ${LIE_NAME[lie]}`,
-        clubs,
-        club: this.club,
-        putter: this.club === 'putter',
-        hint: tip,
-      },
-      bot: () => ({ t: 'swing', power: botShot!.power, dir: 0, spin: 0, loft: 0, source: 'key' }),
-      botDelay: 2,
-    });
+    const clubs = onGreen ? (['putter', 'wedge'] as Club[]) : dist < 18 ? CLUB_ORDER : CLUB_ORDER.filter((c) => c !== 'putter');
+    const swing = await this.meterSwing(g, clubs, dist, lie, tip, botShot);
     this.botAim = null;
     if (botShot) this.aimAngle = botShot.angle;
     this.aiming = null;
@@ -282,6 +262,7 @@ export class GolfStage extends SportStage {
       const newLie = result.lie;
       if (newLie === 'water' || newLie === 'out') {
         if (newLie === 'water') sound.play('splash');
+        this.ctx.seats.vibrate(g.seat, [100, 50, 100]);
         sound.play('aww', { vol: 0.5 });
         g.strokes++;
         m.setAnim('sad');
@@ -302,6 +283,119 @@ export class GolfStage extends SportStage {
       }
     }
     this.updateHud();
+  }
+
+  /**
+   * Tacada com botões: X/Y mudam de taco, A começa o medidor (no ecrã grande) e A/X/Y param-no
+   * (normal, topspin, backspin). Com o medidor a andar, o joystick dá curva e altura.
+   */
+  private meterSwing(g: GolferState, clubs: Club[], dist: number, lie: Lie, tip: string, botShot: Shot | null): Promise<{ power: number; dir: number; spin: number; loft: number }> {
+    const seat = g.seat;
+    const aimLayout = () => {
+      const i = clubs.indexOf(this.club);
+      this.setLayout(seat, {
+        kind: 'pad',
+        color: getCharacter(seat.characterId).color,
+        title: `${CLUBS[this.club].name} · ${Math.round(dist)} m até ao buraco`,
+        sub: `${LIE_NAME[lie]} · ${tip.replace(/^Caddie: /, '')}`,
+        stick: 'stick',
+        stickLabel: 'Apontar',
+        buttons: {
+          a: 'Tacada!',
+          x: i > 0 ? `◀ ${CLUBS[clubs[i - 1]!].name}` : undefined,
+          y: i < clubs.length - 1 ? `${CLUBS[clubs[i + 1]!].name} ▶` : undefined,
+          plus: 'Menu',
+        },
+      });
+    };
+    if (!clubs.includes(this.club)) this.club = clubs[0]!;
+    aimLayout();
+    return new Promise((resolve) => {
+      let phase = 'aim' as 'aim' | 'meter' | 'done';
+      const finish = (r: { power: number; dir: number; spin: number; loft: number }) => {
+        if (phase === 'done') return;
+        phase = 'done';
+        off();
+        this.hideMeter();
+        resolve(r);
+      };
+      const stop = (spin: number) => {
+        const m = this.meter!;
+        const v = this.meterValue(Math.max(0, m.t - 0.05));
+        const pad = this.ctx.seats.pad(seat);
+        const putt = this.club === 'putter';
+        sound.play('click');
+        this.ctx.seats.vibrate(seat, v > 1 ? [40, 30, 80] : 40);
+        finish({ power: Math.max(0.03, v), dir: putt ? 0 : pad.stick.x, spin: putt ? 0 : spin, loft: putt ? 0 : -pad.stick.y });
+      };
+      const off = this.ctx.hub.events.on('press', ({ player, button }) => {
+        if (player.id !== seat.id || this.ctx.seats.menus.blocked) return;
+        if (phase === 'aim') {
+          const i = clubs.indexOf(this.club);
+          if ((button === 'x' && i > 0) || (button === 'y' && i < clubs.length - 1)) {
+            this.club = clubs[i + (button === 'x' ? -1 : 1)]!;
+            this.previewAt = 0;
+            this.say(CLUBS[this.club].name);
+            sound.play('tick');
+            aimLayout();
+          } else if (button === 'a') {
+            phase = 'meter';
+            this.aimLocked = true;
+            this.showMeter();
+            sound.play('whoosh', { vol: 0.4 });
+            this.setLayout(seat, {
+              kind: 'pad',
+              color: getCharacter(seat.characterId).color,
+              title: 'Para o medidor!',
+              sub: this.club === 'putter' ? 'A para parar' : 'A normal · X topspin (rola mais) · Y backspin (trava)',
+              stick: 'stick',
+              stickLabel: this.club === 'putter' ? '' : 'Curva ↔ · Altura ↕',
+              buttons: { a: 'Parar', x: this.club === 'putter' ? undefined : 'Topspin', y: this.club === 'putter' ? undefined : 'Backspin' },
+            });
+          }
+        } else if (phase === 'meter') {
+          if (button === 'a') stop(0);
+          else if (button === 'x' && this.club !== 'putter') stop(1);
+          else if (button === 'y' && this.club !== 'putter') stop(-1);
+        }
+      });
+      // Bots (e quem se desligar) e medidor que chegou ao fim.
+      void (async () => {
+        let waited = 0;
+        while (phase !== 'done') {
+          await this.wait(0.05);
+          if (phase === 'meter' && this.meter && this.meter.t >= this.meter.period * 2) finish({ power: 0.03, dir: 0, spin: 0, loft: 0 });
+          waited = this.ctx.seats.isAuto(seat) ? waited + 0.05 : 0;
+          if (waited >= 2 && botShot) finish({ power: botShot.power, dir: 0, spin: 0, loft: 0 });
+        }
+      })();
+    });
+  }
+
+  private meterValue(t: number): number {
+    const m = this.meter;
+    if (!m) return 0;
+    const k = t / m.period;
+    return k <= 1 ? k * m.max : Math.max(0, (2 - k) * m.max);
+  }
+
+  private showMeter(): void {
+    this.hideMeter();
+    const putt = this.club === 'putter';
+    const max = putt ? 1 : 1.1;
+    const el = document.createElement('div');
+    el.className = 'golf-meter';
+    el.innerHTML = `<div class="gm-bar"><div class="gm-red" style="height:${putt ? 0 : ((max - 1) / max) * 100}%"></div><div class="gm-mark" style="bottom:${(1 / max) * 100}%"></div><div class="gm-fill"></div></div><div class="gm-val">0%</div><div class="gm-club">${CLUBS[this.club].name}</div>`;
+    document.getElementById('ui')!.appendChild(el);
+    this.meter = { el, fill: el.querySelector<HTMLElement>('.gm-fill')!, t: 0, max, period: putt ? 1.7 : 1.3, running: true };
+  }
+
+  private hideMeter(): void {
+    if (!this.meter) return;
+    const el = this.meter.el;
+    this.meter.running = false;
+    setTimeout(() => el.remove(), 700);
+    this.meter = null;
   }
 
   /** Mostra a bola a seguir a simulação, com a câmara a acompanhar. */
@@ -388,11 +482,18 @@ export class GolfStage extends SportStage {
   // ── Por frame ───────────────────────────────────────────
 
   protected override tick(dt: number, time: number): void {
+    if (this.meter?.running) {
+      const m = this.meter;
+      m.t += dt;
+      const v = this.meterValue(m.t);
+      m.fill.style.height = `${(v / m.max) * 100}%`;
+      m.fill.classList.toggle('over', v > 1);
+      m.el.querySelector('.gm-val')!.textContent = `${Math.round(v * 100)}%`;
+    }
     this.caddie.update(dt);
     const g = this.aiming;
     if (!g) return;
     const pad = this.ctx.seats.pad(g.seat);
-    if (pad.consumePress('a')) this.aimLocked = true;
     if (this.botAim !== null) this.aimAngle += (this.botAim - this.aimAngle) * Math.min(1, dt * 2);
     else if (!this.aimLocked) this.aimAngle -= pad.stick.x * dt * (this.club === 'putter' ? 0.5 : 0.9);
     const dir = new THREE.Vector2(Math.sin(this.aimAngle), Math.cos(this.aimAngle));
@@ -600,7 +701,7 @@ export class GolfStage extends SportStage {
   }
 
   override dispose(): void {
-    this.offChoice?.();
+    this.meter?.el.remove();
     for (const gs of this.golfers) gs.ball.geometry.dispose();
     this.caddie.dispose();
     disposeObject(this.club3d);

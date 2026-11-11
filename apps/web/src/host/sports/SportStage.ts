@@ -4,12 +4,11 @@
  */
 import * as THREE from 'three';
 import { getCharacter } from '@festa/game';
-import type { ControllerLayout } from '@festa/shared';
 import { CharacterModel } from '../three/CharacterModel';
 import { disposeObject } from '../three/materials';
 import { damp } from '../three/tweens';
 import { setupSky } from '../stages/environment';
-import type { Seat } from '../game/Seats';
+import type { HostLayout, Seat } from '../game/Seats';
 import type { SportContext, SportRun, SportStanding } from './types';
 
 export abstract class SportStage implements SportRun {
@@ -66,7 +65,7 @@ export abstract class SportStage implements SportRun {
     }
   }
 
-  protected setLayout(seat: Seat, layout: ControllerLayout): void {
+  protected setLayout(seat: Seat, layout: HostLayout): void {
     this.ctx.seats.setLayout(seat, layout);
   }
 

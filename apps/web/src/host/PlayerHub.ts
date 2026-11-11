@@ -25,12 +25,14 @@ export class HubPlayer {
   isVip: boolean;
   /** Joystick normalizado: x→direita, y→baixo, magnitude ≤ 1. */
   readonly stick = { x: 0, y: 0 };
-  readonly held: Record<ButtonId, boolean> = { a: false, b: false };
+  readonly held: Record<ButtonId, boolean> = emptyButtons();
   /** A defender (boxe). */
   guarding = false;
   /** Pontaria por inclinação do telemóvel (-1…1). */
   aim = 0;
   private readonly presses = new Set<ButtonId>();
+  /** Direção do joystick já convertida em carregadela da cruz (para os menus). */
+  stickDir: 'up' | 'down' | 'left' | 'right' | null = null;
 
   constructor(
     readonly id: PlayerId,
@@ -56,7 +58,8 @@ export class HubPlayer {
   resetInput(): void {
     this.stick.x = 0;
     this.stick.y = 0;
-    this.held.a = this.held.b = false;
+    for (const k of Object.keys(this.held) as ButtonId[]) this.held[k] = false;
+    this.stickDir = null;
     this.guarding = false;
     this.aim = 0;
     this.presses.clear();
@@ -88,16 +91,20 @@ interface KeyboardProfile {
   right: string;
   a: string;
   b: string;
+  x: string;
+  y: string;
+  plus: string;
+  minus: string;
 }
 
 const KEYBOARD_PROFILES: KeyboardProfile[] = [
   {
     id: 'kb1', name: 'Teclado 1', color: '#dddddd', toggleKey: 'Digit1',
-    up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', a: 'Space', b: 'ShiftLeft',
+    up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', a: 'Space', b: 'ShiftLeft', x: 'KeyE', y: 'KeyQ', plus: 'KeyR', minus: 'KeyF',
   },
   {
     id: 'kb2', name: 'Teclado 2', color: '#8a8a8a', toggleKey: 'Digit2',
-    up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', a: 'Period', b: 'Comma',
+    up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', a: 'Period', b: 'Comma', x: 'Slash', y: 'KeyL', plus: 'KeyP', minus: 'KeyO',
   },
 ];
 
@@ -219,6 +226,7 @@ export class PlayerHub {
         const k = len > 1 ? 1 / len : 1;
         player.stick.x = input.x * k;
         player.stick.y = input.y * k;
+        this.stickToDpad(player);
         break;
       }
       case 'button':
@@ -241,6 +249,21 @@ export class PlayerHub {
     }
   }
 
+  /** O joystick também navega nos menus: inclinar bem para um lado = carregar na cruz. */
+  private stickToDpad(player: HubPlayer): void {
+    const { x, y } = player.stick;
+    const len = Math.hypot(x, y);
+    if (len < 0.35) {
+      player.stickDir = null;
+      return;
+    }
+    if (len < 0.7) return;
+    const dir = Math.abs(x) > Math.abs(y) ? (x > 0 ? 'right' : 'left') : y > 0 ? 'down' : 'up';
+    if (dir === player.stickDir) return;
+    player.stickDir = dir;
+    this.events.emit('press', { player, button: dir });
+  }
+
   // ── Teclado (desenvolvimento / jogar no PC) ─────────────
 
   private onKey(e: KeyboardEvent, down: boolean): void {
@@ -260,6 +283,13 @@ export class PlayerHub {
       const len = Math.hypot(x, y) || 1;
       player.stick.x = x / len;
       player.stick.y = y / len;
+      this.stickToDpad(player);
+      for (const button of ['x', 'y', 'plus', 'minus'] as const) {
+        if (e.code !== prof[button]) continue;
+        player.setButton(button, down);
+        if (down) this.events.emit('press', { player, button });
+        e.preventDefault();
+      }
       for (const button of ['a', 'b'] as const) {
         if (e.code !== prof[button]) continue;
         player.setButton(button, down);
@@ -298,4 +328,8 @@ export class PlayerHub {
     }
     this.events.emit('changed', this.players);
   }
+}
+
+export function emptyButtons(): Record<ButtonId, boolean> {
+  return { a: false, b: false, x: false, y: false, plus: false, minus: false, up: false, down: false, left: false, right: false };
 }

@@ -3,13 +3,16 @@ import { Engine } from './three/Engine';
 import { Hud } from './ui/Hud';
 import { Director } from './game/Director';
 import { GameMenu } from './ui/GameMenu';
+import { ScreenMenus } from './ui/ScreenMenu';
 import { getAsset, loadCharacterAssets } from './three/characterAssets';
 import { sound } from './audio/Sound';
 
 const engine = new Engine(document.getElementById('game')!);
 const hud = new Hud(engine);
 const menu = new GameMenu(engine, hub);
-const director = new Director(engine, hud, hub, connection, menu);
+const menus = new ScreenMenus(engine, hub, () => menu.isOpen);
+menu.keyboardBusy = () => menus.keyboardOpen;
+const director = new Director(engine, hud, hub, connection, menu, menus);
 
 // Som: os browsers só deixam tocar depois de um clique ou tecla no ecrã principal.
 const soundBtn = document.createElement('button');
@@ -50,7 +53,7 @@ main.catch((err: unknown) => {
 
 // Em desenvolvimento: acesso pela consola do browser para depurar (window.festa).
 if (import.meta.env.DEV) {
-  Object.assign(window, { festa: { engine, hud, hub, connection, director, menu, getAsset, sound } });
+  Object.assign(window, { festa: { engine, hud, hub, connection, director, menu, menus, getAsset, sound } });
   // Teste rápido do motor de física: na consola, `await festa.physicsSmokeTest()`.
   Object.assign((window as unknown as { festa: object }).festa, {
     physicsSmokeTest: async () => {

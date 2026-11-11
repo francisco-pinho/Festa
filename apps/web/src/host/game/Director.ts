@@ -1,9 +1,10 @@
 /**
- * O Realizador: conduz a festa do princípio ao fim, encadeando regras
- * (@festa/game), animações (palcos 3D), interface (Hud) e telemóveis (Seats).
+ * O Realizador: conduz tudo, do menu principal ao fim de cada jogo, encadeando regras
+ * (@festa/game), palcos 3D, interface (Hud, menus no ecrã) e comandos (Seats).
  *
- *   lobby → escolha de personagens → ordem de jogo → rondas
- *   (cada jogador: dados → andar → casa) → minijogo → … → estrelas bónus → pódio
+ *   menu principal (cada um escolhe a personagem ao entrar) → Festa ou Desportos
+ *   → Festa: mapa, rondas e bots → rondas → estrelas bónus → pódio → menu principal
+ *   → Desportos: escolher desporto → jogar → outra vez / outro / menu principal
  */
 import { sound } from '../audio/Sound';
 import QRCode from 'qrcode';
@@ -11,22 +12,23 @@ import * as THREE from 'three';
 import { BOARDS, CHARACTERS, RULES, createRng, getCharacter, seatCount, type MinigameMode, type Rng } from '@festa/game';
 import { MAX_PLAYERS } from '@festa/shared';
 import type { HostConnection } from '../HostConnection';
-import type { PlayerHub } from '../PlayerHub';
+import type { HubPlayer, PlayerHub } from '../PlayerHub';
 import { cycleLanAddress, getJoinBaseUrl, getJoinUrl } from '../joinUrl';
 import type { Engine } from '../three/Engine';
 import { ShowcaseStage } from '../stages/ShowcaseStage';
 import { Hud, esc } from '../ui/Hud';
+import type { MenuRequest, ScreenMenus } from '../ui/ScreenMenu';
 import { MINIGAMES } from '../minigames';
 import { SPORTS } from '../sports';
 import type { SportDef } from '../sports/types';
 import type { GameMenu } from '../ui/GameMenu';
-import { settings } from './Settings';
+import { BOT_LEVELS, settings } from './Settings';
 import { BotPad, SeatControl, type Seat } from './Seats';
 import { PartyFlow } from './PartyFlow';
 
-const PATH_COLORS = ['#ffd23f', '#3fd0ff', '#ff6fb5'];
+type LobbyChoice = { mode: 'party'; rounds: number; boardId: string } | { mode: 'sports'; sport: SportDef };
 
-type LobbyChoice = { mode: 'party'; rounds: number } | { mode: 'sports' };
+const BOARD_ICON: Record<string, string> = { city: '🌃', volcano: '🌋', castle: '🏰', park: '🎡', island: '🏝️' };
 
 export class Director {
   private readonly seatsCtl: SeatControl;
@@ -34,6 +36,10 @@ export class Director {
   private rng: Rng = createRng();
   private lastMinigame: string | null = null;
   private forcedMinigame: string | null = null;
+  /** Personagem de cada jogador (escolhida ao entrar; fica até sair da sala). */
+  private readonly picks = new Map<string, { char: string; ready: boolean }>();
+  private lastRounds: number = RULES.roundOptions[1];
+  private lastBoard = BOARDS[0]!.id;
 
   constructor(
     private readonly engine: Engine,
@@ -41,8 +47,9 @@ export class Director {
     private readonly hub: PlayerHub,
     private readonly conn: HostConnection,
     private readonly menu: GameMenu,
+    private readonly menus: ScreenMenus,
   ) {
-    this.seatsCtl = new SeatControl(hub, engine);
+    this.seatsCtl = new SeatControl(hub, engine, menus);
     conn.events.on('status', (s) =>
       this.hud.status(s === 'online' ? null : s === 'connecting' ? 'A ligar ao servidor…' : 'Sem ligação ao servidor'),
     );
@@ -53,70 +60,17 @@ export class Director {
       sound.music('lobby');
       const choice = await this.lobby();
       if (choice.mode === 'sports') {
-        await this.sports();
+        await this.sports(choice.sport);
         continue;
       }
-      const boardId = await this.pickBoard();
-      await this.characterSelect();
+      await this.buildSeats(seatCount);
       this.rng = createRng();
       const flow = this.partyFlow();
       sound.music('board');
-      const state = await flow.play(choice.rounds, boardId);
+      const state = await flow.play(choice.rounds, choice.boardId);
       sound.music('finale');
       await flow.finale(state);
     }
-  }
-
-  // ── Escolha do mapa ─────────────────────────────────────
-
-  private async pickBoard(): Promise<string> {
-    const boards = BOARDS.map((b) => b.create());
-    const stage = new ShowcaseStage();
-    this.engine.setStage(stage);
-    stage.view({ distance: 16, height: 5, orbitSpeed: 0.1 });
-    let selected = 0;
-    const icon = (theme: string) => ({ city: '🌃', volcano: '🌋', castle: '🏰', park: '🎡' })[theme] ?? '🏝️';
-    const render = () =>
-      this.hud.panel(`
-        <h1>🗺️ Escolhe o mapa</h1>
-        <h2>${this.hub.vip ? `⭐ ${esc(this.hub.vip.name)} escolhe no telemóvel` : '↑ ↓ para escolher · Enter para jogar'}</h2>
-        <div class="sports">${boards
-          .map(
-            (b, i) => `<div class="sport ${i === selected ? 'selected' : ''}"><span class="emoji">${icon(b.theme)}</span>
-              <span class="name">${esc(b.name)}</span><span class="desc">${esc(b.description)}</span>
-              <span class="desc">${b.spaces.length} casas · ${b.shops.length} lojas</span></div>`,
-          )
-          .join('')}</div>`);
-    render();
-    const vip = this.hub.vip;
-    for (const p of this.hub.players) {
-      this.hub.setLayout(
-        p === vip
-          ? { kind: 'choices', prompt: 'Escolhe o mapa', options: boards.map((b) => ({ id: `board:${b.id}`, label: `${icon(b.theme)} ${b.name}` })) }
-          : { kind: 'wait', message: vip ? `${vip.name} está a escolher o mapa…` : 'À espera…' },
-        p,
-      );
-    }
-    const id = await new Promise<string>((resolve) => {
-      const finish = (v: string) => {
-        off();
-        window.removeEventListener('keydown', onKey);
-        resolve(v);
-      };
-      const off = this.hub.events.on('choice', ({ player, id }) => {
-        if (player.isVip && id.startsWith('board:')) finish(id.slice(6));
-      });
-      const onKey = (e: KeyboardEvent) => {
-        if (e.code === 'ArrowDown' || e.code === 'ArrowUp') {
-          selected = (selected + (e.code === 'ArrowDown' ? 1 : boards.length - 1)) % boards.length;
-          render();
-        }
-        if (e.code === 'Enter') finish(boards[selected]!.id);
-      };
-      window.addEventListener('keydown', onKey);
-    });
-    this.hud.panel(null);
-    return id;
   }
 
   private partyFlow(): PartyFlow {
@@ -132,246 +86,306 @@ export class Director {
     });
   }
 
+  /** Quem escolhe nos menus: o VIP (telemóvel) ou o primeiro jogador de teclado. */
+  private get leader(): HubPlayer | null {
+    return this.hub.vip ?? this.hub.players[0] ?? null;
+  }
 
-  // ── Lobby ───────────────────────────────────────────────
+  // ── Menu principal ──────────────────────────────────────
 
   private async lobby(): Promise<LobbyChoice> {
     const stage = new ShowcaseStage();
     this.engine.setStage(stage);
-    stage.view({ distance: 16, height: 5, orbitSpeed: 0.12 });
-    stage.setLineup(
-      ['bolota', 'coral', 'nuvem', 'musgo', 'ameixa'].map((id, i) => ({ key: `deco${i}`, characterId: id })),
-    );
-    ['bolota', 'coral', 'nuvem', 'musgo', 'ameixa'].forEach((_, i) => stage.setAnim(`deco${i}`, i % 2 ? 'cheer' : 'idle'));
+    stage.view({ distance: 9.5, height: 2.6, orbitSpeed: 0, target: new THREE.Vector3(0, 1.3, -2.2) });
     this.conn.setLocked(false);
     this.menu.mode = 'lobby';
     this.hud.setRound(null);
     this.hud.setScoreboard(null);
-    this.hud.hint('Teclas 1 / 2: jogador de teclado  ·  I: trocar IP  ·  Enter: Festa  ·  D: Desportos  ·  Esc: definições');
+    this.hud.panel(null);
+    this.hud.hint(null);
 
-    this.hud.panel(`
-      <h1>FESTA 🎉</h1>
-      <div class="lobby">
-        <div class="join">
-          <canvas id="qr" width="400" height="400"></canvas>
-          <div class="label">CÓDIGO DA SALA</div>
+    const ui = document.createElement('div');
+    ui.className = 'lobby-ui';
+    ui.innerHTML = `
+      <div class="lobby-logo">FESTA <span>🎉</span></div>
+      <div class="lobby-join">
+        <canvas id="qr" width="220" height="220"></canvas>
+        <div class="lobby-join-text">
+          <div class="label">Entra com o telemóvel</div>
           <div class="code" id="code">····</div>
           <div class="url" id="url"></div>
-          <div class="android-tip">📱 Android: se não abrir (<b>ERR_TOO_MANY_RETRIES</b>), dá ao Chrome a permissão
-            <b>Dispositivos próximos</b> (Definições → Apps → Chrome → Permissões) ou usa o Firefox.<br />
-            Aviso "ligação não privada"? Toca em <b>Avançadas → Continuar</b>.</div>
-        </div>
-        <div>
-          <h2 id="lobby-hint">Lê o código com o telemóvel para entrar!</h2>
-          <div class="slots" id="slots"></div>
+          <div class="tip">📱 Android: se não abrir, dá ao Chrome a permissão <b>Dispositivos próximos</b>. Aviso de ligação não privada? <b>Avançadas → Continuar</b>.</div>
         </div>
       </div>
-    `);
-    const panel = this.hud.panelElement();
+      <div class="lobby-cards" id="cards"></div>
+      <div class="lobby-help" id="help"></div>`;
+    document.getElementById('ui')!.appendChild(ui);
+
     const renderRoom = async () => {
       const code = this.conn.roomCode;
       if (!code) return;
       const [url, base] = await Promise.all([getJoinUrl(code), getJoinBaseUrl()]);
-      const canvas = panel.querySelector<HTMLCanvasElement>('#qr');
+      const canvas = ui.querySelector<HTMLCanvasElement>('#qr');
       if (!canvas) return;
-      panel.querySelector('#code')!.textContent = code;
-      panel.querySelector('#url')!.textContent = `${base.replace(/^https?:\/\//, '')}/play`;
-      await QRCode.toCanvas(canvas, url, { width: 400, margin: 2, errorCorrectionLevel: 'M' });
+      ui.querySelector('#code')!.textContent = code;
+      ui.querySelector('#url')!.textContent = `${base.replace(/^https?:\/\//, '')}/play`;
+      await QRCode.toCanvas(canvas, url, { width: 220, margin: 1, errorCorrectionLevel: 'M' });
     };
-    const renderPlayers = () => {
-      const players = this.hub.players.slice(0, MAX_PLAYERS);
-      const slots = panel.querySelector('#slots');
-      if (!slots) return;
-      slots.innerHTML = Array.from({ length: MAX_PLAYERS }, (_, i) => {
-        const p = players[i];
-        if (!p) return `<div class="slot empty">${i < RULES.minPlayers ? 'À espera…' : 'Lugar livre'}</div>`;
-        const tags = [p.isVip ? '⭐ VIP' : '', p.source === 'keyboard' ? '⌨ teclado' : '', p.connected ? '' : 'desligado']
-          .filter(Boolean)
-          .join(' · ');
-        return `<div class="slot" style="opacity:${p.connected ? 1 : 0.5}"><span class="dot" style="background:${p.color}"></span>${esc(p.name)} <small>${tags}</small></div>`;
-      }).join('');
-      const humans = players.length;
+
+    const players = () => this.hub.players.slice(0, MAX_PLAYERS);
+    const takenBy = (charId: string, except: string) => [...this.picks].some(([id, p]) => id !== except && p.ready && p.char === charId && players().some((x) => x.id === id));
+    const ensurePicks = () => {
+      for (const id of [...this.picks.keys()]) if (!this.hub.get(id)) this.picks.delete(id);
+      for (const p of players()) {
+        if (this.picks.has(p.id)) continue;
+        const used = new Set([...this.picks.values()].map((x) => x.char));
+        const free = CHARACTERS.find((c) => !used.has(c.id)) ?? CHARACTERS[0]!;
+        this.picks.set(p.id, { char: free.id, ready: false });
+      }
+    };
+    const allReady = () => players().length > 0 && players().every((p) => this.picks.get(p.id)?.ready || !p.connected);
+
+    let mainMenu: MenuRequest | null = null;
+    const render = () => {
+      ensurePicks();
+      const list = players();
+      stage.setLineup(
+        list.map((p) => {
+          const pick = this.picks.get(p.id)!;
+          return { key: p.id, characterId: pick.char, label: `${p.isVip ? '⭐ ' : ''}${p.name}`, labelColor: pick.ready ? '#ffd23f' : '#ffffff' };
+        }),
+      );
+      for (const p of list) {
+        const pick = this.picks.get(p.id)!;
+        stage.setAnim(p.id, pick.ready ? 'cheer' : 'idle');
+        stage.setFaded(p.id, !p.connected);
+      }
+      ui.querySelector('#cards')!.innerHTML = list
+        .map((p) => {
+          const pick = this.picks.get(p.id)!;
+          const c = getCharacter(pick.char);
+          const clash = !pick.ready && takenBy(pick.char, p.id);
+          return `<div class="lcard ${pick.ready ? 'ready' : ''}" style="--c:${c.color}">
+            <div class="lname">${p.isVip ? '⭐ ' : ''}${esc(p.name)}</div>
+            <div class="lchar">${pick.ready ? '' : '◀ '}${esc(c.name)}${pick.ready ? '' : ' ▶'}</div>
+            <div class="lstate">${pick.ready ? '✔ Pronto' : clash ? 'Já escolhida' : 'Ⓐ Pronto'}</div>
+          </div>`;
+        })
+        .join('');
+      const humans = list.length;
       const bots = humans ? seatCount(humans) - humans : 0;
-      panel.querySelector('#lobby-hint')!.textContent = `🤖 Bots: ${settings.botLevelLabel} · ` + (humans
-        ? `${humans} jogador${humans > 1 ? 'es' : ''}${bots ? ` + ${bots} bot${bots > 1 ? 's' : ''}` : ''} · ${this.hub.vip ? `⭐ ${this.hub.vip.name} escolhe o modo no telemóvel` : 'Enter: Festa · D: Desportos'}`
-        : 'Lê o código com o telemóvel para entrar!');
-      // Telemóveis
-      const vip = this.hub.vip;
-      for (const p of this.hub.players) {
-        if (p === vip) {
-          this.hub.setLayout(
-            {
-              kind: 'choices',
-              prompt: 'És o VIP ⭐ Quando estiverem todos, escolhe o modo:',
-              options: [
-                ...RULES.roundOptions.map((r) => ({ id: `start:${r}`, label: `🎲 Festa · ${r} rondas`, color: '#ffd23f' })),
-                { id: 'sports', label: '🏆 Desportos', color: '#3fd0ff' },
-                { id: 'bots', label: `🤖 Bots: ${settings.botLevelLabel} (mudar)` },
-              ],
-            },
-            p,
-          );
-        } else {
-          this.hub.setLayout({ kind: 'wait', message: vip ? `Estás dentro! À espera que ${vip.name} comece…` : 'Estás dentro!' }, p);
-        }
+      const waiting = list.filter((p) => !this.picks.get(p.id)?.ready && p.connected).map((p) => p.name);
+      ui.querySelector('#help')!.textContent = !humans
+        ? 'Lê o código com o telemóvel para entrar!'
+        : waiting.length
+          ? `◀ ▶ escolhe a personagem · Ⓐ pronto · À espera de ${waiting.join(', ')}`
+          : `Todos prontos! ${this.leader ? `${this.leader.name} escolhe o modo` : 'Enter para escolher'}${bots ? ` · na Festa entram ${bots} bot${bots > 1 ? 's' : ''}` : ''}`;
+      // Comandos
+      for (const p of list) {
+        const pick = this.picks.get(p.id)!;
+        const c = getCharacter(pick.char);
+        const lead = p === this.leader && allReady();
+        this.hub.setLayout(
+          pick.ready
+            ? {
+                kind: 'pad',
+                color: c.color,
+                title: `Pronto com ${c.name}! ✔`,
+                sub: lead ? 'Escolhe o modo no ecrã grande' : allReady() ? `${this.leader?.name ?? 'O VIP'} escolhe o modo…` : 'À espera dos outros…',
+                stick: 'dpad',
+                buttons: { a: lead ? 'Escolher' : undefined, b: lead ? undefined : 'Mudar', plus: 'Definições' },
+              }
+            : {
+                kind: 'pad',
+                color: c.color,
+                title: 'Escolhe a tua personagem',
+                sub: `◀ ${c.name} ▶`,
+                stick: 'dpad',
+                buttons: { a: 'Pronto!', plus: 'Definições' },
+              },
+          p,
+        );
+      }
+      // Menu principal só com todos prontos.
+      if (mainMenu && !allReady()) {
+        this.menus.cancel(mainMenu);
+        mainMenu = null;
       }
     };
 
+    const cycle = (p: HubPlayer, d: number, feedback = true) => {
+      const pick = this.picks.get(p.id);
+      if (!pick || pick.ready) return;
+      let i = CHARACTERS.findIndex((c) => c.id === pick.char);
+      for (let k = 0; k < CHARACTERS.length; k++) {
+        i = (i + d + CHARACTERS.length) % CHARACTERS.length;
+        if (!takenBy(CHARACTERS[i]!.id, p.id)) break;
+      }
+      pick.char = CHARACTERS[i]!.id;
+      if (feedback) {
+        sound.play('tick');
+        this.hub.vibrate(p, 10);
+      }
+      render();
+    };
+
+    const offs: (() => void)[] = [
+      this.conn.events.on('room', () => void renderRoom()),
+      this.hub.events.on('changed', render),
+      settings.events.on('changed', render),
+      this.hub.events.on('press', ({ player, button }) => {
+        if (this.menu.isOpen) return;
+        const pick = this.picks.get(player.id);
+        if (!pick) return;
+        if (button === 'left' || button === 'up') cycle(player, -1);
+        else if (button === 'right' || button === 'down') cycle(player, 1);
+        else if (button === 'a' && !pick.ready && !mainMenu) {
+          if (takenBy(pick.char, player.id)) {
+            sound.play('block');
+            return;
+          }
+          pick.ready = true;
+          // Quem ainda não escolheu e estava na mesma personagem passa para uma livre.
+          for (const other of players()) {
+            const op = this.picks.get(other.id);
+            if (other !== player && op && !op.ready && op.char === pick.char) cycle(other, 1, false);
+          }
+          sound.play('coin');
+          this.hub.vibrate(player, [30, 40, 60]);
+          render();
+        } else if (button === 'b' && pick.ready && !(mainMenu && player === this.leader)) {
+          pick.ready = false;
+          render();
+        }
+      }),
+    ];
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'KeyI') void cycleLanAddress().then((ok) => ok && void renderRoom());
+    };
+    window.addEventListener('keydown', onKey);
+    offs.push(() => window.removeEventListener('keydown', onKey));
+
     void renderRoom();
-    renderPlayers();
-    const offs: (() => void)[] = [];
-    const choice = await new Promise<LobbyChoice>((resolve) => {
-      const tryStart = (r: number | 'sports') => {
-        if (this.hub.players.length === 0) return;
-        resolve(r === 'sports' ? { mode: 'sports' } : { mode: 'party', rounds: r });
+    render();
+    let choice: LobbyChoice | null = null;
+    while (!choice) {
+      // Espera que estejam todos prontos.
+      while (!allReady()) await this.engine.wait(0.2);
+      render();
+      const leader = this.leader;
+      mainMenu = {
+        player: leader,
+        keyboard: true,
+        big: true,
+        title: 'Menu principal',
+        name: leader?.name,
+        color: leader ? getCharacter(this.picks.get(leader.id)?.char ?? CHARACTERS[0]!.id).color : undefined,
+        options: [
+          { id: 'party', label: '🎲 Festa', sub: 'Tabuleiro, estrelas, itens e minijogos' },
+          { id: 'sports', label: '🏆 Desportos', sub: 'Bowling, ténis, golfe, boxe e basebol' },
+          { id: 'settings', label: '⚙️ Definições' },
+        ],
       };
-      offs.push(
-        this.conn.events.on('room', () => void renderRoom()),
-        this.hub.events.on('changed', renderPlayers),
-        settings.events.on('changed', renderPlayers),
-        this.hub.events.on('choice', ({ player, id }) => {
-          if (player.isVip && id.startsWith('start:')) tryStart(Number(id.split(':')[1]));
-          if (player.isVip && id === 'sports') tryStart('sports');
-          if (player.isVip && id === 'bots') settings.cycleBotLevel();
-        }),
-      );
-      const onKey = (e: KeyboardEvent) => {
-        if (e.code === 'Enter') tryStart(10);
-        if (e.code === 'KeyD') tryStart('sports');
-        // Atalho de desenvolvimento: festa de 1 ronda para testar o final.
-        if (e.code === 'KeyT' && import.meta.env.DEV) tryStart(1);
-        if (e.code === 'KeyI') void cycleLanAddress().then((ok) => { if (ok) void renderRoom(); });
-      };
-      window.addEventListener('keydown', onKey);
-      offs.push(() => window.removeEventListener('keydown', onKey));
-    });
+      const pickMode = await this.menus.ask(mainMenu);
+      mainMenu = null;
+      if (pickMode === 'party') choice = await this.partySetup(leader);
+      else if (pickMode === 'sports') {
+        const sport = await this.pickSport(leader);
+        if (sport) choice = { mode: 'sports', sport };
+      } else if (pickMode === 'settings') {
+        this.menu.show('settings');
+        while (this.menu.isOpen) await this.engine.wait(0.2);
+      }
+      render();
+    }
     offs.forEach((off) => off());
+    ui.remove();
     this.menu.close();
     this.menu.mode = 'off';
-    this.hud.panel(null);
-    this.hud.hint(null);
     return choice;
   }
 
-  // ── Escolha de personagens ─────────────────────────────
+  /** Festa: mapa, rondas e dificuldade dos bots. */
+  private async partySetup(leader: HubPlayer | null): Promise<LobbyChoice | null> {
+    const boards = BOARDS.map((b) => b.create());
+    let board = Math.max(0, boards.findIndex((b) => b.id === this.lastBoard));
+    let rounds = Math.max(0, RULES.roundOptions.findIndex((r) => r === this.lastRounds));
+    let bots = Math.max(0, BOT_LEVELS.findIndex((l) => l.id === settings.value.botLevel));
+    const describe = () => `${boards[board]!.description} · ${boards[board]!.spaces.length} casas · ${boards[board]!.shops.length} lojas`;
+    const req: MenuRequest = {
+      player: leader,
+      keyboard: true,
+      big: true,
+      title: '🎲 Festa',
+      name: leader?.name,
+      cancel: 'back',
+      options: [
+        { id: 'board', label: '🗺️ Mapa', values: boards.map((b) => `${BOARD_ICON[b.theme] ?? '🗺️'} ${b.name}`), value: board, sub: describe() },
+        { id: 'rounds', label: '🔄 Rondas', values: RULES.roundOptions.map(String), value: rounds },
+        { id: 'bots', label: '🤖 Bots', values: BOT_LEVELS.map((l) => l.label), value: bots, sub: 'Os bots completam a mesa até um número par (mínimo 4)' },
+        { id: 'start', label: '▶ Começar a festa!' },
+        { id: 'back', label: '↩ Voltar' },
+      ],
+      onChange: (id, v) => {
+        if (id === 'board') {
+          board = v;
+          req.options[0]!.sub = describe();
+        }
+        if (id === 'rounds') rounds = v;
+        if (id === 'bots') {
+          bots = v;
+          settings.set('botLevel', BOT_LEVELS[v]!.id);
+        }
+      },
+    };
+    const id = await this.menus.ask(req);
+    if (id !== 'start') return null;
+    this.lastBoard = boards[board]!.id;
+    this.lastRounds = RULES.roundOptions[rounds]!;
+    return { mode: 'party', rounds: this.lastRounds, boardId: this.lastBoard };
+  }
 
-  /** Escolha de personagens; `seats` diz quantos lugares (humanos + bots) há. */
-  private async characterSelect(seats: (humans: number) => number = seatCount): Promise<void> {
+  private async pickSport(leader: HubPlayer | null): Promise<SportDef | null> {
+    if (SPORTS.length === 0) return null;
+    const id = await this.menus.ask({
+      player: leader,
+      keyboard: true,
+      big: true,
+      title: '🏆 Desportos',
+      name: leader?.name,
+      cancel: 'back',
+      columns: 2,
+      options: [...SPORTS.map((s) => ({ id: s.id, label: `${s.emoji} ${s.name}`, sub: s.description })), { id: 'back', label: '↩ Voltar' }],
+    });
+    return SPORTS.find((s) => s.id === id) ?? null;
+  }
+
+  /** Lugares para um jogo: os jogadores com as personagens escolhidas, mais bots. */
+  private async buildSeats(seats: (humans: number) => number): Promise<void> {
     this.conn.setLocked(true);
     const humans = this.hub.players.slice(0, Math.min(MAX_PLAYERS, seats(MAX_PLAYERS)));
-    const picks = new Map<string, string>(); // jogador → personagem
-    const stage = new ShowcaseStage();
-    this.engine.setStage(stage);
-    stage.view({ distance: 17, height: 4.5, orbitSpeed: 0, target: new THREE.Vector3(0, 1.4, 0) });
-    stage.setLineup(CHARACTERS.map((c) => ({ key: c.id, characterId: c.id, label: c.name })));
-    await this.hud.banner('Escolhe a tua personagem!', { hold: 1.2 });
-    this.hud.hint('Escolhe no telemóvel  ·  Enter: escolher ao acaso para quem falta');
-
-    const ownerOf = (charId: string) => [...picks].find(([, c]) => c === charId)?.[0];
-    const refresh = () => {
-      for (const c of CHARACTERS) {
-        const owner = ownerOf(c.id);
-        const player = owner ? humans.find((h) => h.id === owner) : undefined;
-        stage.setLabel(c.id, player ? `${c.name} · ${player.name}` : c.name, player ? '#ffd23f' : '#ffffff');
-        stage.setAnim(c.id, player ? 'cheer' : 'idle');
-      }
-      for (const h of humans) {
-        const mine = picks.get(h.id);
-        this.hub.setLayout(
-          mine
-            ? { kind: 'wait', message: `Escolheste ${getCharacter(mine).name}! À espera dos outros…` }
-            : {
-                kind: 'choices',
-                prompt: 'Escolhe a tua personagem',
-                columns: 2,
-                options: CHARACTERS.map((c) => ({
-                  id: `char:${c.id}`,
-                  label: c.name,
-                  color: c.color,
-                  disabled: !!ownerOf(c.id),
-                })),
-              },
-          h,
-        );
-      }
-    };
-    const pickRandom = (playerId: string) => {
-      const free = CHARACTERS.filter((c) => !ownerOf(c.id));
-      picks.set(playerId, this.rng.pick(free).id);
-    };
-    refresh();
-
-    await new Promise<void>((resolve) => {
-      const check = () => {
-        refresh();
-        if (humans.every((h) => picks.has(h.id))) {
-          offs.forEach((off) => off());
-          resolve();
-        }
-      };
-      const offs = [
-        this.hub.events.on('choice', ({ player, id }) => {
-          if (!id.startsWith('char:') || picks.has(player.id) || !humans.includes(player)) return;
-          const charId = id.slice(5);
-          if (ownerOf(charId) || !CHARACTERS.some((c) => c.id === charId)) return;
-          picks.set(player.id, charId);
-          this.hub.vibrate(player, 40);
-          check();
-        }),
-      ];
-      const onKey = (e: KeyboardEvent) => {
-        if (e.code !== 'Enter') return;
-        for (const h of humans) if (!picks.has(h.id)) pickRandom(h.id);
-        check();
-      };
-      window.addEventListener('keydown', onKey);
-      offs.push(() => window.removeEventListener('keydown', onKey));
-      // Teclado e desligados escolhem ao acaso.
-      void (async () => {
-        while (!humans.every((h) => picks.has(h.id))) {
-          await this.engine.wait(0.6);
-          for (const h of humans) {
-            if (!picks.has(h.id) && (h.source === 'keyboard' || !h.connected)) {
-              pickRandom(h.id);
-              check();
-              break;
-            }
-          }
-        }
-      })();
+    const used = new Set<string>();
+    this.seats = humans.map((h) => {
+      let char = this.picks.get(h.id)?.char;
+      if (!char || used.has(char)) char = CHARACTERS.find((c) => !used.has(c.id))!.id;
+      used.add(char);
+      return { id: h.id, name: h.name, characterId: char, isBot: false, botPad: new BotPad() };
     });
-
-    this.seats = humans.map((h) => ({
-      id: h.id,
-      name: h.name,
-      characterId: picks.get(h.id)!,
-      isBot: false,
-      botPad: new BotPad(),
-    }));
     const botCount = Math.max(0, seats(humans.length) - humans.length);
-    const free = this.rng.shuffle(CHARACTERS.filter((c) => !ownerOf(c.id)));
+    const free = this.rng.shuffle(CHARACTERS.filter((c) => !used.has(c.id)));
     for (let i = 0; i < botCount; i++) {
       const c = free[i]!;
       this.seats.push({ id: `bot-${c.id}`, name: c.name, characterId: c.id, isBot: true, botPad: new BotPad() });
-      stage.setLabel(c.id, `${c.name} · CPU`, '#b9a9e8');
-      stage.setAnim(c.id, 'cheer');
     }
-    this.hud.hint(null);
     if (botCount) {
-      await this.hud.banner(`${botCount} bot${botCount > 1 ? 's' : ''} entra${botCount > 1 ? 'm' : ''} na festa!`, {
-        sub: this.seats.filter((s) => s.isBot).map((s) => s.name).join(', '),
-        hold: 2,
+      await this.hud.banner(`${botCount} bot${botCount > 1 ? 's' : ''} entra${botCount > 1 ? 'm' : ''} no jogo!`, {
+        sub: `${this.seats.filter((s) => s.isBot).map((s) => s.name).join(', ')} · ${settings.botLevelLabel}`,
+        hold: 1.8,
       });
-    } else {
-      await this.engine.wait(1);
     }
   }
 
   // ── Festa ───────────────────────────────────────────────
-
-  private seat(id: string): Seat {
-    return this.seats.find((s) => s.id === id)!;
-  }
 
   private waitAll(message: string, except?: string): void {
     for (const s of this.seats) if (s.id !== except) this.seatsCtl.setLayout(s, { kind: 'wait', message });
@@ -414,87 +428,21 @@ export class Director {
 
   // ── Desportos ───────────────────────────────────────────
 
-  private async sports(): Promise<void> {
-    let def = await this.pickSport();
-    if (!def) return;
-    await this.characterSelect(def.seatCount);
+  private async sports(first: SportDef): Promise<void> {
+    let def = first;
+    await this.buildSeats(def.seatCount);
     for (;;) {
       const next = await this.playSport(def);
       if (next === 'lobby') return;
       if (next === 'other') {
-        const other = await this.pickSport();
+        const other = await this.pickSport(this.leader);
         if (!other) return;
         const humans = this.seats.filter((s) => !s.isBot).length;
         const needsNewSeats = other.seatCount(humans) !== this.seats.length;
         def = other;
-        if (needsNewSeats) await this.characterSelect(def.seatCount);
+        if (needsNewSeats) await this.buildSeats(def.seatCount);
       }
     }
-  }
-
-  private async pickSport(): Promise<SportDef | null> {
-    this.menu.mode = 'off';
-    const stage = new ShowcaseStage();
-    this.engine.setStage(stage);
-    stage.view({ distance: 16, height: 5, orbitSpeed: 0.1 });
-    this.conn.setLocked(true);
-    this.hud.setScoreboard(null);
-    this.hud.setRound(null);
-    if (SPORTS.length === 0) {
-      await this.hud.banner('Ainda não há desportos', { sub: 'A voltar ao lobby…', hold: 2.5 });
-      return null;
-    }
-    let selected = 0;
-    const render = () =>
-      this.hud.panel(`
-        <h1>🏆 Desportos</h1>
-        <h2>${this.hub.vip ? `⭐ ${esc(this.hub.vip.name)} escolhe no telemóvel` : '↑ ↓ para escolher · Enter para jogar'}</h2>
-        <div class="sports">${SPORTS.map(
-          (s, i) => `<div class="sport ${i === selected ? 'selected' : ''}"><span class="emoji">${s.emoji}</span>
-            <span class="name">${esc(s.name)}</span><span class="desc">${esc(s.description)}</span></div>`,
-        ).join('')}</div>
-        <p style="font-size:2.2vh;color:#b9a9e8">Esc: voltar ao lobby</p>`);
-    render();
-    const vip = this.hub.vip;
-    for (const p of this.hub.players) {
-      this.hub.setLayout(
-        p === vip
-          ? {
-              kind: 'choices',
-              prompt: 'Escolhe o desporto',
-              options: [
-                ...SPORTS.map((s) => ({ id: `sport:${s.id}`, label: `${s.emoji} ${s.name}` })),
-                { id: 'back', label: '↩ Voltar ao lobby' },
-              ],
-            }
-          : { kind: 'wait', message: vip ? `${vip.name} está a escolher o desporto…` : 'À espera…' },
-        p,
-      );
-    }
-    const result = await new Promise<SportDef | null>((resolve) => {
-      const finish = (d: SportDef | null) => {
-        off();
-        window.removeEventListener('keydown', onKey);
-        resolve(d);
-      };
-      const off = this.hub.events.on('choice', ({ player, id }) => {
-        if (!player.isVip) return;
-        if (id === 'back') finish(null);
-        const d = SPORTS.find((s) => `sport:${s.id}` === id);
-        if (d) finish(d);
-      });
-      const onKey = (e: KeyboardEvent) => {
-        if (e.code === 'ArrowDown' || e.code === 'ArrowUp') {
-          selected = (selected + (e.code === 'ArrowDown' ? 1 : SPORTS.length - 1)) % SPORTS.length;
-          render();
-        }
-        if (e.code === 'Enter') finish(SPORTS[selected]!);
-        if (e.code === 'Escape') finish(null);
-      };
-      window.addEventListener('keydown', onKey);
-    });
-    this.hud.panel(null);
-    return result;
   }
 
   /** Joga um desporto e devolve o que fazer a seguir. */
@@ -530,6 +478,10 @@ export class Director {
 
     const byId = new Map(this.seats.map((s) => [s.id, s]));
     const winners = standings.filter((s) => s.rank === 1).map((s) => byId.get(s.id)?.name ?? '?');
+    for (const st of standings) {
+      const seat = byId.get(st.id)!;
+      this.seatsCtl.vibrate(seat, st.rank === 1 ? [80, 40, 80, 40, 250] : 60);
+    }
     await this.hud.banner(winners.length > 1 ? `Empate: ${winners.join(' e ')}!` : `${winners[0]} ganhou!`, {
       hold: 2.5,
       color: '#ffd23f',
@@ -543,42 +495,25 @@ export class Director {
             <span>${st.rank}.</span><span class="dot" style="background:${getCharacter(seat.characterId).color}"></span>
             <span>${esc(seat.name)}${seat.isBot ? ' <small>CPU</small>' : ''}</span><span>${esc(st.score)}</span><span></span></div>`;
         })
-        .join('')}</div>
-      <p style="font-size:2.2vh;color:#b9a9e8">Enter: outra vez · O: outro desporto · Esc: lobby</p>`);
+        .join('')}</div>`);
+    this.hud.panelElement().classList.add('compact');
     for (const st of standings) {
       this.seatsCtl.setLayout(byId.get(st.id)!, { kind: 'wait', message: `Ficaste em ${st.rank}.º lugar (${st.score})` });
     }
-    const vip = this.hub.vip;
-    if (vip) {
-      this.hub.setLayout(
-        {
-          kind: 'choices',
-          prompt: 'E agora?',
-          options: [
-            { id: 'again', label: `${def.emoji} Jogar outra vez` },
-            { id: 'other', label: '🏆 Outro desporto' },
-            { id: 'lobby', label: '↩ Voltar ao lobby' },
-          ],
-        },
-        vip,
-      );
-    }
-    const next = await new Promise<'again' | 'other' | 'lobby'>((resolve) => {
-      const finish = (v: 'again' | 'other' | 'lobby') => {
-        off();
-        window.removeEventListener('keydown', onKey);
-        resolve(v);
-      };
-      const off = this.hub.events.on('choice', ({ player, id }) => {
-        if (player.isVip && (id === 'again' || id === 'other' || id === 'lobby')) finish(id);
-      });
-      const onKey = (e: KeyboardEvent) => {
-        if (e.code === 'Enter') finish('again');
-        if (e.code === 'KeyO') finish('other');
-        if (e.code === 'Escape') finish('lobby');
-      };
-      window.addEventListener('keydown', onKey);
-    });
+    const leader = this.leader;
+    if (leader) this.hub.setLayout({ kind: 'pad', title: 'E agora?', sub: 'Escolhe no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher' } }, leader);
+    const next = (await this.menus.ask({
+      player: leader,
+      keyboard: true,
+      title: 'E agora?',
+      name: leader?.name,
+      options: [
+        { id: 'again', label: `${def.emoji} Jogar outra vez` },
+        { id: 'other', label: '🏆 Outro desporto' },
+        { id: 'lobby', label: '↩ Menu principal' },
+      ],
+    })) as 'again' | 'other' | 'lobby';
+    this.hud.panelElement().classList.remove('compact');
     this.hud.panel(null);
     return next;
   }
