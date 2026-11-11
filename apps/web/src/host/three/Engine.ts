@@ -155,7 +155,7 @@ export class Engine {
       this.gtao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.5, thickness: 1, scale: 1 });
       composer.addPass(this.gtao);
     }
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.22, 0.4, 0.96);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.16, 0.3, 1.5); // limiar alto: só brilham as luzes e emissivos fortes, não as superfícies brancas ao sol
     composer.addPass(this.bloom);
     composer.addPass(new OutputPass());
     this.composer = composer;

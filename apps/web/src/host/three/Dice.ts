@@ -34,9 +34,10 @@ function getFaceMaterials(): THREE.MeshStandardMaterial[] {
   faceMaterials ??= FACE_VALUES.map(
     (value) =>
       new THREE.MeshStandardMaterial({
-        roughness: 0.35,
+        roughness: 0.6,
+        envMapIntensity: 0.6,
         map: canvasTexture(128, (ctx, s) => {
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = '#f1efea';
           ctx.fillRect(0, 0, s, s);
           ctx.fillStyle = value === 1 ? '#ff3b5c' : '#2b1d3a';
           for (const [x, y] of PIPS[value]!) {

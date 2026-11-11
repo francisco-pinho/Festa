@@ -28,37 +28,130 @@ export function setupSky(scene: THREE.Scene, opts: { fog?: [number, number] } = 
   return sun;
 }
 
+/** Mapa de normais da água (ondinhas): soma de ondas com frequências inteiras, por isso repete-se sem costuras. */
+let waterNormals: THREE.CanvasTexture | null = null;
+function waterNormalMap(): THREE.CanvasTexture {
+  if (waterNormals) return waterNormals;
+  const S = 256;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const g = c.getContext('2d')!;
+  const img = g.createImageData(S, S);
+  // Ondas: [freq x, freq y, amplitude, fase]
+  const waves: [number, number, number, number][] = [];
+  let seed = 5;
+  const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 18; i++) {
+    const fx = Math.round((r() - 0.5) * 2 * (2 + i));
+    const fy = Math.round((r() - 0.5) * 2 * (2 + i)) || 1;
+    waves.push([fx, fy, 1 / (1 + i * 0.45), r() * Math.PI * 2]);
+  }
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      let dx = 0;
+      let dy = 0;
+      for (const [fx, fy, a, p] of waves) {
+        const k = Math.cos(((fx * x + fy * y) / S) * Math.PI * 2 + p) * a;
+        dx += k * fx;
+        dy += k * fy;
+      }
+      const n = new THREE.Vector3(-dx * 0.06, -dy * 0.06, 1).normalize();
+      const o = (y * S + x) * 4;
+      img.data[o] = (n.x * 0.5 + 0.5) * 255;
+      img.data[o + 1] = (n.y * 0.5 + 0.5) * 255;
+      img.data[o + 2] = (n.z * 0.5 + 0.5) * 255;
+      img.data[o + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  waterNormals = new THREE.CanvasTexture(c);
+  waterNormals.wrapS = waterNormals.wrapT = THREE.RepeatWrapping;
+  return waterNormals;
+}
+
+/**
+ * Água: ondas grandes calculadas na placa gráfica, ondinhas com dois mapas de normais a deslizar
+ * em sentidos diferentes, reflexo do céu e efeito de Fresnel (vista de cima é mais escura e
+ * transparente; ao longe, rasante, fica clara e espelhada), com brilhos do sol.
+ * A cor de base é `material.color` (o sumo, por exemplo, troca-a por lava).
+ */
 export class Water {
   readonly mesh: THREE.Mesh;
   private readonly geometry: THREE.PlaneGeometry;
-  private readonly base: Float32Array;
+  private readonly uniforms = { uTime: { value: 0 } };
 
   constructor(size = 400) {
-    this.geometry = new THREE.PlaneGeometry(size, size, 60, 60);
+    this.geometry = new THREE.PlaneGeometry(size, size, 120, 120);
     this.geometry.rotateX(-Math.PI / 2);
-    this.base = Float32Array.from(this.geometry.attributes.position!.array);
-    const mat = new THREE.MeshStandardMaterial({
-      color: '#2fa8e0',
-      roughness: 0.25,
-      metalness: 0.05,
-      flatShading: true,
+    const normalMap = waterNormalMap();
+    const rep = size / 9;
+    const mat = new THREE.MeshPhysicalMaterial({
+      color: '#1782bd',
+      roughness: 0.12,
+      metalness: 0,
+      clearcoat: 0.6,
+      clearcoatRoughness: 0.08,
+      normalMap,
+      normalScale: new THREE.Vector2(0.55, 0.55),
       transparent: true,
-      opacity: 0.92,
+      opacity: 0.9,
+      envMapIntensity: 1.1,
     });
+    const u = this.uniforms;
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTime = u.uTime;
+      shader.uniforms.uRep = { value: rep };
+      shader.vertexShader = shader.vertexShader
+        .replace('void main() {', 'uniform float uTime;\nvarying vec2 vWUv;\nvoid main() {')
+        .replace(
+          '#include <begin_vertex>',
+          `#include <begin_vertex>
+          // Ondas grandes (soma de senos) e a normal correspondente.
+          float wx = position.x, wz = position.z;
+          float h = sin(wx * 0.15 + uTime * 1.2) * 0.16 + cos(wz * 0.18 + uTime * 0.9) * 0.13
+                  + sin((wx + wz) * 0.31 + uTime * 1.7) * 0.05;
+          float dhx = cos(wx * 0.15 + uTime * 1.2) * 0.024 + cos((wx + wz) * 0.31 + uTime * 1.7) * 0.0155;
+          float dhz = -sin(wz * 0.18 + uTime * 0.9) * 0.0234 + cos((wx + wz) * 0.31 + uTime * 1.7) * 0.0155;
+          transformed.y += h;
+          vWUv = vec2(wx, wz);`,
+        )
+        .replace(
+          '#include <beginnormal_vertex>',
+          `#include <beginnormal_vertex>
+          {
+            float wx = position.x, wz = position.z;
+            float dhx = cos(wx * 0.15 + uTime * 1.2) * 0.024 + cos((wx + wz) * 0.31 + uTime * 1.7) * 0.0155;
+            float dhz = -sin(wz * 0.18 + uTime * 0.9) * 0.0234 + cos((wx + wz) * 0.31 + uTime * 1.7) * 0.0155;
+            objectNormal = normalize(vec3(-dhx, 1.0, -dhz));
+          }`,
+        );
+      shader.fragmentShader = shader.fragmentShader
+        .replace('void main() {', 'uniform float uTime;\nuniform float uRep;\nvarying vec2 vWUv;\nvoid main() {')
+        // Duas camadas de ondinhas a deslizar em sentidos diferentes.
+        .replace(
+          '#include <normal_fragment_maps>',
+          `{
+            vec2 uvA = vWUv / 9.0 + vec2(uTime * 0.018, uTime * 0.011);
+            vec2 uvB = vWUv / 5.3 * mat2(0.8, 0.6, -0.6, 0.8) - vec2(uTime * 0.013, -uTime * 0.02);
+            vec3 nA = texture2D(normalMap, uvA).xyz * 2.0 - 1.0;
+            vec3 nB = texture2D(normalMap, uvB).xyz * 2.0 - 1.0;
+            vec3 mapN = normalize(vec3((nA.xy + nB.xy) * normalScale, 1.0));
+            normal = normalize(tbn * mapN);
+          }
+          // Fresnel: cor funda vista de cima, clara e mais opaca ao longe.
+          float fres = pow(1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0), 3.0);
+          diffuseColor.rgb = mix(diffuseColor.rgb * 0.55, diffuseColor.rgb * 1.35 + vec3(0.05, 0.1, 0.1), fres);
+          diffuseColor.a = mix(diffuseColor.a * 0.85, 1.0, fres);`,
+        );
+    };
+    mat.customProgramCacheKey = () => 'festa-water';
     this.mesh = new THREE.Mesh(this.geometry, mat);
     this.mesh.position.y = -0.7;
     this.mesh.receiveShadow = true;
   }
 
   update(time: number): void {
-    const pos = this.geometry.attributes.position!;
-    for (let i = 0; i < pos.count; i++) {
-      const x = this.base[i * 3]!;
-      const z = this.base[i * 3 + 2]!;
-      pos.setY(i, Math.sin(x * 0.15 + time * 1.2) * 0.18 + Math.cos(z * 0.18 + time * 0.9) * 0.15);
-    }
-    pos.needsUpdate = true;
-    this.geometry.computeVertexNormals();
+    this.uniforms.uTime.value = time;
   }
 }
 

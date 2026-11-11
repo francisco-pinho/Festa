@@ -13,6 +13,16 @@ import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 
 const START = -24;
+/** Duração de uma remada (pá à frente → puxa para trás → levanta e volta). */
+const STROKE = 0.5;
+
+interface Paddle {
+  pivot: THREE.Group;
+  /** 1 = rema à direita, -1 = à esquerda. */
+  side: number;
+  /** Tempo desde o início da remada (≥ STROKE: parado). */
+  t: number;
+}
 const FINISH = 24;
 
 interface Boat {
@@ -34,6 +44,7 @@ class CanoeRun extends RowMinigame {
   private readonly boats: Boat[] = [];
   private order = 0;
   private readonly botNext = new Map<string, number>();
+  private readonly paddles = new Map<string, Paddle>();
 
   constructor(ctx: MinigameContext) {
     super(ctx, { ground: null, decor: false });
@@ -43,10 +54,16 @@ class CanoeRun extends RowMinigame {
       const bank = mesh(new THREE.BoxGeometry(90, 1.2, 8), toon('#7ccf5b'), { receive: true });
       bank.position.set(0, -0.2, side * 10);
       this.scene.add(bank);
+      // Na margem do lado da câmara só plantas baixas (as árvores tapavam a vista).
+      const near = side === 1;
       for (let i = 0; i < 16; i++) {
-        const t = pickProp([...PROPS.trees, ...PROPS.plants], ctx.rng.next(), { height: 2 + ctx.rng.next() * 5 });
+        const t = near
+          ? pickProp(PROPS.plants, ctx.rng.next(), { height: 0.5 + ctx.rng.next() * 0.6 })
+          : i % 3 === 2
+            ? pickProp(PROPS.plants, ctx.rng.next(), { height: 0.6 + ctx.rng.next() * 0.8 })
+            : pickProp(PROPS.trees, ctx.rng.next(), { height: 3.5 + ctx.rng.next() * 3.5 });
         if (!t) continue;
-        t.position.set(-40 + i * 5.3 + ctx.rng.next() * 2, 0.4, side * (8 + ctx.rng.next() * 4));
+        t.position.set(-40 + i * 5.3 + ctx.rng.next() * 2, 0.4, side * (near ? 8 + ctx.rng.next() * 1.5 : 8 + ctx.rng.next() * 4));
         this.scene.add(t);
       }
     }
@@ -69,11 +86,32 @@ class CanoeRun extends RowMinigame {
       hull.scale.set(1, 1, 0.6);
       group.add(hull);
       crew.forEach((r, k) => {
-        r.model.root.position.set(-len / 2 + 0.9 + k * 1.3, 0.1, 0);
+        const x = -len / 2 + 0.9 + k * 1.3;
+        r.model.root.position.set(x, 0.1, 0);
         r.model.faceYaw(Math.PI / 2, true);
         r.model.setAnim('sit');
         r.model.restAnim = 'sit';
         group.add(r.model.root);
+        // Remo: um rema à direita, o seguinte à esquerda (a canoa anda para +x, a direita é +z).
+        const side = k % 2 === 0 ? 1 : -1;
+        const pivot = new THREE.Group();
+        pivot.position.set(x + 0.2, 1.05, side * 0.78);
+        const tilt = new THREE.Group();
+        tilt.rotation.x = side * 0.3; // inclinado para fora, para a pá chegar à água ao lado do casco
+        const wood = toon('#e0a96a');
+        const shaft = mesh(new THREE.CylinderGeometry(0.075, 0.075, 2.4, 10), wood);
+        shaft.position.y = -0.7;
+        const grip = mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.28, 8), toon('#5b3a1e'));
+        grip.rotation.x = Math.PI / 2;
+        grip.position.y = 0.5;
+        const blade = mesh(new THREE.CapsuleGeometry(0.24, 0.5, 4, 12), toonUnique(TEAM_COLORS[team]));
+        blade.scale.set(1, 1, 0.25);
+        blade.rotation.y = Math.PI / 2; // a pá de frente para a água (empurra para trás)
+        blade.position.y = -1.9;
+        tilt.add(shaft, grip, blade);
+        pivot.add(tilt);
+        group.add(pivot);
+        this.paddles.set(r.seat.id, { pivot, side, t: STROKE });
       });
       const z = i === 0 ? 2.6 : -2.6;
       group.position.set(START, 0.2, z);
@@ -113,7 +151,8 @@ class CanoeRun extends RowMinigame {
     b.v = Math.min(9, b.v + push);
     b.last = r.seat.id;
     b.lastAt = now;
-    r.model.setAnim(r.model.anim === 'punchLeft' ? 'punchRight' : 'punchLeft');
+    const paddle = this.paddles.get(r.seat.id);
+    if (paddle) paddle.t = 0;
     sound.play('splash', { vol: 0.25, pitch: 1.4 });
   }
 
@@ -147,6 +186,22 @@ class CanoeRun extends RowMinigame {
 
   protected override animate(dt: number, time: number): void {
     this.water.update(time);
+    // Remos: pá à frente e dentro de água → puxa para trás → levanta e volta à frente.
+    // O corpo acompanha (roda o tronco para o lado do remo e inclina-se para a frente).
+    for (const [id, p] of this.paddles) {
+      p.t += dt;
+      const k = Math.min(1, p.t / STROKE);
+      const pull = k < 0.6 ? k / 0.6 : 1 - (k - 0.6) / 0.4; // 0→1 a puxar, 1→0 a voltar
+      const swing = 0.55 - pull * 1.15; // + = pá à frente (+x), − = pá atrás
+      const lift = k < 0.6 ? 0 : Math.sin(((k - 0.6) / 0.4) * Math.PI) * 0.35; // fora de água ao voltar
+      p.pivot.rotation.z = swing;
+      p.pivot.position.y = 1.05 + lift;
+      const r = this.row.find((x) => x.seat.id === id);
+      if (r) {
+        r.model.pose.chestY = p.side * -0.35 * (1 - pull) + p.side * 0.15;
+        r.model.pose.headX = 0.12 * Math.sin(pull * Math.PI);
+      }
+    }
     let mid = 0;
     for (const b of this.boats) {
       b.group.position.set(b.x, 0.2 + Math.sin(time * 3 + b.z) * 0.05, b.z);
@@ -156,8 +211,9 @@ class CanoeRun extends RowMinigame {
     mid /= Math.max(1, this.boats.length);
     // Câmara de lado, a acompanhar as canoas.
     this.camera.position.x += (mid + 2 - this.camera.position.x) * Math.min(1, dt * 2);
-    this.camera.position.y = 7;
-    this.camera.position.z = 15;
+    // Um pouco mais alta, para nada na margem tapar as canoas.
+    this.camera.position.y = 9.5;
+    this.camera.position.z = 14;
     this.camera.lookAt(this.camera.position.x, 0.5, 0);
   }
 

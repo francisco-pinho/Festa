@@ -20,7 +20,7 @@ const TILE_TOP = 0.32;
 const HEAD_Y = 2.3;
 
 export const SPACE_STYLE: Record<SpaceType, { color: string; symbol: string }> = {
-  start: { color: '#ffffff', symbol: '▶' },
+  start: { color: '#ecebe4', symbol: '▶' },
   blue: { color: '#2f7dff', symbol: '+' },
   red: { color: '#ff3b5c', symbol: '−' },
   lucky: { color: '#25c26b', symbol: '♣' },
@@ -277,7 +277,7 @@ export class BoardStage implements Stage {
     }
   }
 
-  /** A personagem salta, bate nos dados e eles param nos valores dados. */
+  /** A personagem salta, bate nos dados e os primeiros que ainda giram param nos valores dados. */
   async hitDice(id: string, values: number[]): Promise<void> {
     sound.play('dice');
     const t = this.token(id);
@@ -285,7 +285,8 @@ export class BoardStage implements Stage {
     t.setAnim('hit');
     await this.engine.tween(0.18, (k) => (t.root.position.y = base + k * 1.1), ease.out);
     const yaw = this.cameraYawTo(t.root.position.x, t.root.position.z);
-    const pending = this.dice.filter((d) => d.value === null);
+    // Só para os primeiros dados ainda a girar (um de cada vez, se vier só um valor).
+    const pending = this.dice.filter((d) => d.value === null).slice(0, values.length);
     pending.forEach((d, i) => d.settle(values[i] ?? 1, yaw));
     for (const d of pending) {
       const y = d.root.position.y;

@@ -61,6 +61,7 @@ import {
   playersOnSpace,
   priceFor,
   ranking,
+  splitDice,
   removeItem,
   resolveDuel,
   resolveLanding,
@@ -433,7 +434,7 @@ export class PartyFlow {
 
   private async turnOrder(): Promise<void> {
     const state = this.state;
-    await this.hud.banner('Quem começa?', { sub: 'Lancem o dado! O maior número joga primeiro', hold: 1.6 });
+    await this.hud.banner('Quem começa?', { sub: 'Lancem os dois dados! A maior soma joga primeiro', hold: 1.6 });
     const rolls = rollTurnOrder(state, this.rng);
     // Um de cada vez, com o bloco de dados por cima da cabeça e a câmara bem perto
     // (estão todos na partida, uns em cima dos outros). Os outros ficam afastados.
@@ -442,17 +443,21 @@ export class PartyFlow {
       const seat = this.seat(p.id);
       await this.stage.spotlight(p.id, true);
       this.stage.faceCamera(p.id);
-      this.stage.spawnDice(p.id, 1, false, 10);
-      this.hud.hint(`${p.name}: lança o dado!`, true);
-      await this.ctl.decide(seat, {
-        layout: { kind: 'dice', prompt: 'Lança o dado para decidir a ordem!', label: 'Lançar!' },
-        valid: ['roll'],
-        bot: () => 'roll',
-        keyboardA: 'roll',
-        botDelay: 0.8 + this.rng.next() * 0.6,
-      });
-      this.buzz(p.id, [30, 30, 60]);
-      await this.stage.hitDice(p.id, [rolls.get(p.id)!]);
+      this.stage.spawnDice(p.id, 2);
+      this.hud.hint(`${p.name}: lança os dados!`, true);
+      const pair = splitDice(rolls.get(p.id)!, this.rng);
+      for (let i = 0; i < 2; i++) {
+        await this.ctl.decide(seat, {
+          layout: { kind: 'dice', prompt: i === 0 ? 'Lança o primeiro dado para decidir a ordem!' : 'Agora o segundo dado!', label: 'Lançar!' },
+          valid: ['roll'],
+          bot: () => 'roll',
+          keyboardA: 'roll',
+          botDelay: 0.6 + this.rng.next() * 0.5,
+        });
+        this.buzz(p.id, [30, 30, 60]);
+        await this.stage.hitDice(p.id, [pair[i]!]);
+        await this.wait(0.3);
+      }
       this.ctl.setLayout(seat, { kind: 'wait', message: `Tiraste ${rolls.get(p.id)}!` });
       this.stage.token(p.id).setAnim('cheer');
       await this.wait(1.1);
@@ -499,12 +504,20 @@ export class PartyFlow {
     // Dados
     this.stage.focus(p.id);
     this.stage.spawnDice(p.id, plan.dice);
-    if (plan.dice > 0) await this.rollPrompt(seat, plan.dice === 3 ? 'Lança os três dados!' : 'Lança os dois dados!');
-    const values = Array.from({ length: plan.dice }, () => rollDieFor(p, this.rng));
+    // Um dado de cada vez: cada toque (ou abanão) para um dado; depois de todos, anda.
+    const values: number[] = [];
+    for (let i = 0; i < plan.dice; i++) {
+      const ord = ['primeiro', 'segundo', 'terceiro'][i];
+      await this.rollPrompt(seat, plan.dice === 1 ? 'Lança o dado!' : `Lança o ${ord} dado!`);
+      const v = rollDieFor(p, this.rng);
+      values.push(v);
+      this.buzz(p.id, [30, 30, 60]);
+      await this.stage.hitDice(p.id, [v]);
+      this.stage.floatText(p.id, `${v}`, '#ffffff');
+      await this.wait(0.35);
+    }
     clearSlowDice(p);
-    this.buzz(p.id, [30, 30, 60]);
-    await this.stage.hitDice(p.id, values);
-    await this.wait(0.7);
+    await this.wait(0.35);
     if (plan.dice === 2 && isDoubles(values)) {
       this.stage.token(p.id).setAnim('cheer');
       await this.hud.banner('Dados iguais!', { sub: 'Lança o terceiro dado!', hold: 1.3, color: '#ffd23f' });

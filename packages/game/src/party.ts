@@ -149,10 +149,33 @@ export function getPlayer(state: PartyState, id: string): PartyPlayer {
 
 // ── Ordem de jogo ─────────────────────────────────────────
 
-/** Cada jogador lança um dado de 1 a 10 (sem repetidos, como no género); maior joga primeiro. */
+/**
+ * Cada jogador lança dois dados (2 a 12); maior soma joga primeiro. Não há empates: quem tirar
+ * uma soma que já saiu volta a lançar (com mais de 11 jogadores, os restantes ficam no fim).
+ */
 export function rollTurnOrder(state: PartyState, rng: Rng): Map<string, number> {
-  const values = rng.shuffle(Array.from({ length: 10 }, (_, i) => i + 1));
-  return new Map(state.players.map((p, i) => [p.id, values[i]!]));
+  const used = new Set<number>();
+  const out = new Map<string, number>();
+  for (const p of state.players) {
+    let total = 0;
+    for (let tries = 0; tries < 200; tries++) {
+      total = rollDie(rng) + rollDie(rng);
+      if (!used.has(total)) break;
+    }
+    if (used.has(total)) total = [...Array(11).keys()].map((i) => i + 2).find((t) => !used.has(t)) ?? 1;
+    used.add(total);
+    out.set(p.id, total);
+  }
+  return out;
+}
+
+/** Dois dados (1–6) que somam `total` (para mostrar a ordem de jogo com dois dados). */
+export function splitDice(total: number, rng: Rng): [number, number] {
+  const lo = Math.max(1, total - 6);
+  const hi = Math.min(6, total - 1);
+  if (hi < lo) return [Math.max(1, total), 0];
+  const a = rng.int(lo, hi);
+  return [a, total - a];
 }
 
 export function applyTurnOrder(state: PartyState, rolls: Map<string, number>): void {
