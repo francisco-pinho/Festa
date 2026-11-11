@@ -33,6 +33,13 @@ Vamos uma coisa de cada vez: cada tarefa tem a sua caixa `[ ]` e passa a `[x]` q
 16. **Basebol:** refazer: física, dinâmica, campo. Estudar o mercado.
 17. Tudo mais realista e com mais animações.
 
+**Segunda ronda de pedidos (depois das fases 0–7)**
+18. **Comando como os da Switch:** o telemóvel passa a ser um comando fixo (direcional/joystick, botões A, B, X, Y e +), igual na Festa e nos Desportos. As opções aparecem **no ecrã grande** e escolhem-se com o direcional e o A — o telemóvel deixa de mostrar listas de opções.
+19. **Mapas muito mais bonitos:** melhorar os modelos de todos os cenários (não as personagens): tabuleiros, salão de bowling, ringue, estádio de basebol, campo de golfe e de ténis.
+20. **Tabuleiros muito mais complexos:** mais caminhos, cruzamentos, atalhos e interações com o cenário.
+21. **Escolher a personagem uma vez, no início** (ao entrar), e não no começo de cada jogo.
+22. **Menu principal mais bonito:** as personagens aparecem à medida que os jogadores entram; depois escolhe-se o modo (Festa ou Desportos); só no modo Festa aparecem as rondas e a dificuldade dos bots.
+
 ---
 
 ## 1. Problemas que já identifiquei no código
@@ -217,6 +224,25 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [ ] Testar com telemóveis reais: Android recente e iPhone
 
 ---
+
+### Fase 8 — Comando ao estilo Switch + menu principal novo (pedidos 18, 21, 22)
+- [ ] Comando único no telemóvel: direcional/joystick à esquerda, A/B/X/Y à direita, + (menu) e − (mapa); o movimento (como um Joy-Con) continua nos desportos
+- [ ] Todas as escolhas passam para o ecrã grande com cursor: caminhos, loja, itens, estrela, fantasma, VS, menus; A confirma, B volta
+- [ ] O telemóvel só mostra o que é preciso: botões ativos acendem e têm uma legenda curta (ex.: «A Lançar», «X Itens», «− Mapa»)
+- [ ] Desportos: os mesmos botões (A bater/lançar, direcional apontar, X/Y efeito/taco); o gesto com movimento é opcional
+- [ ] Menu principal 3D: palco onde cada jogador que entra aparece com a sua personagem (escolhida ao entrar, no próprio comando, a navegar com o direcional)
+- [ ] Depois: escolher **Festa** ou **Desportos**; só na Festa aparecem rondas, mapa e dificuldade dos bots
+- [ ] A personagem fica para todos os jogos até sair da sala (dá para trocar no menu principal)
+
+### Fase 9 — Cenários novos (pedido 19)
+- [ ] Packs de cenários CC0 (KayKit, Kenney, Quaternius — descarregados dos sites oficiais) para árvores, rochas, casas, mobiliário, adereços
+- [ ] Refazer cada tabuleiro com os modelos novos, iluminação e pormenores (água animada, luzes, partículas)
+- [ ] Refazer os cenários dos desportos: salão de bowling, ringue, estádio, campo de golfe, campo de ténis
+
+### Fase 10 — Tabuleiros mais complexos (pedido 20)
+- [ ] Mais caminhos e cruzamentos por mapa (e caminhos de sentido único, atalhos pagos, caminhos que abrem/fecham)
+- [ ] Mais interações com o cenário: objetos em que se pode carregar ao passar (alavancas, portas, canhões, teleféricos), eventos por zona
+- [ ] Mais casas diferentes por mapa
 
 ## 5. Perguntas para ti (antes das fases respetivas)
 
