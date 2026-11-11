@@ -13,6 +13,7 @@ import { Clouds, Water, palmTree, setupSky } from './environment';
 interface Slot {
   model: CharacterModel;
   label: THREE.Sprite | null;
+  labelLift?: number;
 }
 
 interface Confetti {
@@ -72,9 +73,11 @@ export class ShowcaseStage implements Stage {
         model.root.scale.setScalar(0.01);
       }
       const a = n === 1 ? 0 : -spread / 2 + (i / (n - 1)) * spread;
-      const r = 7.5;
+      const r = 8.5;
       slot.model.root.position.set(Math.sin(a) * r, 0.1, -Math.cos(a) * r + 6);
       slot.model.faceYaw(-a * 0.6, true);
+      // Nomes em duas alturas alternadas, para não se sobreporem quando há muitas personagens.
+      slot.labelLift = n > 5 && i % 2 === 1 ? 0.6 : 0;
       this.setLabel(e.key, e.label ?? null, e.labelColor);
     });
   }
@@ -89,7 +92,7 @@ export class ShowcaseStage implements Stage {
     }
     if (!text) return;
     slot.label = textSprite(text, { height: 0.55, color });
-    slot.label.position.y = 2.9;
+    slot.label.position.y = 2.9 + (slot.labelLift ?? 0);
     slot.model.root.add(slot.label);
   }
 

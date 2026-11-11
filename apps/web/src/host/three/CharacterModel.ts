@@ -1,19 +1,77 @@
 /**
- * Personagem 3D construída em código (formas simples, estilo "chibi") com
- * animações procedimentais: idle, walk, run, cheer, sad, dizzy, hit.
+ * Personagem 3D com esqueleto e animações (modelos KayKit, CC0).
+ *
+ * Mantém a interface antiga (root, setAnim, faceTowards, faceYaw, setFaded,
+ * update, dispose) para o resto do jogo não mudar, e acrescenta:
+ *  - mais animações (saltar, socos, defender, esquivar, lançar, cair, levantar…);
+ *  - `hand('left'|'right')` / `attach()` para segurar objetos nas mãos.
  *
  * O `root` está aos pés da personagem e ela olha para +Z.
- * Movimentos no mundo (saltar de casa em casa, cair…) são feitos por quem a usa
- * mexendo em `root.position`; aqui só se anima o corpo.
  */
 import * as THREE from 'three';
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 import type { CharacterDef } from '@festa/game';
 import { damp } from './tweens';
-import { mesh, toonUnique } from './materials';
+import { toonUnique } from './materials';
+import { LOOKS, getAsset, getCharacterTexture } from './characterAssets';
+import { buildAccessory } from './accessories';
 
-export type CharacterAnim = 'idle' | 'walk' | 'run' | 'cheer' | 'sad' | 'dizzy' | 'hit';
+export type CharacterAnim =
+  | 'idle'
+  | 'walk'
+  | 'run'
+  | 'cheer'
+  | 'sad'
+  | 'dizzy'
+  | 'hit'
+  | 'jump'
+  | 'punchLeft'
+  | 'punchRight'
+  | 'block'
+  | 'hurt'
+  | 'dodgeLeft'
+  | 'dodgeRight'
+  | 'dodgeBack'
+  | 'throw'
+  | 'fall'
+  | 'lie'
+  | 'getUp'
+  | 'sit';
 
-const SKIN_DARK = '#2b1d3a';
+interface AnimSpec {
+  clip: string;
+  loop: boolean;
+  /** Velocidade de reprodução. */
+  speed?: number;
+  /** Ao acabar (animações de uma vez), volta a 'idle'. */
+  thenIdle?: boolean;
+}
+
+const ANIMS: Record<CharacterAnim, AnimSpec> = {
+  idle: { clip: 'Idle', loop: true },
+  walk: { clip: 'Walking_A', loop: true },
+  run: { clip: 'Running_A', loop: true },
+  cheer: { clip: 'Cheer', loop: true },
+  sad: { clip: 'Idle', loop: true, speed: 0.5 },
+  dizzy: { clip: 'Hit_B', loop: true, speed: 0.6 },
+  hit: { clip: 'Unarmed_Melee_Attack_Punch_A', loop: false, speed: 1.4 },
+  jump: { clip: 'Jump_Full_Short', loop: false, thenIdle: true },
+  punchLeft: { clip: 'Unarmed_Melee_Attack_Punch_A', loop: false, speed: 1.6, thenIdle: true },
+  punchRight: { clip: 'Unarmed_Melee_Attack_Punch_B', loop: false, speed: 1.6, thenIdle: true },
+  block: { clip: 'Blocking', loop: true },
+  hurt: { clip: 'Hit_A', loop: false, speed: 1.3, thenIdle: true },
+  dodgeLeft: { clip: 'Dodge_Left', loop: false, speed: 1.4, thenIdle: true },
+  dodgeRight: { clip: 'Dodge_Right', loop: false, speed: 1.4, thenIdle: true },
+  dodgeBack: { clip: 'Dodge_Backward', loop: false, speed: 1.4, thenIdle: true },
+  throw: { clip: 'Throw', loop: false, speed: 1.2, thenIdle: true },
+  fall: { clip: 'Death_A', loop: false },
+  lie: { clip: 'Lie_Idle', loop: true },
+  getUp: { clip: 'Lie_StandUp', loop: false, speed: 1.3, thenIdle: true },
+  sit: { clip: 'Sit_Floor_Idle', loop: true },
+};
+
+/** Altura final das personagens no mundo (topo da cabeça). */
+const TARGET_HEIGHT = 2.3;
 
 export class CharacterModel {
   readonly root = new THREE.Group();
@@ -21,30 +79,99 @@ export class CharacterModel {
   anim: CharacterAnim = 'idle';
 
   private readonly body = new THREE.Group();
-  private readonly head = new THREE.Group();
-  private readonly eyes = new THREE.Group();
-  private readonly legL = new THREE.Group();
-  private readonly legR = new THREE.Group();
-  private readonly armL = new THREE.Group();
-  private readonly armR = new THREE.Group();
-  private propeller: THREE.Object3D | null = null;
+  private readonly model: THREE.Object3D;
+  private readonly mixer: THREE.AnimationMixer;
+  private readonly actions = new Map<string, THREE.AnimationAction>();
+  private current: THREE.AnimationAction | null = null;
   private readonly materials: THREE.MeshToonMaterial[] = [];
-
-  private t = Math.random() * 10;
-  private animTime = 0;
-  private nextBlink = 1 + Math.random() * 3;
+  private readonly extraGeometries: THREE.BufferGeometry[] = [];
+  private readonly bones: { head?: THREE.Object3D; chest?: THREE.Object3D; left?: THREE.Object3D; right?: THREE.Object3D } = {};
+  private propeller: THREE.Object3D | null = null;
   private targetYaw = 0;
+  private t = Math.random() * 10;
 
   constructor(def: CharacterDef) {
     this.def = def;
-    this.build();
+    const look = LOOKS[def.id] ?? { base: 'Rogue' as const, hat: false, accessory: false };
+    const asset = getAsset(look.base);
+    this.model = cloneSkinned(asset.scene);
+
+    const texture = getCharacterTexture(def.id);
+    const material = toonUnique('#ffffff', { map: texture });
+    this.materials.push(material);
+    this.model.traverse((o) => {
+      const parentName = o.parent?.name ?? '';
+      if ((o as THREE.Mesh).isMesh) {
+        const m = o as THREE.Mesh;
+        // Sem armas/escudos/livros nas mãos.
+        if (parentName.startsWith('handslot')) m.visible = false;
+        if (/_(Hat|Helmet)$/.test(m.name)) m.visible = look.hat;
+        m.material = material;
+        m.castShadow = true;
+        m.frustumCulled = false; // malhas com esqueleto: a caixa não acompanha a animação
+      }
+    });
+    this.bones.head = this.model.getObjectByName('head');
+    this.bones.chest = this.model.getObjectByName('chest');
+    this.bones.left = this.model.getObjectByName('handslot.l');
+    this.bones.right = this.model.getObjectByName('handslot.r');
+
+    // Escala normalizada + forma do corpo
+    const s = TARGET_HEIGHT / asset.height;
+    const shape = def.body === 'chubby' ? new THREE.Vector3(1.12, 0.97, 1.1) : def.body === 'tall' ? new THREE.Vector3(0.96, 1.06, 0.96) : new THREE.Vector3(1, 1, 1);
+    this.body.scale.set(s * shape.x, s * shape.y, s * shape.z);
+    this.body.add(this.model);
     this.root.add(this.body);
+
+    if (look.accessory) this.addAccessory();
+
+    this.mixer = new THREE.AnimationMixer(this.model);
+    for (const [name, clip] of asset.clips) this.actions.set(name, this.mixer.clipAction(clip));
+    this.mixer.addEventListener('finished', () => {
+      if (ANIMS[this.anim].thenIdle) this.setAnim('idle');
+    });
+    this.play('idle', 0);
+    this.mixer.update(Math.random() * 2); // cada um começa num ponto diferente
   }
 
+  /** Muda de animação com uma transição suave. */
   setAnim(anim: CharacterAnim): void {
-    if (anim === this.anim) return;
+    if (anim === this.anim && ANIMS[anim].loop) return;
     this.anim = anim;
-    this.animTime = 0;
+    this.play(anim, 0.18);
+  }
+
+  private play(anim: CharacterAnim, fade: number): void {
+    const spec = ANIMS[anim];
+    const action = this.actions.get(spec.clip);
+    if (!action) return;
+    action.reset();
+    action.setLoop(spec.loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
+    action.clampWhenFinished = !spec.loop;
+    action.timeScale = spec.speed ?? 1;
+    action.enabled = true;
+    if (this.current && this.current !== action) {
+      action.crossFadeFrom(this.current, fade, false);
+    }
+    action.play();
+    this.current = action;
+  }
+
+  /** Osso onde se prendem objetos (raquete, taco, bola, luva…). */
+  hand(side: 'left' | 'right'): THREE.Object3D {
+    return (side === 'left' ? this.bones.left : this.bones.right) ?? this.root;
+  }
+
+  /** Prende um objeto a uma mão. A escala do esqueleto é compensada. */
+  attach(obj: THREE.Object3D, side: 'left' | 'right'): void {
+    const hand = this.hand(side);
+    this.root.updateMatrixWorld(true);
+    const ws = new THREE.Vector3();
+    hand.getWorldScale(ws);
+    const rootScale = new THREE.Vector3();
+    this.root.getWorldScale(rootScale);
+    obj.scale.multiplyScalar(rootScale.x / (ws.x || 1));
+    hand.add(obj);
   }
 
   /** Vira-se suavemente para um ponto no plano XZ (coordenadas do mundo). */
@@ -71,324 +198,70 @@ export class CharacterModel {
 
   update(dt: number): void {
     this.t += dt;
-    this.animTime += dt;
-    const k = damp(14, dt);
-    const t = this.t;
-
-    // Rotação (caminho mais curto)
     let dy = this.targetYaw - this.root.rotation.y;
     dy = Math.atan2(Math.sin(dy), Math.cos(dy));
     this.root.rotation.y += dy * damp(10, dt);
 
-    // Pose alvo
-    let legL = 0, legR = 0;
-    let armLz = 0.25, armRz = -0.25, armLx = 0, armRx = 0;
-    let headX = 0, headZ = 0, headY = 0;
-    let bodyY = 0, bodyRotZ = 0, squash = 1, bodyRotY = 0;
+    this.mixer.update(dt);
 
-    switch (this.anim) {
-      case 'idle': {
-        bodyY = Math.sin(t * 2.4) * 0.025;
-        squash = 1 + Math.sin(t * 2.4) * 0.02;
-        armLz = 0.3 + Math.sin(t * 2.4) * 0.05;
-        armRz = -0.3 - Math.sin(t * 2.4) * 0.05;
-        headZ = Math.sin(t * 0.9) * 0.06;
-        break;
-      }
-      case 'walk':
-      case 'run': {
-        const fast = this.anim === 'run';
-        const f = fast ? 16 : 11;
-        const amp = fast ? 0.9 : 0.6;
-        legL = Math.sin(t * f) * amp;
-        legR = -legL;
-        armLx = -legL * 0.9;
-        armRx = legL * 0.9;
-        armLz = 0.35;
-        armRz = -0.35;
-        bodyY = Math.abs(Math.sin(t * f)) * (fast ? 0.12 : 0.07);
-        bodyRotZ = Math.sin(t * f) * 0.05;
-        headX = fast ? 0.12 : 0.04;
-        break;
-      }
-      case 'cheer': {
-        const hop = Math.abs(Math.sin(t * 7));
-        bodyY = hop * 0.35;
-        squash = 1 + (hop < 0.15 ? -0.08 : 0.04);
-        armLz = 2.5 + Math.sin(t * 14) * 0.25;
-        armRz = -2.5 - Math.sin(t * 14) * 0.25;
-        headX = -0.15;
-        legL = legR = hop > 0.5 ? -0.3 : 0;
-        break;
-      }
-      case 'sad': {
-        squash = 0.93;
-        headX = 0.45;
-        headZ = Math.sin(t * 1.2) * 0.08;
-        armLz = 0.08;
-        armRz = -0.08;
-        bodyY = -0.03;
-        break;
-      }
-      case 'dizzy': {
-        bodyRotZ = Math.sin(t * 5) * 0.18;
-        headZ = Math.sin(t * 5 + 1) * 0.25;
-        headY = Math.sin(t * 3) * 0.3;
-        armLz = 0.9 + Math.sin(t * 6) * 0.3;
-        armRz = -0.9 + Math.sin(t * 6) * 0.3;
-        break;
-      }
-      case 'hit': {
-        // Salta com o punho no ar (para bater nos dados).
-        armRz = -2.9;
-        armLz = 0.4;
-        headX = -0.35;
-        legL = -0.4;
-        legR = 0.3;
-        break;
-      }
+    // Poses extra por cima da animação
+    if (this.anim === 'sad') {
+      this.bones.head?.rotateX(0.45);
+      this.bones.chest?.rotateX(0.18);
+    } else if (this.anim === 'dizzy') {
+      this.bones.head?.rotateZ(Math.sin(this.t * 6) * 0.3);
+      this.bones.chest?.rotateZ(Math.sin(this.t * 6 + 1) * 0.12);
     }
-    if (this.anim === 'cheer') bodyRotY = Math.sin(t * 3.5) * 0.25;
-
-    this.legL.rotation.x += (legL - this.legL.rotation.x) * k;
-    this.legR.rotation.x += (legR - this.legR.rotation.x) * k;
-    this.armL.rotation.z += (armLz - this.armL.rotation.z) * k;
-    this.armR.rotation.z += (armRz - this.armR.rotation.z) * k;
-    this.armL.rotation.x += (armLx - this.armL.rotation.x) * k;
-    this.armR.rotation.x += (armRx - this.armR.rotation.x) * k;
-    this.head.rotation.x += (headX - this.head.rotation.x) * k;
-    this.head.rotation.z += (headZ - this.head.rotation.z) * k;
-    this.head.rotation.y += (headY - this.head.rotation.y) * k;
-    this.body.position.y += (bodyY - this.body.position.y) * k;
-    this.body.rotation.z += (bodyRotZ - this.body.rotation.z) * k;
-    this.body.rotation.y += (bodyRotY - this.body.rotation.y) * k;
-    const sy = this.body.scale.y + (squash - this.body.scale.y) * k;
-    this.body.scale.set(1 / Math.sqrt(sy), sy, 1 / Math.sqrt(sy));
-
-    // Piscar os olhos
-    this.nextBlink -= dt;
-    const blinking = this.nextBlink < 0.12 && this.anim !== 'dizzy';
-    this.eyes.scale.y = blinking ? 0.1 : this.anim === 'dizzy' ? 0.6 : 1;
-    if (this.nextBlink < 0) this.nextBlink = 2 + Math.random() * 3;
-
     if (this.propeller) this.propeller.rotation.y += dt * (this.anim === 'cheer' ? 30 : 8);
   }
 
   dispose(): void {
-    this.root.traverse((o) => {
-      if (o instanceof THREE.Mesh) o.geometry.dispose();
-    });
+    this.mixer.stopAllAction();
     for (const m of this.materials) m.dispose();
+    for (const g of this.extraGeometries) g.dispose();
+    // As geometrias do modelo são partilhadas entre clones: não se apagam aqui.
   }
 
-  // ── Construção ──────────────────────────────────────────
+  // ── Acessório na cabeça ─────────────────────────────────
 
-  private mat(color: THREE.ColorRepresentation): THREE.MeshToonMaterial {
-    const m = toonUnique(color);
-    this.materials.push(m);
-    return m;
-  }
+  private addAccessory(): void {
+    const head = this.bones.head;
+    if (!head) return;
+    let headMesh: THREE.Object3D | undefined;
+    this.model.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh && /_Head(_Hooded)?$/.test(o.name)) headMesh = o;
+    });
+    if (!headMesh) return;
+    this.root.updateMatrixWorld(true);
+    // Caixa da cabeça na pose de repouso, no espaço do `root`.
+    const box = new THREE.Box3().setFromObject(headMesh);
+    const inv = new THREE.Matrix4().copy(this.root.matrixWorld).invert();
+    box.applyMatrix4(inv);
+    const radius = (box.max.x - box.min.x) / 2;
+    const center = box.getCenter(new THREE.Vector3());
+    // Os acessórios foram desenhados para cabeça de raio 0,52 com origem 0,38 abaixo do centro.
+    const k = radius / 0.52;
+    const originInRoot = center.clone().add(new THREE.Vector3(0, -0.38 * k, 0));
 
-  private build(): void {
-    const d = this.def;
-    const main = this.mat(d.color);
-    const accent = this.mat(d.accent);
-    const dark = this.mat(SKIN_DARK);
-    const white = this.mat('#ffffff');
-    const cheek = this.mat('#ff8fa3');
+    const mat = (c: THREE.ColorRepresentation) => {
+      const m = toonUnique(c);
+      this.materials.push(m);
+      return m;
+    };
+    const acc = buildAccessory(this.def, mat, (p) => (this.propeller = p));
+    acc.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) this.extraGeometries.push((o as THREE.Mesh).geometry);
+    });
 
-    const bodyScale =
-      d.body === 'tall' ? new THREE.Vector3(0.9, 1.2, 0.9)
-      : d.body === 'chubby' ? new THREE.Vector3(1.2, 0.95, 1.1)
-      : new THREE.Vector3(1, 1, 0.95);
-
-    // Pernas
-    for (const [leg, x] of [[this.legL, 0.2], [this.legR, -0.2]] as const) {
-      leg.position.set(x * bodyScale.x, 0.45, 0);
-      const m = mesh(new THREE.CapsuleGeometry(0.14, 0.22, 4, 10), main);
-      m.position.y = -0.22;
-      const foot = mesh(new THREE.SphereGeometry(0.17, 12, 10), dark);
-      foot.scale.set(1, 0.6, 1.35);
-      foot.position.set(0, -0.4, 0.06);
-      leg.add(m, foot);
-      this.body.add(leg);
-    }
-
-    // Tronco + barriga
-    const torso = mesh(new THREE.SphereGeometry(0.45, 20, 16), main);
-    torso.scale.copy(bodyScale);
-    torso.position.y = 0.85;
-    const belly = mesh(new THREE.SphereGeometry(0.32, 16, 12), accent);
-    belly.scale.set(bodyScale.x, bodyScale.y, 0.45);
-    belly.position.set(0, 0.8, 0.3 * bodyScale.z);
-    this.body.add(torso, belly);
-
-    // Braços
-    for (const [arm, side] of [[this.armL, 1], [this.armR, -1]] as const) {
-      arm.position.set(side * 0.43 * bodyScale.x, 0.85 + 0.25 * bodyScale.y, 0);
-      const a = mesh(new THREE.CapsuleGeometry(0.1, 0.26, 4, 8), main);
-      a.position.y = -0.22;
-      const hand = mesh(new THREE.SphereGeometry(0.13, 12, 10), white);
-      hand.position.y = -0.45;
-      arm.add(a, hand);
-      this.body.add(arm);
-    }
-
-    // Cabeça
-    this.head.position.y = 0.85 + 0.42 * bodyScale.y;
-    const skull = mesh(new THREE.SphereGeometry(0.52, 24, 18), main);
-    skull.position.y = 0.38;
-    this.head.add(skull);
-
-    // Olhos
-    this.eyes.position.set(0, 0.45, 0);
-    for (const side of [1, -1]) {
-      const eye = mesh(new THREE.SphereGeometry(0.115, 14, 12), white, { cast: false });
-      eye.scale.set(1, 1.3, 0.55);
-      eye.position.set(side * 0.18, 0, 0.44);
-      const pupil = mesh(new THREE.SphereGeometry(0.07, 12, 10), dark, { cast: false });
-      pupil.scale.set(1, 1.3, 0.6);
-      pupil.position.set(side * 0.18, -0.01, 0.5);
-      const shine = mesh(new THREE.SphereGeometry(0.022, 8, 6), white, { cast: false });
-      shine.position.set(side * 0.18 + 0.025, 0.035, 0.535);
-      this.eyes.add(eye, pupil, shine);
-    }
-    this.head.add(this.eyes);
-
-    for (const side of [1, -1]) {
-      const c = mesh(new THREE.SphereGeometry(0.07, 10, 8), cheek, { cast: false });
-      c.scale.set(1.3, 0.8, 0.4);
-      c.position.set(side * 0.3, 0.28, 0.43);
-      this.head.add(c);
-    }
-    const mouth = mesh(new THREE.TorusGeometry(0.07, 0.022, 6, 14, Math.PI), dark, { cast: false });
-    mouth.rotation.z = Math.PI;
-    mouth.position.set(0, 0.27, 0.5);
-    this.head.add(mouth);
-
-    this.head.add(this.buildAccessory(main, accent, dark));
-    this.body.add(this.head);
-  }
-
-  private buildAccessory(
-    main: THREE.Material,
-    accent: THREE.Material,
-    dark: THREE.Material,
-  ): THREE.Object3D {
-    const g = new THREE.Group();
-    const top = 0.86;
-    switch (this.def.accessory) {
-      case 'leaf': {
-        const stem = mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.18), this.mat('#6b3e1f'));
-        stem.position.y = top + 0.06;
-        const leaf = mesh(new THREE.SphereGeometry(0.2, 12, 8), this.mat('#5cc95c'));
-        leaf.scale.set(1, 0.25, 0.55);
-        leaf.position.set(0.14, top + 0.16, 0);
-        leaf.rotation.z = 0.5;
-        g.add(stem, leaf);
-        break;
-      }
-      case 'bunnyEars':
-      case 'catEars': {
-        for (const side of [1, -1]) {
-          if (this.def.accessory === 'bunnyEars') {
-            const ear = mesh(new THREE.CapsuleGeometry(0.1, 0.42, 4, 8), main);
-            ear.position.set(side * 0.2, top + 0.22, -0.05);
-            ear.rotation.z = -side * 0.18;
-            const inner = mesh(new THREE.CapsuleGeometry(0.05, 0.34, 4, 8), accent, { cast: false });
-            inner.position.set(0, 0, 0.06);
-            ear.add(inner);
-            g.add(ear);
-          } else {
-            const ear = mesh(new THREE.ConeGeometry(0.16, 0.3, 4), main);
-            ear.position.set(side * 0.3, top - 0.02, 0);
-            ear.rotation.z = -side * 0.35;
-            g.add(ear);
-          }
-        }
-        break;
-      }
-      case 'antenna': {
-        const rod = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35), dark);
-        rod.position.y = top + 0.12;
-        const ball = mesh(new THREE.SphereGeometry(0.09, 12, 10), this.mat(this.def.accent));
-        (ball.material as THREE.MeshToonMaterial).emissive = new THREE.Color('#fff7a0');
-        (ball.material as THREE.MeshToonMaterial).emissiveIntensity = 0.6;
-        ball.position.y = top + 0.32;
-        g.add(rod, ball);
-        break;
-      }
-      case 'horns': {
-        for (const side of [1, -1]) {
-          const horn = mesh(new THREE.ConeGeometry(0.08, 0.28, 10), accent);
-          horn.position.set(side * 0.25, top - 0.04, 0.05);
-          horn.rotation.z = -side * 0.5;
-          g.add(horn);
-        }
-        break;
-      }
-      case 'propeller': {
-        const cap = mesh(new THREE.SphereGeometry(0.2, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), this.mat('#ff5a5f'));
-        cap.position.y = top - 0.12;
-        const stem = mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.16), dark);
-        stem.position.y = top + 0.04;
-        const blades = new THREE.Group();
-        for (const r of [0, Math.PI / 2]) {
-          const blade = mesh(new THREE.BoxGeometry(0.6, 0.02, 0.09), this.mat('#ffcc00'));
-          blade.rotation.y = r;
-          blades.add(blade);
-        }
-        blades.position.y = top + 0.12;
-        this.propeller = blades;
-        g.add(cap, stem, blades);
-        break;
-      }
-      case 'crown': {
-        const gold = this.mat('#ffcc33');
-        const band = mesh(new THREE.CylinderGeometry(0.24, 0.26, 0.12, 16, 1, true), gold);
-        band.position.y = top - 0.02;
-        g.add(band);
-        for (let i = 0; i < 5; i++) {
-          const a = (i / 5) * Math.PI * 2;
-          const spike = mesh(new THREE.ConeGeometry(0.06, 0.16, 6), gold);
-          spike.position.set(Math.sin(a) * 0.22, top + 0.1, Math.cos(a) * 0.22);
-          g.add(spike);
-        }
-        break;
-      }
-      case 'mohawk': {
-        for (let i = 0; i < 4; i++) {
-          const spike = mesh(new THREE.ConeGeometry(0.08, 0.3, 8), accent);
-          spike.position.set(0, top + 0.02 - Math.abs(i - 1.5) * 0.04, 0.25 - i * 0.17);
-          spike.rotation.x = -0.3 + i * 0.2;
-          g.add(spike);
-        }
-        break;
-      }
-      case 'beanie': {
-        const hat = mesh(new THREE.SphereGeometry(0.54, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2.2), accent);
-        hat.position.y = top - 0.5;
-        const rim = mesh(new THREE.TorusGeometry(0.47, 0.06, 8, 24), accent);
-        rim.rotation.x = Math.PI / 2;
-        rim.position.y = top - 0.36;
-        const pom = mesh(new THREE.SphereGeometry(0.11, 10, 8), this.mat('#ffffff'));
-        pom.position.y = top + 0.06;
-        g.add(hat, rim, pom);
-        break;
-      }
-      case 'flower': {
-        const center = mesh(new THREE.SphereGeometry(0.07, 10, 8), this.mat('#ffcc00'));
-        center.position.set(0.25, top - 0.02, 0.2);
-        g.add(center);
-        for (let i = 0; i < 5; i++) {
-          const a = (i / 5) * Math.PI * 2;
-          const petal = mesh(new THREE.SphereGeometry(0.075, 10, 8), accent);
-          petal.position.set(0.25 + Math.cos(a) * 0.1, top - 0.02 + Math.sin(a) * 0.1, 0.18);
-          g.add(petal);
-        }
-        break;
-      }
-    }
-    return g;
+    // Converte posição/rotação/escala do espaço do root para o espaço do osso da cabeça.
+    const worldPos = originInRoot.applyMatrix4(this.root.matrixWorld);
+    const headWorldQuat = head.getWorldQuaternion(new THREE.Quaternion());
+    const headWorldScale = head.getWorldScale(new THREE.Vector3());
+    const rootWorldScale = this.root.getWorldScale(new THREE.Vector3());
+    head.worldToLocal(worldPos);
+    acc.position.copy(worldPos);
+    acc.quaternion.copy(headWorldQuat).invert().multiply(this.root.getWorldQuaternion(new THREE.Quaternion()));
+    acc.scale.setScalar((k * rootWorldScale.x) / (headWorldScale.x || 1));
+    head.add(acc);
   }
 }

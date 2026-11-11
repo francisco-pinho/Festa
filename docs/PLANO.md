@@ -152,7 +152,7 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [x] Ecrã "Ativar sensores" com indicador e calibração; corrigir abanar dados (3.4, P2) — falta confirmar num telemóvel real
 - [x] Menu de pausa com Sair e Definições (3.5) — sem volume ainda (não há sons)
 - [x] Dificuldade dos bots (3.6)
-- [ ] Escolher o pack de modelos, descarregar (com autorização) e criar o novo `CharacterModel` com esqueleto (3.1)
+- [x] Escolher o pack de modelos, descarregar (com autorização) e criar o novo `CharacterModel` com esqueleto (3.1) — KayKit Adventurers (CC0), ver `docs/ASSETS.md`
 - [x] Integrar o Rapier (3.2)
 
 ### Fase 1 — Festa
@@ -221,7 +221,7 @@ Cada fase termina testada, com commit e push no seu ramo.
 ## 5. Perguntas para ti (antes das fases respetivas)
 
 - **Q1 (bowling):** na regra oficial, a 10.ª jogada só tem 3.º lançamento se fizeres strike ou spare. Queres a regra oficial, ou **3 lançamentos sempre** na última jogada? E viste algum caso em que fizeste strike/spare e não te deu o 3.º?
-- **Q2 (modelos):** preferes um estilo **realista** (proporções humanas, Quaternius "Regular") ou **estilizado/cartoon mais detalhado** (KayKit)? Os packs gratuitos com muitas animações são mais estilizados.
+- ~~**Q2 (modelos):**~~ Respondida: KayKit (cartoon). preferes um estilo **realista** (proporções humanas, Quaternius "Regular") ou **estilizado/cartoon mais detalhado** (KayKit)? Os packs gratuitos com muitas animações são mais estilizados.
 - **Q3 (duelo):** quando cais numa casa ocupada, o que vale o duelo? Proposta: quem perde recua 3 casas e dá 5 moedas a quem ganha. O duelo é obrigatório ou quem chega pode escolher?
 - **Q4 (itens):** quantos itens no máximo por jogador (proposta: 3)? Podem roubar-se estrelas com itens?
 - **Q5 (mapas):** concordas com os 5 temas propostos? Por qual começamos?
@@ -234,4 +234,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 |---|---|---|---|
 | 2026-11-11 | Plano criado | `jogos-todos` | ✔ |
 | 2026-11-11 | Fase 0: dica Android, horizontal, sensores, pausa/definições, dificuldade, Rapier | `fase0-fundacoes` | ✔ |
-| 2026-11-11 | Fase 0: modelos 3D com esqueleto | `fase0-fundacoes` | à espera da escolha do pack |
+| 2026-11-11 | Fase 0: modelos 3D com esqueleto (KayKit, 76 animações, 10 personagens recoloridas) | `fase0-fundacoes` | ✔ |
