@@ -42,7 +42,7 @@ screenShare.events.on('changed', ({ sharing, viewers }) => {
 });
 window.addEventListener('keydown', (e) => {
   if (e.code !== 'KeyV' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
-  if ((e.target as HTMLElement | null)?.closest('input, textarea')) return;
+  if (e.target instanceof Element && e.target.closest('input, textarea')) return;
   void screenShare.toggle();
 });
 

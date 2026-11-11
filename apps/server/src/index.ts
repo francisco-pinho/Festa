@@ -14,7 +14,11 @@ import { registerSocketHandlers, type FestaServer } from './socketServer';
 const PORT = Number(process.env.PORT ?? 3000);
 /** URL público (modo online). Pode chegar depois do arranque: `npm run online` envia-o quando o túnel abre. */
 let publicUrl = process.env.PUBLIC_URL?.trim().replace(/\/+$/, '') || null;
+/** Túnel aberto pelo `npm run online` (fecha-se com o servidor). */
+let tunnelPid: number | null = null;
 process.on('message', (msg: unknown) => {
+  const pid = (msg as { tunnelPid?: unknown } | null)?.tunnelPid;
+  if (typeof pid === 'number' && Number.isInteger(pid) && pid > 0) tunnelPid = pid;
   const url = (msg as { publicUrl?: unknown } | null)?.publicUrl;
   if (typeof url === 'string' && /^https:\/\//.test(url)) {
     publicUrl = url.replace(/\/+$/, '');
@@ -110,6 +114,14 @@ httpServer.listen(PORT, '0.0.0.0', () => {
 });
 
 const shutdown = () => {
+  if (tunnelPid) {
+    try {
+      process.kill(tunnelPid);
+    } catch {
+      // já tinha fechado
+    }
+    tunnelPid = null;
+  }
   manager.closeAll('SERVER_SHUTDOWN');
   void io.close();
   httpServer.close(() => process.exit(0));

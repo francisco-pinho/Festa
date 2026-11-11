@@ -312,4 +312,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-12 | Narrador com corpo e voz; comandos nas pontas do telemóvel; câmara e cordas do boxe | `fase8-comando` | ✔ (voz não confirmada a ouvir) |
 | 2026-11-12 | Fase 9: cenários com modelos CC0 (KayKit e Kenney) nos 5 tabuleiros e em 4 desportos | `fase9-cenarios` | ✔ (primeira passagem) |
 | 2026-11-12 | Fase 10: alavancas e portões, portagens com dono, canhões/géiser, banco, baús e derrocadas por zona, um caminho novo por mapa | `fase10-tabuleiros` | ✔ (testado com bots) |
-| 2026-11-12 | Fase 11: `npm run online` (túnel Cloudflare), vídeo WebRTC `/ver` e 📺 no comando, compensação de atraso, Dockerfile/fly.toml | `fase11-online` | ✔ (vídeo testado entre separadores; túnel por testar: falta instalar o cloudflared) |
+| 2026-11-12 | Fase 11: `npm run online` (túnel Cloudflare), vídeo WebRTC `/ver` e 📺 no comando, compensação de atraso, Dockerfile/fly.toml | `fase11-online` | ✔ (túnel Cloudflare testado: comando e vídeo /ver pelo link público; falta testar com telemóveis reais) |

@@ -102,7 +102,8 @@ if (!bin) {
     if (!m || found) return;
     found = true;
     const url = m[0];
-    server.send({ publicUrl: url });
+    // O servidor também fica com o PID do túnel: se este lançador for morto à força, é ele que o fecha.
+    server.send({ publicUrl: url, tunnelPid: tunnel.pid });
     console.log(`
 ════════════════════════════════════════════════════════════
   🎉 Festa online!
