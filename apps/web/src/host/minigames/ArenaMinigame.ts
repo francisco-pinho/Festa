@@ -2,6 +2,7 @@
  * Base dos minijogos de arena: cenário, personagens, movimento com joystick,
  * dash no botão A, colisões entre personagens e câmara fixa.
  */
+import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { getCharacter } from '@festa/game';
 import { CharacterModel } from '../three/CharacterModel';
@@ -171,6 +172,7 @@ export abstract class ArenaMinigame implements MinigameRun {
         a.dashTime = this.dashLength;
         a.dashCooldown = this.dashCooldownTime;
         this.onDash(a);
+        sound.play('whoosh', { vol: 0.4 });
       }
       const boost = a.dashTime > 0 ? this.dashBoost : 1;
       let sx = pad.stick.x;

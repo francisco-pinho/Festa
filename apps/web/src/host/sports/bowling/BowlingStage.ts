@@ -7,6 +7,7 @@
  *  - Corrida de aproximação, câmara lenta no impacto, repetição dos strikes, máquina de pinos.
  *  - Salão: pistas vizinhas com bots a jogar, retorno de bolas, bancos, placar suspenso, luzes.
  */
+import { sound } from '../../audio/Sound';
 import * as THREE from 'three';
 import { CHARACTERS, getCharacter } from '@festa/game';
 import { isFrameDone, rollSymbols, runningTotal, scoreFrames, shouldResetPins, type BowlingFrame } from '@festa/game/sports/bowling';
@@ -215,6 +216,7 @@ export class BowlingStage extends SportStage {
     await this.wait(0.28);
     this.handBall.visible = false;
     phys.launch(t);
+    sound.play('roll');
     this.ball.visible = true;
     this.syncPins = true;
     this.followBall = true;
@@ -294,6 +296,7 @@ export class BowlingStage extends SportStage {
     if (standing === 0 && freshRack) {
       m.setAnim('cheer');
       this.ctx.seats.vibrate(seat, [100, 50, 100, 50, 300]);
+      sound.play('cheer');
       await this.ctx.hud.banner('STRIKE!', { hold: 1.4, color: '#ffd23f' });
       await this.replay();
     } else if (standing === 0) {
@@ -302,6 +305,7 @@ export class BowlingStage extends SportStage {
       await this.ctx.hud.banner('SPARE!', { hold: 1.6, color: '#3fd0ff' });
     } else if (gutter) {
       m.setAnim('sad');
+      sound.play('aww', { vol: 0.6 });
       await this.ctx.hud.banner('Calha…', { hold: 1.3, color: '#b9a9e8' });
     } else {
       m.setAnim(knocked >= 7 ? 'cheer' : knocked <= 2 ? 'sad' : 'idle');
@@ -435,6 +439,7 @@ export class BowlingStage extends SportStage {
           this.slowmoArmed = false;
           this.slowmo = 0.45;
           this.ctx.engine.timeScale = this.baseTimeScale * 0.3;
+          sound.play('pins');
         }
         // Grava para a repetição.
         if (b.z < PIN_Z + 6) {

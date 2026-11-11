@@ -212,8 +212,8 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [x] Animações de direita/esquerda, serviço com lançamento da bola (falta e dupla falta), corrida e passos laterais (o deslize ficou por fazer)
 
 ### Fase 7 — Polimento geral
-- [ ] Sons e música (CC0)
-- [ ] Mais animações e efeitos (partículas, câmara lenta, repetições)
+- [x] Sons e música: gerados no browser (Web Audio, `host/audio/Sound.ts`), sem ficheiros nem licenças — 27 efeitos (moedas, dados, estrela, socos, bola, pinos, público, fogo de artifício, contagens…) e 5 músicas (lobby, tabuleiro, minijogo, desportos, final). Volume de efeitos e música nas definições; botão «ligar o som» no ecrã principal
+- [~] Mais animações e efeitos (partículas, câmara lenta, repetições) — feito nas fases 2–6 (repetições do strike e do home run, câmara lenta, faíscas, fogo de artifício); falta o deslize no ténis e efeitos no tabuleiro
 - [ ] Testar com telemóveis reais: Android recente e iPhone
 
 ---
@@ -246,3 +246,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-12 | Fase 4: basebol refeito (estádio, 4 lançamentos, altura do bastão, física da bola, 9 defesas, corredores, placar eletrónico, repetição de home runs) | `fase4-basebol` | ✔ (falta testar no telemóvel) |
 | 2026-11-12 | Fase 5: golfe novo (7 tacos, medidor com zona vermelha, efeito, curva/altura, balançar, relevo, 5 buracos, caddie) | `fase5-golfe` | ✔ (falta testar no telemóvel) |
 | 2026-11-12 | Fase 6: ténis (física com Magnus, voleis e smashes, topspin/slice pelo gesto, serviço com faltas, estádio) | `fase6-tenis` | ✔ (falta testar no telemóvel) |
+| 2026-11-12 | Fase 7: sons e música gerados (Web Audio), volume nas definições | `fase7-polimento` | ✔ (falta testar com telemóveis reais) |

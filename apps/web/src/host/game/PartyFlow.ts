@@ -5,6 +5,7 @@
  *
  * As regras vivem em @festa/game; aqui só se encena e se pergunta aos telemóveis.
  */
+import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import {
   ITEMS,
@@ -1012,6 +1013,7 @@ export class PartyFlow {
       );
     };
     updateHud();
+    sound.music('minigame');
     for (const n of ['3', '2', '1']) await this.hud.big(n, 0.8);
     run.start();
     void this.hud.big('JÁ!', 0.6);
@@ -1024,6 +1026,8 @@ export class PartyFlow {
     await this.hud.big('FIM!', 1.4);
     const winners = run.winners();
     run.dispose();
+    sound.music('board');
+    sound.play(winners.length ? 'cheer' : 'aww');
     this.engine.setStage(this.stage, false);
     this.hud.setRound(`Ronda ${this.state.round} / ${this.state.totalRounds}`);
     this.scoreboard();

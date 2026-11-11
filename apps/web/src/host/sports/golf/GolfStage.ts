@@ -8,6 +8,7 @@
  *  - A bola segue a simulação de @festa/game (voo, ressaltos, efeito, rolar com inclinação).
  *  - Caddie com dicas (taco, vento, inclinação do green, perigos). Joga primeiro quem está mais longe.
  */
+import { sound } from '../../audio/Sound';
 import * as THREE from 'three';
 import { CHARACTERS, createRng, getCharacter } from '@festa/game';
 import {
@@ -255,6 +256,8 @@ export class GolfStage extends SportStage {
     };
     if (swing.power > 1) this.say('Força máxima!');
     m.setAnim('batSwing');
+    sound.play('whoosh', { vol: 0.6 });
+    void this.wait(0.3).then(() => sound.play('ball', { pitch: this.club === 'putter' ? 0.6 : 1.1 }));
     await this.wait(0.35);
     g.strokes++;
     const prev = g.pos.clone();
@@ -264,6 +267,8 @@ export class GolfStage extends SportStage {
     this.club3d.removeFromParent();
 
     if (result.holed) {
+      sound.play('ball', { pitch: 0.5 });
+      sound.play('cheer');
       g.done = true;
       g.total += g.strokes;
       g.ball.visible = false;
@@ -276,6 +281,8 @@ export class GolfStage extends SportStage {
     } else {
       const newLie = result.lie;
       if (newLie === 'water' || newLie === 'out') {
+        if (newLie === 'water') sound.play('splash');
+        sound.play('aww', { vol: 0.5 });
         g.strokes++;
         m.setAnim('sad');
         await this.ctx.hud.banner(newLie === 'water' ? 'Splash! Água' : 'Fora de limites', { sub: '+1 pancada de penalização', hold: 1.8, color: '#3fd0ff' });

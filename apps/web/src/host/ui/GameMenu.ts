@@ -11,7 +11,8 @@
  */
 import type { Engine } from '../three/Engine';
 import type { PlayerHub } from '../PlayerHub';
-import { ANIM_SPEEDS, BOT_LEVELS, settings } from '../game/Settings';
+import { ANIM_SPEEDS, BOT_LEVELS, VOLUMES, settings } from '../game/Settings';
+import { sound } from '../audio/Sound';
 import { esc } from './Hud';
 
 type Screen = 'main' | 'settings' | 'confirm';
@@ -107,6 +108,8 @@ export class GameMenu {
           },
         },
         { label: `💡 Dicas no ecrã: ${s.hints ? 'Sim' : 'Não'}`, run: () => settings.set('hints', !s.hints) },
+        { label: `🔊 Efeitos: ${volLabel(s.sfxVolume)}`, run: () => (settings.set('sfxVolume', nextVol(s.sfxVolume)), sound.play('coin')) },
+        { label: `🎵 Música: ${volLabel(s.musicVolume)}`, run: () => settings.set('musicVolume', nextVol(s.musicVolume)) },
         { label: this.mode === 'lobby' ? '✔ Fechar' : '↩ Voltar', run: () => (this.mode === 'lobby' ? this.close() : this.goto('main')) },
       ];
     }
@@ -198,4 +201,13 @@ export class GameMenu {
     } else return;
     this.render();
   }
+}
+
+function volLabel(v: number): string {
+  return v <= 0 ? 'Desligado' : `${Math.round(v * 100)} %`;
+}
+
+function nextVol(v: number): number {
+  const i = VOLUMES.findIndex((x) => Math.abs(x - v) < 0.01);
+  return VOLUMES[(i + 1) % VOLUMES.length]!;
 }

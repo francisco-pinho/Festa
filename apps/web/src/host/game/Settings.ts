@@ -24,10 +24,15 @@ export interface SettingsData {
   animSpeed: number;
   /** Mostrar dicas no fundo do ecrã. */
   hints: boolean;
+  /** Volume dos efeitos e da música, 0–1. */
+  sfxVolume: number;
+  musicVolume: number;
 }
 
+export const VOLUMES = [0, 0.25, 0.5, 0.75, 1];
+
 const KEY = 'festa.settings';
-const DEFAULTS: SettingsData = { botLevel: 'normal', animSpeed: 1, hints: true };
+const DEFAULTS: SettingsData = { botLevel: 'normal', animSpeed: 1, hints: true, sfxVolume: 0.75, musicVolume: 0.5 };
 
 class Settings {
   readonly events = new Emitter<{ changed: SettingsData }>();

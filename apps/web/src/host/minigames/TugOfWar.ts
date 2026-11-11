@@ -2,6 +2,7 @@
  * "Cabo de Guerra" (duelo): carrega em A e B alternadamente para puxar a corda.
  * Quem trouxer a fita para o seu lado ganha (ou quem estiver à frente no fim).
  */
+import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
 import { damp } from '../three/tweens';
@@ -60,6 +61,7 @@ class TugOfWarRun extends DuelMinigame {
   }
 
   private pull(d: Duelist): void {
+    sound.play('tick', { vol: 0.4, pitch: 0.6 + Math.random() * 0.3 });
     this.pos += d.side * PULL;
     this.lean.set(d.seat.id, 0.35);
     if (Math.abs(this.pos) >= LINE) {

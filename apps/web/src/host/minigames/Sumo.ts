@@ -2,6 +2,7 @@
  * "Empurra-Empurra": empurra os outros para fora da plataforma, que vai encolhendo.
  * Modos: todos contra todos, equipas e 1 contra todos (o solitário é gigante).
  */
+import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
@@ -70,6 +71,7 @@ class SumoRun extends ArenaMinigame {
       to.vel.x += nx * dir * force;
       to.vel.z += nz * dir * force;
       to.stunned = Math.max(to.stunned, 0.25);
+      sound.play('hit');
       this.ctx.vibrate(to.seat.id, 80);
     };
     push(a, b, 1);

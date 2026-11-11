@@ -2,6 +2,7 @@
  * Interface em HTML por cima do 3D: placar, faixas ("Vez da Ana!"),
  * painéis centrais (lobby, minijogo, resultados) e dicas.
  */
+import { sound } from '../audio/Sound';
 import './ui.css';
 import type { Engine } from '../three/Engine';
 import { settings } from '../game/Settings';
@@ -78,6 +79,7 @@ export class Hud {
 
   /** Faixa grande a meio do ecrã durante `hold` segundos. */
   async banner(text: string, opts: { sub?: string; hold?: number; color?: string } = {}): Promise<void> {
+    sound.play(opts.color === '#ffd23f' ? 'win' : 'banner');
     this.bannerEl.innerHTML = `<div class="title" style="${opts.color ? `color:${opts.color}` : ''}">${esc(text)}</div>${
       opts.sub ? `<div class="sub">${esc(opts.sub)}</div>` : ''
     }`;
@@ -91,6 +93,7 @@ export class Hud {
 
   /** Número/texto gigante (contagem decrescente, "FIM!"). */
   async big(text: string, hold = 0.8): Promise<void> {
+    sound.play(/^\d+$/.test(text) ? 'beep' : text === 'FIM!' ? 'whistle' : 'go');
     this.bigEl.textContent = text;
     this.bigEl.hidden = false;
     this.bigEl.classList.remove('pop');
@@ -111,6 +114,7 @@ export class Hud {
     const total = options.length * 3 + result;
     for (let i = 0; i <= total; i++) {
       render(i % options.length, i === total);
+      sound.play(i === total ? 'coin' : 'tick');
       await this.engine.wait(0.05 + (i / total) ** 3 * 0.35);
     }
     await this.engine.wait(hold);

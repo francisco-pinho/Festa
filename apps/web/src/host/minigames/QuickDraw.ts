@@ -2,6 +2,7 @@
  * "Saque Rápido" (duelo): espera pelo sinal e carrega primeiro. Quem carrega
  * antes do sinal perde a ronda. Ganha quem fizer 2 rondas.
  */
+import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { mesh, textSprite, toon } from '../three/materials';
 import { DuelMinigame, type Duelist } from './DuelMinigame';
@@ -75,6 +76,7 @@ class QuickDrawRun extends DuelMinigame {
   }
 
   private roundTo(winner: Duelist, why: string): void {
+    sound.play('punch');
     const loser = this.other(winner);
     this.phase = 'result';
     this.t = 0;
@@ -112,6 +114,7 @@ class QuickDrawRun extends DuelMinigame {
         this.t = 0;
         this.ready.visible = false;
         this.go.visible = true;
+        sound.play('go');
         for (const d of this.duelists) {
           this.ctx.vibrate(d.seat.id, 40);
           if (this.isBot(d)) this.botAt.set(d.seat.id, 0.17 + (1 - skill) * 0.4 + this.ctx.rng.next() * 0.15);

@@ -3,6 +3,7 @@
  * Cuidado com as bombas: atordoam e fazem perder moedas.
  * Modos: todos contra todos e equipas (soma da equipa).
  */
+import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { mesh, toon, toonUnique, disposeObject } from '../three/materials';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
@@ -105,6 +106,7 @@ class CoinShowerRun extends ArenaMinigame {
         if (who) {
           const value = it.kind === 'big' ? 3 : 1;
           this.score.set(who.seat.id, (this.score.get(who.seat.id) ?? 0) + value);
+          sound.play('coin', { vol: 0.5, pitch: value > 1 ? 1.3 : 1 });
           this.ctx.vibrate(who.seat.id, 20);
           this.removeItem(i);
         }
@@ -148,6 +150,7 @@ class CoinShowerRun extends ArenaMinigame {
   }
 
   private explode(it: Falling): void {
+    sound.play('punch', { pitch: 0.6 });
     const p = it.obj.position;
     for (const a of this.actors) {
       const d = Math.hypot(a.pos.x - p.x, a.pos.z - p.z);

@@ -10,6 +10,7 @@
  *  - Placar eletrónico, bancadas com público, banco das equipas, torres de luz,
  *    repetição dos home runs em câmara lenta e fogo de artifício.
  */
+import { sound } from '../../audio/Sound';
 import * as THREE from 'three';
 import { CHARACTERS, getCharacter, type CharacterDef } from '@festa/game';
 import {
@@ -329,6 +330,7 @@ export class BaseballStage extends SportStage {
 
     // Lançamento: preparação e soltar a bola.
     pm.setAnim('throw');
+    void this.wait(0.4).then(() => sound.play('whoosh', { vol: 0.5 }));
     await this.wait(0.42);
     const speed = pitchSpeed(type, swing.power);
     const T = (PLATE_Z - RELEASE.z) / speed;
@@ -374,6 +376,7 @@ export class BaseballStage extends SportStage {
         const c = contact(timing, this.batY, target.y, swingPower, WINDOW);
         if (c) {
           hit = { c, at: this.ball.position.clone() };
+          sound.play('bat');
           break;
         }
         if (this.pitchT > (swingAt as number) + 0.05) swingAt = Number.NaN; // falhou: não tenta outra vez
@@ -391,6 +394,7 @@ export class BaseballStage extends SportStage {
     let play: Promise<void> | null = null;
     if (!hit) {
       catcher.setAnim('catch');
+      sound.play('ball', { pitch: 0.6 });
       this.ball.visible = false;
       const swung = swingAt !== null;
       outcome = swung ? { kind: 'strike', swung: true } : inZone ? { kind: 'strike', swung: false } : { kind: 'ball' };
@@ -497,6 +501,7 @@ export class BaseballStage extends SportStage {
         if (!caught) {
           caught = true;
           chaser?.model.setAnim('catch');
+          sound.play('ball', { pitch: 0.7 });
           this.excitement = flyOut ? 1.6 : 1;
         }
         const hand = chaser!.model.root.position;
@@ -687,6 +692,7 @@ export class BaseballStage extends SportStage {
         color = out.bases === 4 ? '#ffd23f' : '#7dff9b';
         this.excitement = out.bases === 4 ? 2.5 : 1.4;
         this.ctx.seats.vibrate(batter, out.bases === 4 ? [100, 50, 100, 50, 400] : [80, 40, 80]);
+        sound.play('cheer', { vol: out.bases === 4 ? 1 : 0.6 });
         if (out.bases === 4) this.fireworks();
         break;
     }
@@ -791,6 +797,7 @@ export class BaseballStage extends SportStage {
       const color = colors[b % colors.length]!;
       const delay = b * 0.4;
       void this.wait(delay).then(() => {
+        sound.play('firework');
         for (let i = 0; i < 40; i++) {
           const s = new THREE.Mesh(new THREE.SphereGeometry(0.5, 6, 4), new THREE.MeshBasicMaterial({ color, transparent: true }));
           s.position.copy(center);

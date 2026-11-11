@@ -10,6 +10,7 @@
  *  - Bots dão "sinais" antes de atacar (luva a brilhar, recuar, baixar o ombro, agachar).
  *  - Arena com público que reage, árbitro que conta as quedas e sino entre rondas.
  */
+import { sound } from '../../audio/Sound';
 import * as THREE from 'three';
 import { CHARACTERS, getCharacter } from '@festa/game';
 import {
@@ -321,6 +322,7 @@ export class BoxingStage extends SportStage {
     const range = punchRange(p.kind, dist);
     const hitPoint = opp.model.headPosition();
     if (range === 'far') {
+      sound.play('whoosh', { vol: 0.6 });
       this.float('Falhou!', hitPoint, '#b9c2d0', 0.3);
       // Gancho falhado ao longe deixa-te exposto.
       if (p.kind === 'hook' || p.kind === 'uppercut') f.stun = 0.35;
@@ -328,6 +330,7 @@ export class BoxingStage extends SportStage {
     }
     if (opp.down) return;
     if (opp.dodge && opp.dodge.t < 0.42) {
+      sound.play('whoosh');
       this.float('Esquivou!', hitPoint, '#3fd0ff', 0.32);
       opp.counterT = BOXING.counterWindow;
       f.stun = 0.25;
@@ -339,6 +342,7 @@ export class BoxingStage extends SportStage {
     opp.health = Math.max(0, opp.health - dmg);
     f.damage += dmg;
     const fwd = opp.pos.clone().sub(f.pos).normalize();
+    sound.play(blocked ? 'block' : 'punch', { pitch: blocked ? 1 : 1.2 - dmg / 40 });
     if (blocked) {
       opp.model.setAnim('blockHit');
       opp.energy = Math.max(0, opp.energy - 8);
@@ -372,6 +376,7 @@ export class BoxingStage extends SportStage {
       opp.dodge = null;
       this.excitement = 2;
       this.shake = 0.35;
+      sound.play('cheer');
     }
   }
 
@@ -678,6 +683,7 @@ export class BoxingStage extends SportStage {
   }
 
   private ringBell(): void {
+    sound.play('bell');
     this.bellRing = 1.2;
     this.ctx.hud.hint('🔔 Ding ding!', false);
     void this.wait(1.2).then(() => this.ctx.hud.hint(null, false));

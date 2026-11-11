@@ -2,6 +2,7 @@
  * Palco do tabuleiro: ilha, casas, estrela, personagens e dados.
  * Expõe operações animadas (async) que o Realizador encadeia.
  */
+import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { getCharacter, getSpace, type Board, type SpaceType } from '@festa/game';
 import type { Engine, Stage } from '../three/Engine';
@@ -174,6 +175,7 @@ export class BoardStage implements Stage {
 
   /** Salta da posição atual para o centro de uma casa. */
   async hop(id: string, spaceId: number, duration = 0.32): Promise<void> {
+    sound.play('step', { pitch: 0.9 + Math.random() * 0.3 });
     const t = this.token(id);
     const s = getSpace(this.board, spaceId);
     const from = t.root.position.clone();
@@ -222,6 +224,7 @@ export class BoardStage implements Stage {
 
   /** A personagem salta, bate nos dados e eles param nos valores dados. */
   async hitDice(id: string, values: number[]): Promise<void> {
+    sound.play('dice');
     const t = this.token(id);
     const base = t.root.position.y;
     t.setAnim('hit');
@@ -304,6 +307,8 @@ export class BoardStage implements Stage {
 
   /** A estrela voa para a personagem, que festeja. */
   async collectStar(id: string): Promise<void> {
+    sound.play('star');
+    sound.play('cheer', { vol: 0.6 });
     const t = this.token(id);
     const icon = starMesh(0.6);
     const from = this.star.position.clone().add(new THREE.Vector3(0, 2.6, 0));
@@ -525,6 +530,7 @@ export class BoardStage implements Stage {
 
   /** Viagem por túnel/metro: desce na entrada e sobe na saída. */
   async travelTunnel(id: string, toSpace: number, kind: 'cave' | 'metro' | 'cart' | 'elevator' | 'coaster'): Promise<void> {
+    sound.play('whoosh');
     const t = this.token(id);
     const to = getSpace(this.board, toSpace);
     const toY = TILE_TOP + (to.y ?? 0);
@@ -606,6 +612,7 @@ export class BoardStage implements Stage {
 
   /** Moedas a saltar de (perda) ou para (ganho) uma personagem. */
   coinBurst(id: string, amount: number): void {
+    if (amount) sound.play(amount > 0 ? 'coin' : 'coinLose');
     const root = this.token(id).root;
     const n = Math.min(12, Math.abs(amount));
     const gain = amount > 0;

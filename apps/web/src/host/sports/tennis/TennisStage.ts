@@ -12,6 +12,7 @@
  *
  * Campo ao longo de Z: equipa 0 em z>0 (perto da câmara), equipa 1 em z<0. Rede em z=0.
  */
+import { sound } from '../../audio/Sound';
 import * as THREE from 'three';
 import { CHARACTERS } from '@festa/game';
 import {
@@ -172,6 +173,7 @@ export class TennisStage extends SportStage {
         this.phase = 'over';
         this.plan = null;
         if (why) void this.ctx.hud.banner(why, { hold: 0.9 });
+        sound.play('cheer', { vol: 0.5, pitch: 0.7 });
         void this.wait(1.1).then(() => resolve(winner));
       };
       this.setupServe(serveTeam, pointNo);
@@ -279,6 +281,7 @@ export class TennisStage extends SportStage {
     }
     this.ball = { p: from, v, spin };
     this.lastHitter = p;
+    sound.play('ball', { pitch: 0.9 + Math.min(0.4, speed / 80) });
     this.bounces = 0;
     this.shots++;
     this.computePlan();
@@ -439,6 +442,7 @@ export class TennisStage extends SportStage {
       }
       if (bounced) {
         this.bounces++;
+        sound.play('bounce', { vol: 0.7 });
         const onHitterSide = hitter.team === 0 ? b.z > 0 : b.z < 0;
         if (this.bounces === 1) {
           if (this.shots === 1 && hitter === this.server) {

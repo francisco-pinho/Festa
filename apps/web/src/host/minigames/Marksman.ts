@@ -2,6 +2,7 @@
  * "Pontaria" (duelo): um marcador anda de um lado para o outro numa barra;
  * carrega quando estiver no centro. 5 tiros, cada vez mais rápidos. Mais pontos ganha.
  */
+import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
 import { DuelMinigame, type Duelist } from './DuelMinigame';
@@ -72,6 +73,7 @@ class MarksmanRun extends DuelMinigame {
   }
 
   private shoot(s: Shooter): void {
+    sound.play('ball', { pitch: 1.4 });
     const m = Math.sin(s.phase);
     const points = Math.max(0, Math.round(100 * (1 - Math.abs(m) * 1.15)));
     s.total += points;

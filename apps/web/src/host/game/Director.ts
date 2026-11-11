@@ -5,6 +5,7 @@
  *   lobby → escolha de personagens → ordem de jogo → rondas
  *   (cada jogador: dados → andar → casa) → minijogo → … → estrelas bónus → pódio
  */
+import { sound } from '../audio/Sound';
 import QRCode from 'qrcode';
 import * as THREE from 'three';
 import { BOARDS, CHARACTERS, RULES, createRng, getCharacter, seatCount, type MinigameMode, type Rng } from '@festa/game';
@@ -49,6 +50,7 @@ export class Director {
 
   async run(): Promise<void> {
     for (;;) {
+      sound.music('lobby');
       const choice = await this.lobby();
       if (choice.mode === 'sports') {
         await this.sports();
@@ -58,7 +60,9 @@ export class Director {
       await this.characterSelect();
       this.rng = createRng();
       const flow = this.partyFlow();
+      sound.music('board');
       const state = await flow.play(choice.rounds, boardId);
+      sound.music('finale');
       await flow.finale(state);
     }
   }
@@ -515,7 +519,10 @@ export class Director {
     });
     this.engine.setStage(run);
     this.menu.mode = 'game';
+    sound.music('sports');
     const standings = await run.play();
+    sound.music('finale');
+    sound.play('cheer');
     this.menu.mode = 'off';
     this.hud.setScoreboard(null);
     this.hud.setRound(null);
