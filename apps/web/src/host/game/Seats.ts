@@ -155,6 +155,7 @@ export class SeatControl {
     switch (l.kind) {
       case 'wait':
       case 'pad':
+      case 'board':
         return l;
       case 'choices':
         return pad({ title: l.prompt, sub: 'Escolhe no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher', plus: 'Menu' } });

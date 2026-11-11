@@ -19,7 +19,7 @@ const TILE_R = 1.15;
 const TILE_TOP = 0.32;
 const HEAD_Y = 2.3;
 
-const SPACE_STYLE: Record<SpaceType, { color: string; symbol: string }> = {
+export const SPACE_STYLE: Record<SpaceType, { color: string; symbol: string }> = {
   start: { color: '#ffffff', symbol: '▶' },
   blue: { color: '#2f7dff', symbol: '+' },
   red: { color: '#ff3b5c', symbol: '−' },

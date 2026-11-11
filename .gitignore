@@ -8,3 +8,5 @@ dist/
 .vite/
 coverage/
 apps/web/public/dev-boards.html
+apps/desktop/release/
+apps/desktop/resources/bin/cloudflared.exe

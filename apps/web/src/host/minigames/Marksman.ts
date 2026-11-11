@@ -5,6 +5,7 @@
 import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
+import { getCharacter } from '@festa/game';
 import { DuelMinigame, type Duelist } from './DuelMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 
@@ -24,9 +25,35 @@ interface Shooter {
   waited: number;
 }
 
+interface Arrow {
+  obj: THREE.Group;
+  from: THREE.Vector3;
+  to: THREE.Vector3;
+  t: number;
+}
+
+/** Seta: haste, ponta e penas, a apontar para -z. */
+function makeArrow(color: string): THREE.Group {
+  const g = new THREE.Group();
+  const shaft = mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.1, 6), toon('#7a5230'), { cast: false });
+  shaft.rotation.x = Math.PI / 2;
+  const tip = mesh(new THREE.ConeGeometry(0.09, 0.25, 8), toon('#c9ccd4'), { cast: false });
+  tip.rotation.x = -Math.PI / 2;
+  tip.position.z = -0.65;
+  g.add(shaft, tip);
+  for (const r of [0, Math.PI / 2]) {
+    const fin = mesh(new THREE.BoxGeometry(0.22, 0.01, 0.25), toonUnique(color), { cast: false });
+    fin.rotation.z = r;
+    fin.position.z = 0.48;
+    g.add(fin);
+  }
+  return g;
+}
+
 class MarksmanRun extends DuelMinigame {
   protected readonly duration = 30;
   private readonly shooters: Shooter[] = [];
+  private readonly arrows: Arrow[] = [];
 
   constructor(ctx: MinigameContext) {
     super(ctx, { ground: '#9be07a', spacing: 3, faceCamera: true });
@@ -80,6 +107,15 @@ class MarksmanRun extends DuelMinigame {
     s.shots++;
     s.freeze = 0.8;
     s.d.model.setAnim('throw');
+    // A seta voa até ao alvo e crava-se mais longe do centro quanto pior o tiro.
+    const miss = 1 - points / 100;
+    const ang = this.ctx.rng.next() * Math.PI * 2;
+    const arrow = makeArrow(getCharacter(s.d.seat.characterId).color);
+    const from = new THREE.Vector3(s.d.side * 3, 1.5, 0.2);
+    const to = new THREE.Vector3(s.d.side * 3 + Math.cos(ang) * miss * 1.1, 1.6 + Math.sin(ang) * miss * 1.1, -6.85);
+    arrow.position.copy(from);
+    this.scene.add(arrow);
+    this.arrows.push({ obj: arrow, from, to, t: 0 });
     const label = points >= 90 ? `🎯 ${points}` : `${points}`;
     this.float(label, s.d.side * 3, 3.5, points >= 90 ? '#4cd964' : points >= 50 ? '#ffd23f' : '#ff6b7a', 0.9);
     this.ctx.vibrate(s.d.seat.id, points >= 90 ? 120 : 40);
@@ -89,6 +125,9 @@ class MarksmanRun extends DuelMinigame {
   protected step(dt: number): void {
     for (const s of this.shooters) {
       if (s.shots >= SHOTS) {
+        // Acabou os tiros: só falta acabar a animação do último.
+        s.freeze = Math.max(0, s.freeze - dt);
+        if (s.freeze <= 0) s.d.model.setAnim('idle');
         this.pressed(s.d, 'a');
         continue;
       }
@@ -112,6 +151,16 @@ class MarksmanRun extends DuelMinigame {
   override update(dt: number, time: number): void {
     super.update(dt, time);
     for (const s of this.shooters) s.marker.position.x = (Math.sin(s.phase) * BAR) / 2;
+    for (const a of this.arrows) {
+      if (a.t >= 1) continue;
+      a.t = Math.min(1, a.t + dt / 0.35);
+      a.obj.position.lerpVectors(a.from, a.to, a.t);
+      a.obj.position.y += Math.sin(a.t * Math.PI) * 0.6;
+      if (a.t >= 1) {
+        sound.play('hit', { pitch: 1.6 });
+        a.obj.position.copy(a.to);
+      }
+    }
   }
 }
 

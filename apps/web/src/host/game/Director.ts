@@ -120,6 +120,7 @@ export class Director {
           <div class="code" id="code">····</div>
           <div class="url" id="url"></div>
           <div class="tip" id="join-tip"></div>
+          <button class="go-online" id="go-online" hidden>🌍 Jogar online</button>
         </div>
       </div>
       <div class="lobby-cards" id="cards"></div>
@@ -239,6 +240,28 @@ export class Director {
       }
       render();
     };
+
+    // Na app de computador: botão «Jogar online» (abre o túnel da Cloudflare).
+    const desktop = (window as unknown as { festaDesktop?: { goOnline(): Promise<{ url?: string; error?: string }> } }).festaDesktop;
+    const onlineBtn = ui.querySelector<HTMLButtonElement>('#go-online')!;
+    const goOnline = async () => {
+      if (!desktop || onlineBtn.disabled) return;
+      onlineBtn.disabled = true;
+      onlineBtn.textContent = '🌍 A abrir o túnel…';
+      const res = await desktop.goOnline();
+      if (res.url) {
+        onlineBtn.hidden = true;
+        void renderRoom();
+      } else {
+        onlineBtn.disabled = false;
+        onlineBtn.textContent = '🌍 Tentar outra vez';
+        ui.querySelector('#join-tip')!.textContent = `⚠ ${res.error ?? 'Não deu para abrir o túnel.'}`;
+      }
+    };
+    if (desktop) {
+      void isOnline().then((on) => (onlineBtn.hidden = on));
+      onlineBtn.addEventListener('click', () => void goOnline());
+    }
 
     // O link público pode chegar depois (túnel a abrir): verifica de vez em quando.
     const infoTimer = window.setInterval(() => void renderRoom(), 4000);

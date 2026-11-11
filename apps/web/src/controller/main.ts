@@ -15,6 +15,7 @@ import type {
 } from '@festa/shared';
 import { ACK_TIMEOUT_MS, connectSocket } from '../common/socket';
 import { renderPad } from './pad';
+import { renderBoard } from './boardview';
 import { sensors } from './sensors';
 import { ScreenViewer } from '../common/screenViewer';
 
@@ -299,6 +300,10 @@ function renderLayout(): void {
     case 'pad':
       setView('');
       cleanupView = renderPad(view, l, send, stickSender);
+      break;
+    case 'board':
+      setView('');
+      renderBoard(view, l);
       break;
   }
   shownLayout = layout;

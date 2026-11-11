@@ -56,6 +56,7 @@ import {
   tollBetween,
   tollKey,
   type Lever,
+  type SpaceType,
   type Toll,
   playersOnSpace,
   priceFor,
@@ -79,7 +80,8 @@ import {
 } from '@festa/game';
 import type { Engine } from '../three/Engine';
 import type { PlayerHub } from '../PlayerHub';
-import { BoardStage } from '../stages/BoardStage';
+import { BoardStage, SPACE_STYLE } from '../stages/BoardStage';
+import type { ControllerLayout } from '@festa/shared';
 import { ShowcaseStage } from '../stages/ShowcaseStage';
 import { starMesh } from '../stages/environment';
 import { Hud, esc, type ScoreEntry } from '../ui/Hud';
@@ -139,7 +141,42 @@ export class PartyFlow {
   }
 
   private waitAll(message: string, except?: string): void {
-    for (const s of this.d.seats) if (s.id !== except) this.ctl.setLayout(s, { kind: 'wait', message });
+    for (const s of this.d.seats) if (s.id !== except) this.ctl.setLayout(s, this.state ? this.boardLayout(message, s.id) : { kind: 'wait', message });
+  }
+
+  /** Mapa em miniatura para o telemóvel de quem está à espera (com a posição de toda a gente). */
+  private boardLayout(message: string, seatId: string): ControllerLayout {
+    const board = this.state.board;
+    const types = Object.keys(SPACE_STYLE) as SpaceType[];
+    const r1 = (v: number) => Math.round(v * 10) / 10;
+    const spaces = board.spaces.map((s) => [r1(s.x), r1(s.z), Math.max(0, types.indexOf(s.type))] as [number, number, number]);
+    const links: [number, number][] = [];
+    for (const s of board.spaces)
+      for (const n of s.next) if (!board.tunnels.some((t) => t.from === s.id && t.to === n)) links.push([s.id, n]);
+    const count = new Map<number, number>();
+    const players = this.state.players.map((p) => {
+      const s = getSpace(board, p.spaceId);
+      const k = count.get(p.spaceId) ?? 0;
+      count.set(p.spaceId, k + 1);
+      const a = k * 2.1;
+      return {
+        x: r1(s.x + (k ? Math.cos(a) * 1.4 : 0)),
+        z: r1(s.z + (k ? Math.sin(a) * 1.4 : 0)),
+        color: getCharacter(p.characterId).color,
+        label: [...p.name][0]?.toUpperCase() ?? '?',
+        me: p.id === seatId || undefined,
+      };
+    });
+    const star = this.state.starSpaceId >= 0 ? getSpace(board, this.state.starSpaceId) : null;
+    return {
+      kind: 'board',
+      message,
+      palette: types.map((t) => SPACE_STYLE[t].color),
+      spaces,
+      links: links.slice(0, 500),
+      players,
+      star: star ? [r1(star.x), r1(star.z)] : null,
+    };
   }
 
   private scoreboard(activeId: string | null = null): void {

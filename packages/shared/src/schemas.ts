@@ -81,10 +81,28 @@ const legend = z.string().max(16).optional();
  * comando (como os da Switch): joystick ou cruz, A/B/X/Y, + e −. As escolhas aparecem no
  * ecrã grande; o comando só diz o que cada botão faz agora (legenda) e apaga os inativos.
  */
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+const coord = z.number().min(-500).max(500);
+
 export const controllerLayoutSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('wait'),
     message: z.string().max(200),
+  }),
+  /** À espera da vez, na festa: mapa do tabuleiro em miniatura com toda a gente. */
+  z.object({
+    kind: z.literal('board'),
+    message: z.string().max(200),
+    /** Cores dos tipos de casa (índice usado em `spaces`). */
+    palette: z.array(hexColor).max(16),
+    /** Casas: [x, z, índice da cor]. */
+    spaces: z.array(z.tuple([coord, coord, z.number().int().min(0).max(15)])).max(250),
+    /** Ligações entre casas (índices em `spaces`). */
+    links: z.array(z.tuple([z.number().int().min(0).max(249), z.number().int().min(0).max(249)])).max(500),
+    players: z
+      .array(z.object({ x: coord, z: coord, color: hexColor, label: z.string().max(4), me: z.boolean().optional() }))
+      .max(10),
+    star: z.tuple([coord, coord]).nullable(),
   }),
   z.object({
     kind: z.literal('pad'),

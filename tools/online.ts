@@ -14,7 +14,7 @@
  * Sem ele, o jogo arranca só para a rede de casa.
  */
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { findCloudflared, openTunnel } from '../apps/server/src/tunnel';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,27 +27,6 @@ function openBrowser(url: string): void {
   if (args.has('--sem-browser')) return;
   const cmd = process.platform === 'win32' ? 'explorer' : process.platform === 'darwin' ? 'open' : 'xdg-open';
   spawn(cmd, [url], { detached: true, stdio: 'ignore' }).unref();
-}
-
-function findCloudflared(): string | null {
-  const candidates = [
-    process.env.CLOUDFLARED,
-    'cloudflared',
-    'C:\\Program Files (x86)\\cloudflared\\cloudflared.exe',
-    'C:\\Program Files\\cloudflared\\cloudflared.exe',
-    `${process.env.LOCALAPPDATA ?? ''}\\Microsoft\\WinGet\\Links\\cloudflared.exe`,
-    '/opt/homebrew/bin/cloudflared',
-    '/usr/local/bin/cloudflared',
-  ].filter((c): c is string => !!c);
-  for (const c of candidates) {
-    if (c.includes('\\') || c.startsWith('/')) {
-      if (existsSync(c)) return c;
-      continue;
-    }
-    const r = spawnSync(`${c} --version`, { stdio: 'ignore', shell: true });
-    if (r.status === 0) return c;
-  }
-  return null;
 }
 
 function shutdown(code = 0): void {
@@ -94,17 +73,15 @@ if (!bin) {
   setTimeout(() => openBrowser(local), 1500);
 } else {
   console.log('🌍 A abrir o túnel da Cloudflare…');
-  const tunnel = spawn(bin, ['tunnel', '--no-autoupdate', '--url', local], { stdio: ['ignore', 'pipe', 'pipe'] });
-  children.push(tunnel);
+  const tunnel = openTunnel(bin, local);
+  children.push(tunnel.process);
   let found = false;
-  const onData = (chunk: Buffer) => {
-    const m = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/.exec(chunk.toString());
-    if (!m || found) return;
-    found = true;
-    const url = m[0];
-    // O servidor também fica com o PID do túnel: se este lançador for morto à força, é ele que o fecha.
-    server.send({ publicUrl: url, tunnelPid: tunnel.pid });
-    console.log(`
+  tunnel.url.then(
+    (url) => {
+      found = true;
+      // O servidor também fica com o PID do túnel: se este lançador for morto à força, é ele que o fecha.
+      server.send({ publicUrl: url, tunnelPid: tunnel.process.pid });
+      console.log(`
 ════════════════════════════════════════════════════════════
   🎉 Festa online!
   Link para os telemóveis (em casa ou fora):  ${url}/play
@@ -113,19 +90,13 @@ if (!bin) {
   (o QR do lobby já usa o link público)
 ════════════════════════════════════════════════════════════
 `);
-    // Dá uns segundos ao túnel para ficar acessível antes de abrir o jogo.
-    setTimeout(() => openBrowser(local), 2500);
-  };
-  tunnel.stdout?.on('data', onData);
-  tunnel.stderr?.on('data', onData);
-  tunnel.on('exit', (code) => {
-    if (!found) console.error(`❌ O túnel não abriu (código ${code}). O jogo continua na rede de casa: ${local}`);
-    else console.log('O túnel fechou.');
-  });
-  setTimeout(() => {
-    if (!found) {
-      console.warn('⚠ O túnel está a demorar. Abro o jogo na rede de casa; o QR muda quando o link aparecer.');
+      // Dá uns segundos ao túnel para ficar acessível antes de abrir o jogo.
+      setTimeout(() => openBrowser(local), 2500);
+    },
+    (err: Error) => {
+      console.error(`❌ ${err.message} O jogo continua na rede de casa: ${local}`);
       openBrowser(local);
-    }
-  }, 30_000).unref();
+    },
+  );
+  tunnel.process.on('exit', () => found && console.log('O túnel fechou.'));
 }

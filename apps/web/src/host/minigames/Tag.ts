@@ -43,6 +43,12 @@ class TagRun extends ArenaMinigame {
     if (chaser) {
       chaser.pos.set(0, 0, -9);
       chaser.model.root.scale.setScalar(1.3);
+      // Quem foge começa do lado oposto, espalhado (nunca em cima do caçador).
+      const runners = this.actors.filter((a) => a !== chaser);
+      runners.forEach((r, i) => {
+        const k = runners.length === 1 ? 0.5 : i / (runners.length - 1);
+        r.pos.set(-9 + k * 18, 0, 8 - (i % 2) * 2.5);
+      });
     }
     this.camera.position.set(0, 26, 19);
     this.camera.lookAt(0, 0, 1);
@@ -83,6 +89,8 @@ class TagRun extends ArenaMinigame {
   protected step(): void {
     const chaser = this.chaser;
     if (!chaser) return this.endGame();
+    // Segundo e meio de tolerância no arranque.
+    if (this.elapsed < 1.5) return;
     for (const r of this.actors) {
       if (r === chaser || !r.alive) continue;
       if (Math.hypot(r.pos.x - chaser.pos.x, r.pos.z - chaser.pos.z) < r.radius + chaser.radius + 0.1) {

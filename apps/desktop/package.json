@@ -1,0 +1,58 @@
+{
+  "name": "@festa/desktop",
+  "productName": "Festa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Festa — jogo de festa com telemóveis como comandos",
+  "author": "francisco-pinho",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "prepare-app": "node build.mjs",
+    "start": "node build.mjs && electron .",
+    "dist": "node build.mjs && electron-builder --win nsis portable",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "electron": "44.10.0",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "pt.festa.jogo",
+    "productName": "Festa",
+    "electronVersion": "44.10.0",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "build/icon.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../web/dist",
+        "to": "web"
+      },
+      {
+        "from": "resources/bin",
+        "to": "bin"
+      }
+    ],
+    "npmRebuild": false,
+    "win": {
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Festa",
+      "artifactName": "Festa-${version}-instalador.${ext}"
+    },
+    "portable": {
+      "artifactName": "Festa-${version}-portatil.exe"
+    }
+  }
+}

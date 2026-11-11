@@ -1,0 +1,3 @@
+cloudflared (Cloudflare, Inc.) é distribuído dentro da Festa sem alterações.
+Licença: Apache License 2.0 — https://www.apache.org/licenses/LICENSE-2.0
+Código-fonte: https://github.com/cloudflare/cloudflared

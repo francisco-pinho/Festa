@@ -18,6 +18,8 @@ export const PIN_Z = -LANE_LEN;
 export const PIN_SPACING = 0.52;
 export const BALL_R = 0.22;
 export const OIL_END = -LANE_LEN * 0.6;
+const OIL_FRICTION = 0.015;
+const DRY_FRICTION = 0.28;
 export const DECK_END = PIN_Z - 1.75;
 export const PIN_HEIGHT = 0.76;
 const GRAVITY = -18;
@@ -72,6 +74,9 @@ export class LanePhysics {
   readonly step = 1 / 120;
   /** A bola caiu na calha. */
   gutter = false;
+  /** Tabuleiro da pista: um só bloco (dois blocos seguidos fazem a bola saltar na junta). */
+  private laneCollider!: RAPIER_NS.Collider;
+  private laneDry = false;
 
   constructor(
     readonly R: Rapier,
@@ -95,19 +100,18 @@ export class LanePhysics {
     }
   }
 
-  private fixed(hx: number, hy: number, hz: number, x: number, y: number, z: number, friction = 0.5, restitution = 0.2): void {
+  private fixed(hx: number, hy: number, hz: number, x: number, y: number, z: number, friction = 0.5, restitution = 0.2): RAPIER_NS.Collider {
     const R = this.R;
     const body = this.world.createRigidBody(R.RigidBodyDesc.fixed().setTranslation(x, y, z));
-    this.world.createCollider(R.ColliderDesc.cuboid(hx, hy, hz).setFriction(friction).setRestitution(restitution), body);
+    return this.world.createCollider(R.ColliderDesc.cuboid(hx, hy, hz).setFriction(friction).setRestitution(restitution), body);
   }
 
   private buildLane(): void {
     const start = 4;
-    // Parte oleada (quase sem atrito) e parte seca.
-    const oilLen = start - OIL_END;
-    this.fixed(LANE_HALF, 0.1, oilLen / 2, 0, -0.1, start - oilLen / 2, 0.015);
-    const dryLen = OIL_END - DECK_END;
-    this.fixed(LANE_HALF, 0.1, dryLen / 2, 0, -0.1, OIL_END - dryLen / 2, 0.28);
+    // Pista inteira num só bloco. A parte oleada (quase sem atrito) e a seca são feitas
+    // mudando o atrito quando a bola passa o fim do óleo (ver `advance`).
+    const laneLen = start - DECK_END;
+    this.laneCollider = this.fixed(LANE_HALF, 0.1, laneLen / 2, 0, -0.1, start - laneLen / 2, OIL_FRICTION);
     // Calhas (mais baixas) e paredes exteriores.
     const total = start - DECK_END;
     for (const side of [-1, 1]) {
@@ -200,10 +204,22 @@ export class LanePhysics {
     return this.pins.every((p) => !p.isEnabled() || p.isSleeping() || p.translation().y < -0.3 || p.translation().z < DECK_END || (Math.hypot(p.linvel().x, p.linvel().y, p.linvel().z) < 0.05 && Math.hypot(p.angvel().x, p.angvel().y, p.angvel().z) < 0.1));
   }
 
+  /** Um passo de física, com o atrito da pista certo para onde a bola está (óleo ou seco). */
+  private stepWorld(): void {
+    if (this.ball.isEnabled()) {
+      const dry = this.ball.translation().z < OIL_END;
+      if (dry !== this.laneDry) {
+        this.laneDry = dry;
+        this.laneCollider.setFriction(dry ? DRY_FRICTION : OIL_FRICTION);
+      }
+    }
+    this.world.step();
+  }
+
   advance(dt: number): void {
     this.accumulator = Math.min(this.accumulator + dt, this.step * 10);
     while (this.accumulator >= this.step) {
-      this.world.step();
+      this.stepWorld();
       this.accumulator -= this.step;
       if (this.ball.isEnabled() && !this.gutter) {
         const t = this.ball.translation();
@@ -224,7 +240,7 @@ export class LanePhysics {
     sim.launch(t);
     let x = t.x;
     for (let i = 0; i < 600; i++) {
-      sim.world.step();
+      sim.stepWorld();
       const p = sim.ball.translation();
       x = p.x;
       if (p.z <= PIN_Z || p.y < -0.1) break;
