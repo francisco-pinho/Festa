@@ -51,7 +51,10 @@ export interface MinigameDef {
   duel?: boolean;
   description(mode: MinigameMode): string;
   controls: string;
-  stick: boolean;
+  /** Joystick, cruz direcional ('dpad', ex.: memória de setas) ou nada. */
+  stick: boolean | 'dpad';
   buttons: { id: 'a' | 'b'; label: string }[];
+  /** Rondas (melhor de N; por omissão 1). Os jogos curtos têm várias para não acabarem num instante. */
+  rounds?: number;
   create(ctx: MinigameContext): MinigameRun;
 }

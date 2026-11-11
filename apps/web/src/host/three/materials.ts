@@ -80,7 +80,7 @@ export function textSprite(
   ctx.fillText(text, w / 2, canvas.height / 2);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true }));
   const h = opts.height ?? 1;
   sprite.scale.set((h * canvas.width) / canvas.height, h, 1);
   sprite.renderOrder = 10;

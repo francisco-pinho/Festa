@@ -5,10 +5,21 @@ import { QuickDraw } from './QuickDraw';
 import { Sumo } from './Sumo';
 import { Tag } from './Tag';
 import { TugOfWar } from './TugOfWar';
+import { Balloon } from './Balloon';
+import { Canoe } from './Canoe';
+import { ColorFloor } from './ColorFloor';
+import { Hammer } from './Hammer';
+import { HotPotato } from './HotPotato';
+import { JumpRope } from './JumpRope';
+import { Maestro } from './Maestro';
+import { Snowballs } from './Snowballs';
 import type { MinigameDef } from './types';
 
 /** Para adicionar um minijogo: cria o ficheiro e acrescenta-o aqui. */
-export const MINIGAMES: MinigameDef[] = [CoinShower, Sumo, Tag, QuickDraw, TugOfWar, Marksman];
+export const MINIGAMES: MinigameDef[] = [
+  CoinShower, Sumo, Tag, QuickDraw, TugOfWar, Marksman,
+  ColorFloor, Snowballs, JumpRope, Maestro, Balloon, HotPotato, Hammer, Canoe,
+];
 
 /** Escolhe um minijogo que suporte o modo, evitando repetir o anterior. */
 export function pickMinigame(mode: MinigameMode, rng: Rng, lastId: string | null): MinigameDef {

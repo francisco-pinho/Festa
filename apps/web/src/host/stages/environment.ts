@@ -1,10 +1,12 @@
 /** Peças de cenário partilhadas: céu, luzes, mar, palmeiras, nuvens. */
 import * as THREE from 'three';
+import { skyTexture } from '../three/groundDetail';
 import { mesh, toon } from '../three/materials';
 import type { Rng } from '@festa/game';
 
 export function setupSky(scene: THREE.Scene, opts: { fog?: [number, number] } = {}): THREE.DirectionalLight {
-  scene.background = new THREE.Color('#8fd8ff');
+  // Céu com gradiente e nuvens (em vez de uma cor lisa).
+  scene.background = skyTexture();
   const [near, far] = opts.fog ?? [90, 220];
   scene.fog = new THREE.Fog('#bde9ff', near, far);
 

@@ -1334,45 +1334,66 @@ export class PartyFlow {
       vibrate: (id, ms) => this.ctl.vibrate(this.seat(id), ms),
       botSkill: settings.botSkill,
     };
-    for (const s of this.d.seats) s.botPad.reset();
     this.boardWatchers.clear();
-    this.d.hub.clearPresses();
     await loadProps(MINIGAME_PROPS);
-    const run = def.create(ctx);
-    this.engine.setStage(run, false);
-
-    const updateHud = () => {
-      const scores = new Map(run.scores().map((s) => [s.id, s.value]));
-      this.hud.setRound(`⏱ ${Math.ceil(run.timeLeft())}`);
-      this.hud.setScoreboard(
-        players.map((p) => ({
-          id: p.id,
-          name: p.name,
-          color: getCharacter(p.characterId).color,
-          coins: p.coins,
-          stars: p.stars,
-          active: false,
-          isBot: p.isBot,
-          connected: true,
-          tag: scores.get(p.id),
-        })),
-      );
-    };
-    updateHud();
+    // Vários rounds (melhor de N): ganha quem ganhar mais rondas.
+    const totalRounds = def.rounds ?? 1;
+    const roundWins = new Map<string, number>();
+    const winsTag = (id: string) => (totalRounds > 1 && roundWins.get(id) ? ` 🏆${roundWins.get(id)}` : '');
     sound.music('minigame');
-    for (const n of ['3', '2', '1']) await this.hud.big(n, 0.8);
-    run.start();
-    for (const p of players) this.buzz(p.id, 120); // «Já!»
-    void this.hud.big('JÁ!', 0.6);
-    while (!run.finished) {
+    for (let round = 1; round <= totalRounds; round++) {
+      for (const s of this.d.seats) s.botPad.reset();
+      this.d.hub.clearPresses();
+      const run = def.create(ctx);
+      this.engine.setStage(run, false);
+      const updateHud = () => {
+        const scores = new Map(run.scores().map((sc) => [sc.id, sc.value]));
+        this.hud.setRound(`${totalRounds > 1 ? `Ronda ${round}/${totalRounds} · ` : ''}⏱ ${Math.ceil(run.timeLeft())}`);
+        this.hud.setScoreboard(
+          players.map((p) => ({
+            id: p.id,
+            name: p.name,
+            color: getCharacter(p.characterId).color,
+            coins: p.coins,
+            stars: p.stars,
+            active: false,
+            isBot: p.isBot,
+            connected: true,
+            tag: `${scores.get(p.id) ?? ''}${winsTag(p.id)}`,
+          })),
+        );
+      };
       updateHud();
-      await this.wait(0.2);
+      if (totalRounds > 1) await this.hud.big(`Ronda ${round}`, 1);
+      for (const n of ['3', '2', '1']) await this.hud.big(n, 0.8);
+      run.start();
+      for (const p of players) this.buzz(p.id, 120); // «Já!»
+      void this.hud.big('JÁ!', 0.6);
+      while (!run.finished) {
+        updateHud();
+        await this.wait(0.2);
+      }
+      updateHud();
+      const roundWinners = run.winners();
+      for (const id of roundWinners) roundWins.set(id, (roundWins.get(id) ?? 0) + 1);
+      updateHud();
+      if (totalRounds > 1) {
+        const names = roundWinners.map((id) => getPlayer(this.state, id).name);
+        await this.hud.banner(round === totalRounds ? 'FIM!' : `Fim da ronda ${round}`, {
+          sub: names.length ? `🏆 ${names.join(', ')}` : 'Ninguém ganhou esta ronda',
+          hold: 1.6,
+          color: '#ffd23f',
+        });
+      } else await this.hud.big('FIM!', 1.4);
+      run.dispose();
+      // Já não há como apanhar o primeiro? Acaba mais cedo.
+      const counts = [...roundWins.values()].sort((a, b) => b - a);
+      const left = totalRounds - round;
+      if (totalRounds > 1 && (counts[0] ?? 0) > (counts[1] ?? 0) + left) break;
     }
-    updateHud();
     this.waitAll('Fim do minijogo!');
-    await this.hud.big('FIM!', 1.4);
-    const winners = run.winners();
-    run.dispose();
+    const best = Math.max(0, ...roundWins.values());
+    const winners = best > 0 ? players.filter((p) => roundWins.get(p.id) === best).map((p) => p.id) : [];
     sound.music('board');
     sound.play(winners.length ? 'cheer' : 'aww');
     this.engine.setStage(this.stage, false);

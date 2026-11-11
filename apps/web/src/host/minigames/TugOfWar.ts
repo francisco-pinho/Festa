@@ -114,6 +114,7 @@ class TugOfWarRun extends DuelMinigame {
 
 export const TugOfWar: MinigameDef = {
   id: 'cabo',
+  rounds: 3,
   name: 'Cabo de Guerra',
   modes: ['ffa'],
   duel: true,

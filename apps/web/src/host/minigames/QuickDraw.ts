@@ -137,6 +137,7 @@ class QuickDrawRun extends DuelMinigame {
 
 export const QuickDraw: MinigameDef = {
   id: 'saque',
+  rounds: 3,
   name: 'Saque Rápido',
   modes: ['ffa'],
   duel: true,

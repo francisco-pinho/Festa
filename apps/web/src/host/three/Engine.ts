@@ -11,6 +11,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { settings, type GraphicsLevel } from '../game/Settings';
 import { Tweens } from './tweens';
+import { detailGround } from './groundDetail';
 
 export interface Stage {
   readonly scene: THREE.Scene;
@@ -98,6 +99,9 @@ export class Engine {
 
   /** Luz de ambiente e sombras da qualidade escolhida em cada cena nova. */
   private prepareScene(scene: THREE.Scene): void {
+    // Relva e areia com textura (os cenários podem acrescentar chão depois: repete-se uns frames).
+    detailGround(scene);
+    setTimeout(() => detailGround(scene), 300);
     if (!scene.environment && this.envMap && this.graphics !== 'baixo') {
       scene.environment = this.envMap;
       scene.environmentIntensity = 0.45;
@@ -135,6 +139,19 @@ export class Engine {
     if (level === 'alto') {
       this.gtao = new GTAOPass(dummyScene, dummyCam, w, h);
       this.gtao.blendIntensity = 0.85;
+      // A oclusão ambiente não deve ver textos (sprites) nem coisas transparentes:
+      // senão aparecem «caixas» escuras atrás dos nomes e emojis.
+      const gtao = this.gtao as unknown as { scene: THREE.Scene; _visibilityCache: THREE.Object3D[]; _overrideVisibility: () => void };
+      gtao._overrideVisibility = () => {
+        gtao.scene.traverse((o) => {
+          const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+          const transparent = Array.isArray(m) ? m.some((x) => x.transparent) : !!m?.transparent;
+          if (o.visible && ((o as THREE.Sprite).isSprite || (o as THREE.Points).isPoints || (o as THREE.Line).isLine || transparent)) {
+            o.visible = false;
+            gtao._visibilityCache.push(o);
+          }
+        });
+      };
       this.gtao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.5, thickness: 1, scale: 1 });
       composer.addPass(this.gtao);
     }

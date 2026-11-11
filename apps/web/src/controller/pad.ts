@@ -48,8 +48,9 @@ export function renderPad(view: HTMLElement, l: PadLayout, send: Send, stickSend
     </div>`;
 
   // ── Botões ──────────────────────────────────────────────
+  // Sensação de botão a sério: um «clique» ao carregar e um mais leve ao largar.
   const press = (button: ButtonId, pressed: boolean) => {
-    if (pressed) navigator.vibrate?.(10);
+    navigator.vibrate?.(pressed ? 18 : 8);
     send({ t: 'button', button, pressed });
   };
   const holdListeners = new Set<(down: boolean) => void>();
@@ -75,7 +76,15 @@ export function renderPad(view: HTMLElement, l: PadLayout, send: Send, stickSend
   view.querySelectorAll<HTMLElement>('.db').forEach((el) => bind(el, el.dataset.d as ButtonId));
 
   const zone = view.querySelector<HTMLElement>('.stick-zone');
-  if (zone) cleanups.push(createJoystick(zone, { onChange: stickSend }));
+  // Joystick: um toque leve quando chega à borda (como o batente de um comando).
+  let atEdge = false;
+  const stickHaptic = (x: number, y: number) => {
+    const edge = Math.hypot(x, y) > 0.92;
+    if (edge && !atEdge) navigator.vibrate?.(8);
+    atEdge = edge;
+    stickSend(x, y);
+  };
+  if (zone) cleanups.push(createJoystick(zone, { onChange: stickHaptic }));
 
   // ── Abanar = A ──────────────────────────────────────────
   if (l.shake && sensors.supported) {

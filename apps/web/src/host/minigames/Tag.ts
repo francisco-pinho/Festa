@@ -147,6 +147,7 @@ class TagRun extends ArenaMinigame {
 
 export const Tag: MinigameDef = {
   id: 'tag',
+  rounds: 2,
   name: 'Apanha-Apanha',
   modes: ['oneVsAll'],
   description: () => 'O caçador tem 25 segundos para apanhar toda a gente. Os outros têm de fugir!',

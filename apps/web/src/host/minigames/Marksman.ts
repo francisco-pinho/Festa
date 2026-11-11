@@ -257,6 +257,7 @@ class MarksmanRun extends DuelMinigame {
 
 export const Marksman: MinigameDef = {
   id: 'pontaria',
+  rounds: 2,
   name: 'Pontaria',
   modes: ['ffa'],
   duel: true,

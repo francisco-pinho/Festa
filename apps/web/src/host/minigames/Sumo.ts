@@ -139,6 +139,7 @@ class SumoRun extends ArenaMinigame {
 
 export const Sumo: MinigameDef = {
   id: 'sumo',
+  rounds: 2,
   name: 'Empurra-Empurra',
   modes: ['ffa', 'teams', 'oneVsAll'],
   description: (mode) =>

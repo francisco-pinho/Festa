@@ -227,6 +227,7 @@ class CoinShowerRun extends ArenaMinigame {
 
 export const CoinShower: MinigameDef = {
   id: 'coin-shower',
+  rounds: 2,
   name: 'Chuva de Moedas',
   modes: ['ffa', 'teams'],
   description: (mode) =>

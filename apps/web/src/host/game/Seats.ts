@@ -32,7 +32,8 @@ export interface DiceLayout {
 /** Minijogos: joystick + A/B. */
 export interface GamepadLayout {
   kind: 'gamepad';
-  stick: boolean;
+  /** Joystick, cruz direcional ('dpad') ou nada. */
+  stick: boolean | 'dpad';
   buttons: { id: 'a' | 'b'; label: string }[];
   hint?: string;
 }
@@ -173,7 +174,7 @@ export class SeatControl {
       }
       case 'gamepad': {
         const b = Object.fromEntries(l.buttons.map((x) => [x.id, x.label]));
-        return pad({ title: l.hint ?? 'Joga!', stick: l.stick ? 'stick' : 'none', buttons: { a: b.a, b: b.b, plus: 'Menu', minus: narrator.speaking ? 'Saltar' : undefined } });
+        return pad({ title: l.hint ?? 'Joga!', stick: l.stick === 'dpad' ? 'dpad' : l.stick ? 'stick' : 'none', buttons: { a: b.a, b: b.b, plus: 'Menu', minus: narrator.speaking ? 'Saltar' : undefined } });
       }
       case 'motion': {
         const holdA = l.action === 'throw' || l.action === 'pitch';
