@@ -11,7 +11,7 @@
  */
 import type { Engine } from '../three/Engine';
 import type { HubPlayer, PlayerHub } from '../PlayerHub';
-import { ANIM_SPEEDS, BOT_LEVELS, VOLUMES, settings } from '../game/Settings';
+import { ANIM_SPEEDS, BOT_LEVELS, GRAPHICS_LEVELS, VOLUMES, settings } from '../game/Settings';
 import { sound } from '../audio/Sound';
 import { esc } from './Hud';
 
@@ -126,6 +126,13 @@ export class GameMenu {
         { label: `🔊 Efeitos: ${volLabel(s.sfxVolume)}`, run: () => (settings.set('sfxVolume', nextVol(s.sfxVolume)), sound.play('coin')) },
         { label: `🎵 Música: ${volLabel(s.musicVolume)}`, run: () => settings.set('musicVolume', nextVol(s.musicVolume)) },
         { label: `🎙️ Narrador: ${s.narrator ? 'Sim' : 'Não'}`, run: () => settings.set('narrator', !s.narrator) },
+        {
+          label: `🖼️ Gráficos: ${GRAPHICS_LEVELS.find((g) => g.id === s.graphics)?.label ?? 'Alto'}`,
+          run: () => {
+            const i = GRAPHICS_LEVELS.findIndex((g) => g.id === s.graphics);
+            settings.set('graphics', GRAPHICS_LEVELS[(i + 1) % GRAPHICS_LEVELS.length]!.id);
+          },
+        },
         { label: this.mode === 'lobby' ? '✔ Fechar' : '↩ Voltar', run: () => (this.mode === 'lobby' ? this.close() : this.goto('main')) },
       ];
     }

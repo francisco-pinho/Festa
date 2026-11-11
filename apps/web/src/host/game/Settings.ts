@@ -12,6 +12,13 @@ export const BOT_LEVELS: { id: BotLevel; label: string; skill: number }[] = [
   { id: 'mestre', label: 'Mestre', skill: 0.97 },
 ];
 
+export type GraphicsLevel = 'alto' | 'medio' | 'baixo';
+export const GRAPHICS_LEVELS: { id: GraphicsLevel; label: string }[] = [
+  { id: 'alto', label: 'Alto' },
+  { id: 'medio', label: 'Médio' },
+  { id: 'baixo', label: 'Baixo' },
+];
+
 export const ANIM_SPEEDS = [
   { value: 1, label: 'Normal' },
   { value: 1.4, label: 'Rápida' },
@@ -29,12 +36,14 @@ export interface SettingsData {
   musicVolume: number;
   /** Narrador que explica os jogos antes de começarem. */
   narrator: boolean;
+  /** Qualidade da imagem (sombras suaves, oclusão ambiente, brilho). */
+  graphics: GraphicsLevel;
 }
 
 export const VOLUMES = [0, 0.25, 0.5, 0.75, 1];
 
 const KEY = 'festa.settings';
-const DEFAULTS: SettingsData = { botLevel: 'normal', animSpeed: 1, hints: true, sfxVolume: 0.75, musicVolume: 0.5, narrator: true };
+const DEFAULTS: SettingsData = { botLevel: 'normal', animSpeed: 1, hints: true, sfxVolume: 0.75, musicVolume: 0.5, narrator: true, graphics: 'alto' };
 
 class Settings {
   readonly events = new Emitter<{ changed: SettingsData }>();

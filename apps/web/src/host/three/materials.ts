@@ -3,10 +3,10 @@ import * as THREE from 'three';
 
 let gradient: THREE.DataTexture | null = null;
 
-/** Rampa de 3 tons: sombra, meio-tom, luz. */
+/** Rampa de 4 tons (sombra, meia-sombra, meio-tom, luz): cartoon, mas com mais volume. */
 function toonGradient(): THREE.DataTexture {
   if (gradient) return gradient;
-  gradient = new THREE.DataTexture(new Uint8Array([110, 190, 255]), 3, 1, THREE.RedFormat);
+  gradient = new THREE.DataTexture(new Uint8Array([95, 150, 205, 255]), 4, 1, THREE.RedFormat);
   gradient.minFilter = THREE.NearestFilter;
   gradient.magFilter = THREE.NearestFilter;
   gradient.generateMipmaps = false;
