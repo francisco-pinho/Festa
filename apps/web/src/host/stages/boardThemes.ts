@@ -15,6 +15,8 @@ export interface BoardTheme {
   readonly bounds: { minX: number; maxX: number; minZ: number; maxZ: number };
   setFlags(flags: Record<string, boolean>): void;
   update(dt: number, time: number): void;
+  /** Efeito especial quando a roda gigante gira (parque). */
+  spinWheel?(): void;
 }
 
 const SHOP_SIGN: Record<ShopKind, { emoji: string; color: string }> = {
@@ -25,7 +27,18 @@ const SHOP_SIGN: Record<ShopKind, { emoji: string; color: string }> = {
 };
 
 export function createBoardTheme(board: Board, scene: THREE.Scene): BoardTheme {
-  return board.theme === 'city' ? new CityTheme(board, scene) : new IslandTheme(board, scene);
+  switch (board.theme) {
+    case 'city':
+      return new CityTheme(board, scene);
+    case 'volcano':
+      return new VolcanoTheme(board, scene);
+    case 'castle':
+      return new CastleTheme(board, scene);
+    case 'park':
+      return new ParkTheme(board, scene);
+    default:
+      return new IslandTheme(board, scene);
+  }
 }
 
 // ── Utilidades comuns ─────────────────────────────────────
@@ -107,10 +120,13 @@ function addPathStrips(board: Board, group: THREE.Group, style: (s: Space, t: Sp
       if (!st) continue;
       const dx = t.x - s.x;
       const dz = t.z - s.z;
+      const dy = (t.y ?? 0) - (s.y ?? 0);
       const len = Math.hypot(dx, dz);
-      const strip = mesh(new THREE.BoxGeometry(st.width, st.height, len), toon(st.color), { cast: false, receive: true });
-      strip.position.set(s.x + dx / 2, st.y, s.z + dz / 2);
+      const strip = mesh(new THREE.BoxGeometry(st.width, st.height, Math.hypot(len, dy)), toon(st.color), { cast: false, receive: true });
+      strip.position.set(s.x + dx / 2, st.y + (s.y ?? 0) + dy / 2, s.z + dz / 2);
+      strip.rotation.order = 'YXZ';
       strip.rotation.y = Math.atan2(dx, dz);
+      strip.rotation.x = -Math.atan2(dy, len);
       group.add(strip);
     }
 }
@@ -275,6 +291,512 @@ class IslandTheme implements BoardTheme {
     for (const d of this.caveDoors) d.position.y += (0.7 + this.doorTarget - d.position.y) * k;
     this.water.update(time);
     this.clouds.update(dt);
+  }
+}
+
+
+// ── Curvas das viagens (vagoneta, elevador, montanha-russa) ─
+
+/** Curva de uma viagem entre dois pontos do tabuleiro. */
+export function rideCurve(from: THREE.Vector3, to: THREE.Vector3, kind: 'cart' | 'elevator' | 'coaster'): THREE.CatmullRomCurve3 {
+  const mid = from.clone().lerp(to, 0.5);
+  if (kind === 'elevator') {
+    const top = Math.max(from.y, to.y) + 3;
+    return new THREE.CatmullRomCurve3([from, new THREE.Vector3(from.x, top, from.z), new THREE.Vector3(to.x, top, to.z), to]);
+  }
+  if (kind === 'cart') {
+    return new THREE.CatmullRomCurve3([from, from.clone().lerp(to, 0.25).setY(1.4), mid.clone().setY(2.2), from.clone().lerp(to, 0.75).setY(1.4), to]);
+  }
+  // Montanha-russa: sobe muito, desce a pique e dá uma volta.
+  const dir = to.clone().sub(from);
+  const side = new THREE.Vector3(-dir.z, 0, dir.x).normalize().multiplyScalar(8);
+  return new THREE.CatmullRomCurve3([
+    from,
+    from.clone().lerp(to, 0.15).setY(14),
+    from.clone().lerp(to, 0.35).add(side).setY(4),
+    mid.clone().setY(16),
+    from.clone().lerp(to, 0.65).sub(side).setY(5),
+    from.clone().lerp(to, 0.85).setY(10),
+    to,
+  ]);
+}
+
+/** Carris ao longo de uma curva (dois trilhos + travessas). */
+function rails(curve: THREE.Curve<THREE.Vector3>, color: string, supports: boolean, group: THREE.Group): void {
+  const steps = Math.ceil(curve.getLength() / 1.2);
+  for (const off of [-0.45, 0.45]) {
+    const pts = curve.getSpacedPoints(steps).map((p, i, arr) => {
+      const next = arr[Math.min(arr.length - 1, i + 1)]!;
+      const prev = arr[Math.max(0, i - 1)]!;
+      const dir = next.clone().sub(prev).setY(0).normalize();
+      return p.clone().add(new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(off)).add(new THREE.Vector3(0, -0.3, 0));
+    });
+    const tube = mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), steps * 2, 0.07, 6), toon(color));
+    group.add(tube);
+  }
+  curve.getSpacedPoints(steps).forEach((p, i, arr) => {
+    const next = arr[Math.min(arr.length - 1, i + 1)]!;
+    const sleeper = mesh(new THREE.BoxGeometry(1.2, 0.08, 0.25), toon('#5a3a1e'), { cast: false });
+    sleeper.position.copy(p).add(new THREE.Vector3(0, -0.35, 0));
+    sleeper.rotation.y = Math.atan2(next.x - p.x, next.z - p.z);
+    group.add(sleeper);
+    if (supports && i % 3 === 0 && p.y > 1.5) {
+      const post = mesh(new THREE.CylinderGeometry(0.12, 0.12, p.y), toon('#8a8f99'));
+      post.position.set(p.x, p.y / 2 - 0.3, p.z);
+      group.add(post);
+    }
+  });
+}
+
+function tunnelCurve(board: Board, t: Board['tunnels'][number]): THREE.CatmullRomCurve3 {
+  const a = getSpace(board, t.from);
+  const b = getSpace(board, t.to);
+  const kind = t.kind === 'coaster' ? 'coaster' : t.kind === 'elevator' ? 'elevator' : 'cart';
+  return rideCurve(new THREE.Vector3(a.x, 0.32 + (a.y ?? 0), a.z), new THREE.Vector3(b.x, 0.32 + (b.y ?? 0), b.z), kind);
+}
+
+function decorate(board: Board, group: THREE.Group, area: { cx: number; cz: number; w: number; d: number }, count: number, seed: number, make: (rng: ReturnType<typeof createRng>) => THREE.Object3D, clearance = 2.8, skip?: (x: number, z: number) => boolean): void {
+  const segs = segmentsOf(board);
+  const avoid = [...board.shops.map((sh) => getSpace(board, sh.spaceId)), ...board.tunnels.flatMap((t) => [getSpace(board, t.from), getSpace(board, t.to)])];
+  const rng = createRng(seed);
+  let placed = 0;
+  for (let tries = 0; tries < count * 40 && placed < count; tries++) {
+    const x = area.cx + (rng.next() - 0.5) * area.w;
+    const z = area.cz + (rng.next() - 0.5) * area.d;
+    if (!segs.every(([ax, az, bx, bz]) => distToSegment(x, z, ax, az, bx, bz) > clearance)) continue;
+    if (avoid.some((s) => Math.hypot(s.x - x, s.z - z) < 5)) continue;
+    if (skip?.(x, z)) continue;
+    const obj = make(rng);
+    obj.position.x = x;
+    obj.position.z = z;
+    group.add(obj);
+    placed++;
+  }
+}
+
+function shopsFor(board: Board, group: THREE.Group, cx: number, cz: number, neon: boolean): void {
+  for (const shop of board.shops) {
+    const s = getSpace(board, shop.spaceId);
+    const out = outward(s, cx, cz);
+    const building = shopBuilding(shop.kind, shop.name, neon);
+    building.position.set(s.x + out.x * 3.2, s.y ?? 0, s.z + out.y * 3.2);
+    building.rotation.y = Math.atan2(-out.x, -out.y);
+    group.add(building);
+  }
+}
+
+// ── Vulcão ────────────────────────────────────────────────
+
+class VolcanoTheme implements BoardTheme {
+  readonly group = new THREE.Group();
+  readonly bounds;
+  private readonly glow: THREE.MeshToonMaterial;
+  private readonly light: THREE.PointLight;
+  private readonly barrier: THREE.Mesh;
+  private readonly rocks: { mesh: THREE.Mesh; vel: THREE.Vector3 }[] = [];
+  private erupting = false;
+
+  constructor(board: Board, scene: THREE.Scene) {
+    this.bounds = boundsOf(board.spaces);
+    scene.background = new THREE.Color('#4a2a3a');
+    scene.fog = new THREE.Fog('#4a2a3a', 100, 260);
+    scene.add(new THREE.HemisphereLight('#ffc9a3', '#3a2a2a', 1.6));
+    const sun = new THREE.DirectionalLight('#ffd0a0', 2.2);
+    sun.position.set(30, 60, 30);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 220 });
+    scene.add(sun);
+
+    const ground = mesh(new THREE.CircleGeometry(110, 64), toon('#6b4a3a'), { cast: false, receive: true });
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.02;
+    this.group.add(ground);
+    addPathStrips(board, this.group, (s, t) => ({ width: 1.3, height: 0.08, color: s.zone === 'crater' || t.zone === 'crater' ? '#2b1d1d' : '#a88a6a', y: 0.04 }));
+
+    // Vulcão ao centro
+    const cone = mesh(new THREE.CylinderGeometry(4, 14, 14, 24, 1, true), toon('#4a2f28'), { receive: true });
+    cone.position.y = 7;
+    const rim = mesh(new THREE.TorusGeometry(4.2, 0.8, 8, 24), toon('#3a221e'));
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = 14;
+    this.glow = toonUnique('#ff5a1f', { emissive: '#ff5a1f', emissiveIntensity: 1.2 });
+    const lava = mesh(new THREE.CircleGeometry(3.8, 24), this.glow, { cast: false });
+    lava.rotation.x = -Math.PI / 2;
+    lava.position.y = 13.6;
+    this.light = new THREE.PointLight('#ff6a2a', 80, 60);
+    this.light.position.set(0, 18, 0);
+    this.group.add(cone, rim, lava, this.light);
+    // Rios de lava a descer a encosta
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 + 0.4;
+      const river = mesh(new THREE.BoxGeometry(0.8, 0.1, 10), this.glow, { cast: false });
+      river.position.set(Math.cos(a) * 9, 6, Math.sin(a) * 9);
+      river.rotation.y = -a + Math.PI / 2;
+      river.rotation.x = -0.75;
+      this.group.add(river);
+    }
+
+    // Barreira da cratera (durante a erupção)
+    const gate = board.gates[0];
+    this.barrier = mesh(new THREE.BoxGeometry(2.4, 1.2, 0.3), toonUnique('#ff3b5c'));
+    if (gate) {
+      const a = getSpace(board, gate.from);
+      const b = getSpace(board, gate.to);
+      this.barrier.position.set((a.x + b.x) / 2, 0.8, (a.z + b.z) / 2);
+      this.barrier.rotation.y = Math.atan2(b.x - a.x, b.z - a.z);
+      const sign = textSprite('🌋 Erupção!', { height: 0.6 });
+      sign.position.y = 1.2;
+      this.barrier.add(sign);
+      this.group.add(this.barrier);
+    }
+
+    // Vagonetas: carris em arco
+    for (const t of board.tunnels) {
+      rails(tunnelCurve(board, t), '#9aa3ad', true, this.group);
+      for (const id of [t.from, t.to]) {
+        const s = getSpace(board, id);
+        const sign = textSprite('🛤️', { height: 1.1 });
+        sign.position.set(s.x, 3, s.z);
+        this.group.add(sign);
+      }
+    }
+    // Entradas da galeria da mina
+    for (const id of board.spaces.filter((s) => s.zone === 'mine').map((s) => s.id).filter((_, i, arr) => i === 0 || i === arr.length - 1)) {
+      const s = getSpace(board, id);
+      const arch = mesh(new THREE.TorusGeometry(1.6, 0.35, 8, 12, Math.PI), toon('#5a3a1e'));
+      arch.position.set(s.x, 0.1, s.z);
+      arch.rotation.y = Math.atan2(s.x, s.z);
+      this.group.add(arch);
+    }
+    shopsFor(board, this.group, 0, 0, false);
+    // Rochas, cristais e árvores secas
+    decorate(board, this.group, { cx: 0, cz: 0, w: 140, d: 140 }, 110, 77, (rng) => {
+      const r = rng.next();
+      if (r < 0.55) {
+        const o = rock(rng);
+        o.scale.setScalar(1 + rng.next() * 1.4);
+        (o.material as THREE.Material) = toon(rng.next() < 0.5 ? '#5b4a44' : '#7a665a');
+        return o;
+      }
+      if (r < 0.8) {
+        const g = new THREE.Group();
+        const color = rng.pick(['#3fd0ff', '#b36bff', '#ff6fb5']);
+        for (let i = 0; i < 3; i++) {
+          const c = mesh(new THREE.ConeGeometry(0.3, 1.4 + rng.next(), 5), toonUnique(color, { emissive: color, emissiveIntensity: 0.5 }));
+          c.position.set((i - 1) * 0.4, 0.6, rng.next() * 0.3);
+          c.rotation.z = (i - 1) * 0.3;
+          g.add(c);
+        }
+        return g;
+      }
+      const tree = new THREE.Group();
+      const trunk = mesh(new THREE.CylinderGeometry(0.12, 0.2, 2.6, 6), toon('#3a2a22'));
+      trunk.position.y = 1.3;
+      const branch = mesh(new THREE.CylinderGeometry(0.06, 0.1, 1.2, 5), toon('#3a2a22'));
+      branch.position.set(0.35, 2, 0);
+      branch.rotation.z = -0.8;
+      tree.add(trunk, branch);
+      return tree;
+    }, 2.6, (x, z) => Math.hypot(x, z) < 16);
+    scene.add(this.group);
+  }
+
+  setFlags(flags: Record<string, boolean>): void {
+    this.erupting = !!flags.erupting;
+    this.barrier.visible = this.erupting;
+  }
+
+  update(dt: number, time: number): void {
+    this.glow.emissiveIntensity = (this.erupting ? 2.2 : 1.1) + Math.sin(time * 4) * 0.25;
+    this.light.intensity = this.erupting ? 200 + Math.sin(time * 20) * 60 : 80;
+    if (this.erupting && Math.random() < dt * 14) {
+      const m = mesh(new THREE.DodecahedronGeometry(0.4 + Math.random() * 0.4, 0), this.glow);
+      m.position.set(0, 14, 0);
+      this.group.add(m);
+      const a = Math.random() * Math.PI * 2;
+      this.rocks.push({ mesh: m, vel: new THREE.Vector3(Math.cos(a) * (4 + Math.random() * 6), 14 + Math.random() * 8, Math.sin(a) * (4 + Math.random() * 6)) });
+    }
+    for (let i = this.rocks.length - 1; i >= 0; i--) {
+      const r = this.rocks[i]!;
+      r.vel.y -= 25 * dt;
+      r.mesh.position.addScaledVector(r.vel, dt);
+      r.mesh.rotation.x += dt * 4;
+      if (r.mesh.position.y < 0) {
+        this.group.remove(r.mesh);
+        r.mesh.geometry.dispose();
+        this.rocks.splice(i, 1);
+      }
+    }
+  }
+}
+
+// ── Castelo ───────────────────────────────────────────────
+
+class CastleTheme implements BoardTheme {
+  readonly group = new THREE.Group();
+  readonly bounds;
+  private readonly doors: { gate: Board['gates'][number]; door: THREE.Object3D }[] = [];
+  private readonly ghost: THREE.Sprite;
+  private readonly flames: THREE.MeshToonMaterial[] = [];
+
+  constructor(board: Board, scene: THREE.Scene) {
+    this.bounds = boundsOf(board.spaces);
+    scene.background = new THREE.Color('#1d1433');
+    scene.fog = new THREE.Fog('#1d1433', 80, 200);
+    scene.add(new THREE.HemisphereLight('#b9a9ff', '#2a2440', 1.5));
+    const moon = new THREE.DirectionalLight('#dfe6ff', 2);
+    moon.position.set(-30, 60, 40);
+    moon.castShadow = true;
+    moon.shadow.mapSize.set(2048, 2048);
+    Object.assign(moon.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 200 });
+    scene.add(moon);
+    const moonDisc = mesh(new THREE.CircleGeometry(6, 32), new THREE.MeshBasicMaterial({ color: '#fff6d8' }), { cast: false });
+    moonDisc.position.set(-40, 50, -120);
+    this.group.add(moonDisc);
+
+    const ground = mesh(new THREE.PlaneGeometry(220, 220), toon('#2f3a2a'), { cast: false, receive: true });
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.02;
+    this.group.add(ground);
+
+    // Plataformas dos andares (pedra)
+    for (const zone of ['floor0', 'floor1', 'floor2']) {
+      const sp = board.spaces.filter((s) => s.zone === zone);
+      if (!sp.length) continue;
+      const b = boundsOf(sp);
+      const y = sp[0]!.y ?? 0;
+      const w = b.maxX - b.minX + 7;
+      const d = b.maxZ - b.minZ + 7;
+      const h = Math.max(0.3, y);
+      const slab = mesh(new THREE.BoxGeometry(w, h, d), toon(zone === 'floor0' ? '#6b6f78' : '#7d7466'), { receive: true });
+      slab.position.set((b.minX + b.maxX) / 2, h / 2 - (y ? 0 : 0.28), (b.minZ + b.maxZ) / 2);
+      this.group.add(slab);
+      // Ameias à volta dos andares altos
+      if (y > 0) {
+        for (let x = b.minX - 3; x <= b.maxX + 3; x += 2.4) {
+          for (const z of [b.minZ - 3.2, b.maxZ + 3.2]) {
+            const m = mesh(new THREE.BoxGeometry(1, 1, 0.6), toon('#8a8072'));
+            m.position.set(x, y + 0.5, z);
+            this.group.add(m);
+          }
+        }
+      }
+      // Torres nos cantos
+      for (const [cx, cz] of [[b.minX - 3.5, b.minZ - 3.5], [b.maxX + 3.5, b.minZ - 3.5], [b.minX - 3.5, b.maxZ + 3.5], [b.maxX + 3.5, b.maxZ + 3.5]] as const) {
+        const tower = mesh(new THREE.CylinderGeometry(1.6, 1.8, y + 6, 12), toon('#8a8072'));
+        tower.position.set(cx, (y + 6) / 2, cz);
+        const roof = mesh(new THREE.ConeGeometry(2.1, 3, 12), toon('#5b3a8a'));
+        roof.position.set(cx, y + 7.5, cz);
+        const flameMat = toonUnique('#ffb020', { emissive: '#ff8a1a', emissiveIntensity: 1.5 });
+        this.flames.push(flameMat);
+        const flame = mesh(new THREE.SphereGeometry(0.3, 8, 6), flameMat, { cast: false });
+        flame.position.set(cx, y + 2, cz + 1.9);
+        this.group.add(tower, roof, flame);
+      }
+    }
+    addPathStrips(board, this.group, () => ({ width: 1.3, height: 0.1, color: '#a39a8a', y: 0.05 }));
+
+    // Elevadores: poços com cabos
+    for (const t of board.tunnels) {
+      for (const id of [t.from, t.to]) {
+        const s = getSpace(board, id);
+        const top = 10;
+        for (const [ox, oz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+          const post = mesh(new THREE.BoxGeometry(0.15, top, 0.15), toon('#4a4f58'));
+          const out = outward(s, 0, 0);
+          post.position.set(s.x + out.x * 2.2 + ox * 0.9, top / 2, s.z + out.y * 2.2 + oz * 0.9);
+          this.group.add(post);
+        }
+        const sign = textSprite('🛗', { height: 1 });
+        sign.position.set(s.x, (s.y ?? 0) + 3, s.z);
+        this.group.add(sign);
+      }
+    }
+    // Portas nas escadarias
+    for (const gate of board.gates) {
+      const a = getSpace(board, gate.from);
+      const b = getSpace(board, gate.to);
+      const pivot = new THREE.Group();
+      const door = mesh(new THREE.BoxGeometry(2.2, 2.6, 0.2), toon('#6b4423'));
+      door.position.set(1.1, 1.3, 0);
+      const knob = mesh(new THREE.SphereGeometry(0.12, 8, 6), toon('#ffd23f'), { cast: false });
+      knob.position.set(1.9, 1.3, 0.15);
+      pivot.add(door, knob);
+      pivot.position.set((a.x + b.x) / 2 - 1.1, ((a.y ?? 0) + (b.y ?? 0)) / 2, (a.z + b.z) / 2);
+      this.group.add(pivot);
+      this.doors.push({ gate, door: pivot });
+    }
+    shopsFor(board, this.group, 0, -6, false);
+    // Fantasma
+    this.ghost = textSprite('👻', { height: 2.4 });
+    this.group.add(this.ghost);
+    // Árvores secas e lápides à volta
+    decorate(board, this.group, { cx: 0, cz: -4, w: 120, d: 110 }, 60, 13, (rng) => {
+      if (rng.next() < 0.5) {
+        const g = new THREE.Group();
+        const stone = mesh(new THREE.BoxGeometry(0.9, 1.2, 0.25), toon('#8a8f99'));
+        stone.position.y = 0.6;
+        g.add(stone);
+        g.rotation.y = rng.next();
+        return g;
+      }
+      const tree = new THREE.Group();
+      const trunk = mesh(new THREE.CylinderGeometry(0.15, 0.25, 3, 6), toon('#2b2224'));
+      trunk.position.y = 1.5;
+      const top = mesh(new THREE.SphereGeometry(1.2, 6, 5), toon('#3a2a4d'));
+      top.position.y = 3.4;
+      tree.add(trunk, top);
+      return tree;
+    }, 4);
+    scene.add(this.group);
+  }
+
+  setFlags(flags: Record<string, boolean>): void {
+    for (const d of this.doors) {
+      const open = (flags[d.gate.flag] ?? false) === d.gate.openWhen;
+      d.door.userData.target = open ? -1.6 : 0;
+    }
+  }
+
+  update(dt: number, time: number): void {
+    for (const d of this.doors) d.door.rotation.y += (((d.door.userData.target as number) ?? 0) - d.door.rotation.y) * damp(3, dt);
+    this.ghost.position.set(Math.sin(time * 0.3) * 24, 9 + Math.sin(time * 1.3) * 1.2, -6 + Math.cos(time * 0.23) * 22);
+    (this.ghost.material as THREE.SpriteMaterial).opacity = 0.55 + Math.sin(time * 2) * 0.25;
+    this.flames.forEach((f, i) => (f.emissiveIntensity = 1.2 + Math.sin(time * 9 + i) * 0.4));
+  }
+}
+
+// ── Parque de diversões ───────────────────────────────────
+
+class ParkTheme implements BoardTheme {
+  readonly group = new THREE.Group();
+  readonly bounds;
+  private readonly wheel = new THREE.Group();
+  private wheelSpeed = 0.15;
+  private readonly balloons: THREE.Object3D[] = [];
+  private readonly carousel = new THREE.Group();
+
+  constructor(board: Board, scene: THREE.Scene) {
+    setupSky(scene, { fog: [140, 320] });
+    this.bounds = boundsOf(board.spaces);
+    const { minX, maxX, minZ, maxZ } = this.bounds;
+    const ground = mesh(new THREE.PlaneGeometry(260, 220), toon('#7ccf5b'), { cast: false, receive: true });
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.02;
+    this.group.add(ground);
+    const pathColor = (s: Space, t: Space) => (s.zone === 'midway' || t.zone === 'midway' ? '#ffd1e8' : s.zone === 'wheel' || t.zone === 'wheel' ? '#cfe8ff' : '#f2d58b');
+    addPathStrips(board, this.group, (s, t) => ({ width: 1.5, height: 0.08, color: pathColor(s, t), y: 0.04 }));
+
+    // Roda gigante (atrás das casas da roda)
+    const wheelSpaces = board.wheel?.map((id) => getSpace(board, id)) ?? [];
+    if (wheelSpaces.length) {
+      const cx = wheelSpaces.reduce((a, s) => a + s.x, 0) / wheelSpaces.length;
+      const cz = wheelSpaces.reduce((a, s) => a + s.z, 0) / wheelSpaces.length;
+      const R = 7;
+      const base = new THREE.Group();
+      base.position.set(cx, R + 3.5, cz);
+      const ring = mesh(new THREE.TorusGeometry(R, 0.25, 8, 48), toon('#ff6fb5'));
+      this.wheel.add(ring);
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        const spoke = mesh(new THREE.CylinderGeometry(0.08, 0.08, R * 2), toon('#ffffff'));
+        spoke.rotation.z = a;
+        this.wheel.add(spoke);
+        const cabin = mesh(new THREE.BoxGeometry(1.2, 1, 1.2), toon(['#ffd23f', '#3fd0ff', '#4cd964', '#ff5a5f'][i % 4]!));
+        cabin.position.set(Math.cos(a) * R, Math.sin(a) * R, 0);
+        this.wheel.add(cabin);
+      }
+      base.add(this.wheel);
+      for (const side of [-1, 1]) {
+        const leg = mesh(new THREE.CylinderGeometry(0.25, 0.35, R + 4.5), toon('#9aa3ad'));
+        leg.position.set(side * 2.5, -(R + 3.5) / 2, 0);
+        leg.rotation.z = side * 0.25;
+        base.add(leg);
+      }
+      this.group.add(base);
+    }
+
+    // Montanha-russa
+    for (const t of board.tunnels) {
+      rails(tunnelCurve(board, t), '#ff3b5c', true, this.group);
+      for (const id of [t.from, t.to]) {
+        const s = getSpace(board, id);
+        const sign = textSprite('🎢', { height: 1.2 });
+        sign.position.set(s.x, 3.2, s.z);
+        this.group.add(sign);
+      }
+    }
+
+    // Carrossel ao centro
+    const base = mesh(new THREE.CylinderGeometry(4, 4, 0.5, 24), toon('#ffd23f'));
+    base.position.y = 0.25;
+    const roof = mesh(new THREE.ConeGeometry(4.6, 2.4, 24), toon('#ff5a5f'));
+    roof.position.y = 4.5;
+    const pole = mesh(new THREE.CylinderGeometry(0.3, 0.3, 4), toon('#ffffff'));
+    pole.position.y = 2.3;
+    this.carousel.add(base, roof, pole);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const horse = mesh(new THREE.BoxGeometry(0.4, 0.7, 1.1), toon(['#ffffff', '#ffd1e8', '#cfe8ff'][i % 3]!));
+      horse.position.set(Math.cos(a) * 2.8, 1.4, Math.sin(a) * 2.8);
+      const rod = mesh(new THREE.CylinderGeometry(0.05, 0.05, 3.3), toon('#ffd23f'));
+      rod.position.set(Math.cos(a) * 2.8, 2.2, Math.sin(a) * 2.8);
+      this.carousel.add(horse, rod);
+    }
+    const midway = board.spaces.filter((s) => s.zone === 'midway');
+    const far = (x: number, z: number) => midway.every((s) => Math.hypot(s.x - x, s.z - z) > 6);
+    let placedCarousel = false;
+    for (const [x, z] of [[0, -10], [0, 10], [-12, 0], [12, 0]] as const) {
+      if (!placedCarousel && far(x, z)) {
+        this.carousel.position.set(x, 0, z);
+        placedCarousel = true;
+      }
+    }
+    this.group.add(this.carousel);
+
+    shopsFor(board, this.group, (minX + maxX) / 2, (minZ + maxZ) / 2, false);
+    // Tendas, balões e bancas
+    decorate(board, this.group, { cx: 0, cz: 0, w: (maxX - minX) + 40, d: (maxZ - minZ) + 40 }, 70, 21, (rng) => {
+      const r = rng.next();
+      if (r < 0.35) {
+        const g = new THREE.Group();
+        const color = rng.pick(['#ff5a5f', '#3fa7ff', '#b36bff', '#4cd964']);
+        const tent = mesh(new THREE.ConeGeometry(2, 2.6, 8), toonUnique(color));
+        tent.position.y = 1.3;
+        const flag = mesh(new THREE.ConeGeometry(0.25, 0.6, 4), toon('#ffd23f'));
+        flag.position.y = 2.9;
+        g.add(tent, flag);
+        return g;
+      }
+      if (r < 0.65) {
+        const g = new THREE.Group();
+        const balloon = mesh(new THREE.SphereGeometry(0.6, 12, 10), toonUnique(rng.pick(['#ff5a5f', '#ffd23f', '#3fd0ff', '#ff6fb5', '#4cd964'])));
+        balloon.position.y = 4 + rng.next() * 2;
+        balloon.scale.y = 1.2;
+        const string = mesh(new THREE.CylinderGeometry(0.02, 0.02, balloon.position.y), toon('#ffffff'), { cast: false });
+        string.position.y = balloon.position.y / 2;
+        g.add(balloon, string);
+        this.balloons.push(balloon);
+        return g;
+      }
+      return palmTree(rng, 0.8 + rng.next() * 0.4);
+    }, 3);
+    scene.add(this.group);
+  }
+
+  /** A roda gira mais depressa quando muda as pessoas de sítio. */
+  spinWheel(): void {
+    this.wheelSpeed = 2.5;
+  }
+
+  setFlags(): void {}
+
+  update(dt: number, time: number): void {
+    this.wheel.rotation.z += this.wheelSpeed * dt;
+    this.wheelSpeed += (0.15 - this.wheelSpeed) * damp(0.8, dt);
+    this.carousel.rotation.y += dt * 0.6;
+    this.balloons.forEach((b, i) => (b.position.x = Math.sin(time * 1.2 + i) * 0.2));
   }
 }
 

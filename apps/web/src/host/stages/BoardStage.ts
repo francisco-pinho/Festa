@@ -7,10 +7,10 @@ import { getCharacter, getSpace, type Board, type SpaceType } from '@festa/game'
 import type { Engine, Stage } from '../three/Engine';
 import { CharacterModel } from '../three/CharacterModel';
 import { Dice } from '../three/Dice';
-import { canvasTexture, disposeObject, FONT, mesh, textSprite, toon } from '../three/materials';
+import { canvasTexture, disposeObject, FONT, mesh, textSprite, toon, toonUnique } from '../three/materials';
 import { damp, ease, lerp } from '../three/tweens';
 import { starMesh } from './environment';
-import { createBoardTheme, type BoardTheme } from './boardThemes';
+import { createBoardTheme, rideCurve, type BoardTheme } from './boardThemes';
 
 const TILE_R = 1.15;
 const TILE_TOP = 0.32;
@@ -152,7 +152,7 @@ export class BoardStage implements Stage {
       const s = getSpace(this.board, spaceId);
       ids.forEach((id, i) => {
         const offset = ids.length === 1 ? { x: 0, z: 0 } : this.slotOffset(i, ids.length);
-        const target = new THREE.Vector3(s.x + offset.x, TILE_TOP, s.z + offset.z);
+        const target = new THREE.Vector3(s.x + offset.x, TILE_TOP + (s.y ?? 0), s.z + offset.z);
         const root = this.token(id).root;
         if (instant) {
           root.position.copy(target);
@@ -177,7 +177,7 @@ export class BoardStage implements Stage {
     const t = this.token(id);
     const s = getSpace(this.board, spaceId);
     const from = t.root.position.clone();
-    const to = new THREE.Vector3(s.x, TILE_TOP, s.z);
+    const to = new THREE.Vector3(s.x, TILE_TOP + (s.y ?? 0), s.z);
     t.faceTowards(s.x, s.z);
     t.setAnim('walk');
     await this.engine.tween(
@@ -287,7 +287,7 @@ export class BoardStage implements Stage {
   async placeStar(spaceId: number, animate: boolean): Promise<void> {
     this.starSpaceId = spaceId;
     const s = getSpace(this.board, spaceId);
-    const target = new THREE.Vector3(s.x, 0, s.z);
+    const target = new THREE.Vector3(s.x, s.y ?? 0, s.z);
     if (!animate || !this.star.visible) {
       this.star.position.copy(target);
       this.star.visible = true;
@@ -339,7 +339,8 @@ export class BoardStage implements Stage {
       shaft.rotation.x = Math.PI / 2;
       shaft.position.z = -0.2;
       arrow.add(head, shaft);
-      arrow.position.set(from.x + dir.x * 2, 1.2, from.z + dir.z * 2);
+      arrow.position.set(from.x + dir.x * 2, 1.2 + (from.y ?? 0), from.z + dir.z * 2);
+      arrow.userData.baseY = 1.2 + (from.y ?? 0);
       arrow.rotation.y = Math.atan2(dir.x, dir.z);
       this.arrows.add(arrow);
     }
@@ -379,7 +380,7 @@ export class BoardStage implements Stage {
       s.position.y = 2.6 + Math.sin(time * 2) * 0.25;
       (this.starBeam.material as THREE.MeshBasicMaterial).opacity = 0.16 + Math.sin(time * 3) * 0.06;
     }
-    for (const a of this.arrows.children) a.position.y = 1.2 + Math.sin(time * 5) * 0.15;
+    for (const a of this.arrows.children) a.position.y = ((a.userData.baseY as number | undefined) ?? 1.2) + Math.sin(time * 5) * 0.15;
 
     for (let i = this.floaters.length - 1; i >= 0; i--) {
       const f = this.floaters[i]!;
@@ -436,6 +437,11 @@ export class BoardStage implements Stage {
   /** Mudou a maré / o semáforo: atualiza o cenário. */
   setFlags(flags: Record<string, boolean>): void {
     this.theme.setFlags(flags);
+  }
+
+  /** Efeito da roda gigante a girar (só no parque). */
+  spinWheel(): void {
+    this.theme.spinWheel?.();
   }
 
   /**
@@ -518,9 +524,11 @@ export class BoardStage implements Stage {
   }
 
   /** Viagem por túnel/metro: desce na entrada e sobe na saída. */
-  async travelTunnel(id: string, toSpace: number, kind: 'cave' | 'metro'): Promise<void> {
+  async travelTunnel(id: string, toSpace: number, kind: 'cave' | 'metro' | 'cart' | 'elevator' | 'coaster'): Promise<void> {
     const t = this.token(id);
     const to = getSpace(this.board, toSpace);
+    const toY = TILE_TOP + (to.y ?? 0);
+    if (kind === 'cart' || kind === 'coaster' || kind === 'elevator') return this.ride(id, toSpace, kind);
     const y0 = t.root.position.y;
     t.setAnim('jump');
     await this.engine.tween(0.45, (k) => {
@@ -530,11 +538,49 @@ export class BoardStage implements Stage {
     this.floatTextAt(kind === 'metro' ? '🚇' : '🕳️', t.root.position.x, t.root.position.z);
     this.focusPoint(to.x, to.z, 1);
     await this.engine.wait(kind === 'metro' ? 1.1 : 0.8);
-    t.root.position.set(to.x, TILE_TOP - 3, to.z);
+    t.root.position.set(to.x, toY - 3, to.z);
     await this.engine.tween(0.45, (k) => {
-      t.root.position.y = TILE_TOP - 3 + k * 3;
+      t.root.position.y = toY - 3 + k * 3;
       t.root.scale.setScalar(0.4 + k * 0.6);
     }, ease.backOut);
+    t.setAnim('idle');
+  }
+
+  /** Viagem visível: vagoneta (carris), elevador ou montanha-russa (ao longo de uma curva). */
+  private async ride(id: string, toSpace: number, kind: 'cart' | 'elevator' | 'coaster'): Promise<void> {
+    const t = this.token(id);
+    const fromPos = t.root.position.clone();
+    const to = getSpace(this.board, toSpace);
+    const toPos = new THREE.Vector3(to.x, TILE_TOP + (to.y ?? 0), to.z);
+    const curve = rideCurve(fromPos, toPos, kind);
+    const vehicle = new THREE.Group();
+    const color = kind === 'coaster' ? '#ff3b5c' : kind === 'cart' ? '#7a5230' : '#c0c0c0';
+    const body = mesh(new THREE.BoxGeometry(1.5, 0.7, 1.8), toonUnique(color));
+    body.position.y = 0.2;
+    vehicle.add(body);
+    if (kind === 'elevator') {
+      const cage = mesh(new THREE.BoxGeometry(1.7, 2.6, 1.7), toonUnique('#9aa3ad', { transparent: true, opacity: 0.35 }), { cast: false });
+      cage.position.y = 1.3;
+      vehicle.add(cage);
+    }
+    this.scene.add(vehicle);
+    t.setAnim(kind === 'coaster' ? 'cheer' : 'idle');
+    this.floatTextAt(kind === 'coaster' ? '🎢' : kind === 'cart' ? '🛤️' : '🛗', fromPos.x, fromPos.z);
+    this.follow = t;
+    this.followDistance = kind === 'coaster' ? 1.6 : 1.2;
+    const len = curve.getLength();
+    const duration = kind === 'elevator' ? 2 : Math.min(4.5, 1.2 + len / 14);
+    await this.engine.tween(duration, (k) => {
+      const p = curve.getPointAt(k);
+      const tan = curve.getTangentAt(Math.min(0.999, k + 0.001));
+      vehicle.position.copy(p).add(new THREE.Vector3(0, -0.35, 0));
+      vehicle.rotation.y = Math.atan2(tan.x, tan.z);
+      t.root.position.copy(p);
+      if (kind !== 'elevator') t.faceYaw(Math.atan2(tan.x, tan.z), true);
+    }, ease.inOut);
+    this.scene.remove(vehicle);
+    disposeObject(vehicle);
+    t.root.position.copy(toPos);
     t.setAnim('idle');
   }
 
@@ -552,7 +598,7 @@ export class BoardStage implements Stage {
       if (this.trapSprites.has(id)) continue;
       const s = getSpace(this.board, id);
       const sprite = textSprite('🪤', { height: 0.9 });
-      sprite.position.set(s.x + 0.7, 0.9, s.z + 0.7);
+      sprite.position.set(s.x + 0.7, 0.9 + (s.y ?? 0), s.z + 0.7);
       this.scene.add(sprite);
       this.trapSprites.set(id, sprite);
     }
@@ -618,7 +664,7 @@ export class BoardStage implements Stage {
         cast: false,
         receive: true,
       });
-      tile.position.set(s.x, 0.17, s.z);
+      tile.position.set(s.x, 0.17 + (s.y ?? 0), s.z);
       this.scene.add(tile);
     }
   }

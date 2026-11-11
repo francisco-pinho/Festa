@@ -163,12 +163,12 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [x] **Duelo na casa ocupada**: quem chega desafia quem lá está para um minijogo 1 contra 1 — quem perde dá 5 moedas e recua 3 casas
 - [x] **Novas casas**: Loja, Túnel/Teleporte, VS (todos apostam), Evento do mapa, Vilão (perde moedas/estrela, baralha posições), Duelo
 - [x] **Animações de eventos** (roletas, moedas a voar, estrela roubada, cerimónia das estrelas bónus em palco; falta som): estrelas bónus com cerimónia (holofote, personagem a receber a estrela, confetes), compra de estrela, tornado, loja, itens
-- [~] **Mapas maiores** (60–90 casas, 3–4 cruzamentos, zonas diferentes) — feitos: Ilha renovada (85 casas) e Cidade Néon (75 casas); faltam os outros 3, cada um com a sua mecânica (ideias, todas nossas):
+- [x] **Mapas maiores** (60–90 casas, 3–4 cruzamentos, zonas diferentes) — 5 mapas feitos, cada um com a sua mecânica: Ilha (86), Cidade Néon (75), Mina do Vulcão (76), Castelo Assombrado (70, 3 andares) e Parque de Diversões (68):
   - **Ilha do Coqueiro (renovada)**: a maré sobe/desce a cada 3 rondas e abre/fecha a ponte; gruta com túnel
   - **Cidade Néon**: muitas lojas, saldos, **metro** (túneis entre estações que custam moedas), semáforos que fecham ruas
-  - **Mina do Vulcão**: **vagonetas** em carris que te levam longe, erupção que espalha moedas e fecha caminhos, túneis escuros
-  - **Castelo Assombrado**: andares ligados por **elevadores**, portas que trocam de caminho, fantasma que troca moedas por estrelas
-  - **Parque de Diversões**: **roda gigante** que gira e muda quem está nela de sítio, montanha-russa como atalho
+  - **Mina do Vulcão**: **vagonetas** em carris (atalho pago e casa de evento que te leva 4–8 casas), erupção a cada 3 rondas que fecha a cratera e queima 5 moedas a quem lá está
+  - **Castelo Assombrado**: 3 andares ligados por **elevadores** e escadarias com portas que alternam a cada ronda; o fantasma vende uma estrela por 30 moedas (ou rouba 3–8)
+  - **Parque de Diversões**: **roda gigante** que gira 2 casas por ronda e leva quem lá está, montanha-russa como atalho (5 moedas), corredor das barracas
 - [ ] Mais minijogos (1 contra 1 para os duelos)
 
 ### Fase 2 — Bowling
@@ -238,4 +238,5 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-11 | Plano criado | `jogos-todos` | ✔ |
 | 2026-11-11 | Fase 0: dica Android, horizontal, sensores, pausa/definições, dificuldade, Rapier | `fase0-fundacoes` | ✔ |
 | 2026-11-11 | Fase 0: modelos 3D com esqueleto (KayKit, 76 animações, 10 personagens recoloridas) | `fase0-fundacoes` | ✔ |
-| 2026-11-11 | Fase 1: mapas Ilha e Cidade, itens, lojas, duelos, VS, Trapaceiro, vista do mapa, cerimónia | `fase1-festa` | ✔ (faltam 3 mapas) |
+| 2026-11-11 | Fase 1: mapas Ilha e Cidade, itens, lojas, duelos, VS, Trapaceiro, vista do mapa, cerimónia | `fase1-festa` | ✔ |
+| 2026-11-11 | Fase 1: mapas Mina do Vulcão, Castelo Assombrado e Parque de Diversões (cenários 3D, vagonetas, elevadores, montanha-russa, erupção, portas, roda, fantasma) | `fase1-festa` | ✔ |

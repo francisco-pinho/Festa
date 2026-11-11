@@ -36,6 +36,9 @@ import {
   getCharacter,
   getPlayer,
   getSpace,
+  ghostCanSell,
+  ghostSellStar,
+  ghostSteal,
   isDoubles,
   isLastRounds,
   lastPlaceIds,
@@ -231,6 +234,35 @@ export class PartyFlow {
           sub: ev.greenNS ? 'Verde na Avenida Norte · vermelho na Oeste' : 'Verde na Avenida Oeste · vermelho na Norte',
           hold: 2,
         });
+      } else if (ev.kind === 'eruption') {
+        this.stage.setFlags(this.state.flags);
+        this.stage.overview();
+        if (ev.active) {
+          await this.hud.banner('🌋 Erupção!', { sub: 'A cratera fechou nesta ronda · quem lá estava queimou-se', hold: 2.4, color: '#ff5a1f' });
+          for (const b of ev.burned) {
+            this.stage.focus(b.id, true);
+            this.stage.token(b.id).setAnim('hurt');
+            this.stage.coinBurst(b.id, -b.amount);
+            this.stage.floatText(b.id, `🔥 -${b.amount} 🪙`, '#ff6b7a');
+            this.ctl.vibrate(this.seat(b.id), [120, 60, 120]);
+            await this.wait(1.1);
+            this.stage.token(b.id).setAnim('idle');
+          }
+          this.scoreboard();
+        } else {
+          await this.hud.banner('🌋 O vulcão acalmou', { sub: 'A cratera voltou a abrir', hold: 1.8, color: '#ffa41b' });
+        }
+      } else if (ev.kind === 'doors') {
+        this.stage.setFlags(this.state.flags);
+        this.stage.overview();
+        await this.hud.banner('🚪 As portas do castelo mudaram!', { sub: ev.open ? 'Abriu a escadaria Este · fechou a Oeste' : 'Abriu a escadaria Oeste · fechou a Este', hold: 2.2, color: '#b98cff' });
+      } else if (ev.kind === 'wheel') {
+        this.stage.spinWheel();
+        const s = getSpace(this.state.board, this.state.board.wheel![0]!);
+        this.stage.focusPoint(s.x, s.z, 1.4);
+        await this.hud.banner('🎡 A roda gigante girou!', { sub: ev.moved.length ? 'Quem estava na roda mudou de lugar' : 'Ninguém estava lá em cima', hold: 1.8, color: '#ff6fb5' });
+        await Promise.all(ev.moved.map((m) => this.stage.hop(m.id, m.to, 0.7)));
+        if (ev.moved.length) await this.arrangeAll();
       } else if (ev.kind === 'sale') {
         const shop = this.state.board.shops.find((s) => s.id === ev.shopId)!;
         const s = getSpace(this.state.board, shop.spaceId);
@@ -527,7 +559,8 @@ export class PartyFlow {
     const info = options.map((id, i) => {
       const tunnel = tunnelBetween(state.board, spaceId, id);
       const d = (dist.get(id) ?? 99) + 1;
-      const name = tunnel ? (tunnel.kind === 'metro' ? 'Ⓜ️ Metro' : '🕳️ Gruta') : `Caminho ${i + 1}`;
+      const TUNNEL_NAMES = { metro: 'Ⓜ️ Metro', cave: '🕳️ Gruta', cart: '🛤️ Vagoneta', elevator: '🛗 Elevador', coaster: '🎢 Montanha-russa' } as const;
+      const name = tunnel ? TUNNEL_NAMES[tunnel.kind] : `Caminho ${i + 1}`;
       const cost = tunnel?.cost ? ` · ${tunnel.cost}🪙` : '';
       return {
         id,
@@ -556,6 +589,50 @@ export class PartyFlow {
     this.hud.hint(null);
     this.ctl.setLayout(this.seat(p.id), { kind: 'wait', message: 'A caminho…' });
     return Number(choice.slice(5));
+  }
+
+  /** Fantasma do castelo: vende uma estrela; quem não compra é assaltado. */
+  private async ghost(p: PartyPlayer): Promise<void> {
+    const seat = this.seat(p.id);
+    const token = this.stage.token(p.id);
+    this.stage.focus(p.id, true);
+    token.setAnim('dizzy');
+    this.stage.floatText(p.id, '👻', '#ffffff');
+    await this.hud.banner('👻 Buuu! O fantasma!', { sub: `Vende uma estrela por ${RULES.ghostStarPrice} 🪙… ou leva-te moedas`, hold: 1.8, color: '#b98cff' });
+    let bought = false;
+    if (ghostCanSell(p)) {
+      const answer = await this.ctl.decide(seat, {
+        layout: {
+          kind: 'choices',
+          prompt: `O fantasma vende-te uma estrela por ${RULES.ghostStarPrice} 🪙 (tens ${p.coins}). Se recusares, rouba-te moedas!`,
+          options: [
+            { id: 'buy', label: `Comprar ⭐ (${RULES.ghostStarPrice} 🪙)`, color: '#ffd23f' },
+            { id: 'skip', label: 'Não, obrigado' },
+          ],
+        },
+        valid: ['buy', 'skip'],
+        bot: () => 'buy',
+        botDelay: 1.2,
+      });
+      this.ctl.setLayout(seat, { kind: 'wait', message: '👻' });
+      if (answer === 'buy' && ghostSellStar(p)) {
+        bought = true;
+        this.stage.coinBurst(p.id, -RULES.ghostStarPrice);
+        token.setAnim('cheer');
+        this.ctl.vibrate(seat, [60, 40, 200]);
+        this.scoreboard(p.id);
+        await this.hud.banner(`${p.name} comprou uma estrela ao fantasma!`, { hold: 1.8, color: '#ffd23f' });
+      }
+    }
+    if (!bought) {
+      const lost = ghostSteal(p, this.rng);
+      token.setAnim('sad');
+      this.stage.coinBurst(p.id, -lost);
+      this.ctl.vibrate(seat, [80, 60, 80]);
+      this.scoreboard();
+      await this.hud.banner('👻 O fantasma roubou-te!', { sub: lost ? `${p.name} perdeu ${lost} moedas` : 'Mas não tinhas moedas…', hold: 1.6, color: '#b98cff' });
+    }
+    token.setAnim('idle');
   }
 
   private async starOffer(p: PartyPlayer): Promise<void> {
@@ -731,6 +808,12 @@ export class PartyFlow {
     } else if (e.kind === 'taxi') {
       await this.hud.banner('🚕 Táxi!', { sub: 'Uma boleia até perto da estrela', hold: 1.4, color: '#ffd23f' });
       await this.stage.travelTunnel(p.id, e.to, 'metro');
+    } else if (e.kind === 'minecart') {
+      await this.hud.banner('🛤️ Vagoneta!', { sub: `${p.name} apanha boleia pela mina`, hold: 1.3, color: '#ffa41b' });
+      await this.stage.travelTunnel(p.id, e.to, 'cart');
+      await this.arrangeAll();
+    } else if (e.kind === 'ghost') {
+      await this.ghost(p);
     } else if (e.kind === 'item') {
       const names = ['⚡ Turbo', '🎲 Dado Extra', '🧲 Íman', '🪤 Armadilha', '🎟️ Bilhete', '🪞 Espelho', '🐌 Preguiçoso'];
       const result = e.item ? `${ITEMS[e.item].emoji} ${ITEMS[e.item].name}` : '🪙 +5 moedas';

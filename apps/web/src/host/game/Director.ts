@@ -70,7 +70,7 @@ export class Director {
     this.engine.setStage(stage);
     stage.view({ distance: 16, height: 5, orbitSpeed: 0.1 });
     let selected = 0;
-    const icon = (theme: string) => (theme === 'city' ? '🌃' : '🏝️');
+    const icon = (theme: string) => ({ city: '🌃', volcano: '🌋', castle: '🏰', park: '🎡' })[theme] ?? '🏝️';
     const render = () =>
       this.hud.panel(`
         <h1>🗺️ Escolhe o mapa</h1>
