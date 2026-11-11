@@ -35,7 +35,7 @@ export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): ()
   view.innerHTML = `
     <div class="motion">
       <p class="prompt">${esc(l.prompt)}</p>
-      ${l.aim ? '<div class="aim-zone"><span>🕹️ Apontar</span></div>' : ''}
+      ${l.aim ? '<div class="aim-zone"><span>🕹️ Posição</span><button class="tilt-aim" hidden><span class="tilt-arrow">⬆️</span><small>Roda o telemóvel para apontar · toca para centrar</small></button></div>' : ''}
       <div class="pads ${l.hands ? 'two' : ''}">
         ${(l.hands ? (['left', 'right'] as Hand[]) : (['right'] as Hand[]))
           .map((h) => `<div class="pad" data-hand="${h}"><span class="icon">${text.icon}</span><span class="label"></span>${l.hands ? `<small>${h === 'left' ? 'Esquerda' : 'Direita'}</small>` : ''}</div>`)
@@ -84,6 +84,38 @@ export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): ()
     );
   }
 
+  // Pontaria por inclinação: roda o telemóvel (como um volante) para mudar o ângulo.
+  const tiltBox = view.querySelector<HTMLElement>('.tilt-aim');
+  const tiltArrow = view.querySelector<HTMLElement>('.tilt-arrow');
+  let holding = false;
+  if (tiltBox && canMotion) {
+    let base: { x: number; y: number } | null = null;
+    let last = 0;
+    let lastSent = 0;
+    cleanups.push(
+      sensors.onSample((s) => {
+        if (!useMotion || holding) return;
+        if (Math.hypot(s.gx, s.gy) < 3) return; // telemóvel deitado: não dá para saber
+        tiltBox.hidden = false;
+        base ??= { x: s.gx, y: s.gy };
+        const cross = base.x * s.gy - base.y * s.gx;
+        const dot = base.x * s.gx + base.y * s.gy;
+        const angle = clamp(-Math.atan2(cross, dot) / 0.6);
+        if (tiltArrow) tiltArrow.style.transform = `rotate(${angle * 35}deg)`;
+        const now = performance.now();
+        if (now - last > 60 && Math.abs(angle - lastSent) > 0.01) {
+          last = now;
+          lastSent = angle;
+          send({ t: 'aim', angle }, true);
+        }
+      }),
+    );
+    tiltBox.addEventListener('pointerdown', (e) => e.stopPropagation());
+    tiltBox.addEventListener('click', () => {
+      base = null; // volta a centrar
+    });
+  }
+
   // Defesa
   const guard = view.querySelector<HTMLButtonElement>('.guard');
   if (guard) {
@@ -125,6 +157,7 @@ export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): ()
         /* sem captura */
       }
       pad.classList.add('held');
+      holding = true;
       points = [{ x: e.clientX, y: e.clientY, t: performance.now() }];
       if (useMotion) {
         motion = new MotionTracker(l.action === 'punch', (s) => emit(hand, s, pad));
@@ -142,6 +175,7 @@ export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): ()
     const end = (e: PointerEvent) => {
       if (e.pointerId !== pointerId) return;
       pointerId = null;
+      holding = false;
       pad.classList.remove('held');
       if (motion) {
         const tracker = motion;

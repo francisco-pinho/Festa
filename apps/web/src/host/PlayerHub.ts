@@ -28,6 +28,8 @@ export class HubPlayer {
   readonly held: Record<ButtonId, boolean> = { a: false, b: false };
   /** A defender (boxe). */
   guarding = false;
+  /** Pontaria por inclinação do telemóvel (-1…1). */
+  aim = 0;
   private readonly presses = new Set<ButtonId>();
 
   constructor(
@@ -56,6 +58,7 @@ export class HubPlayer {
     this.stick.y = 0;
     this.held.a = this.held.b = false;
     this.guarding = false;
+    this.aim = 0;
     this.presses.clear();
   }
 
@@ -227,6 +230,9 @@ export class PlayerHub {
         break;
       case 'swing':
         this.events.emit('swing', { player, swing: input });
+        break;
+      case 'aim':
+        player.aim = input.angle;
         break;
       case 'guard':
         player.guarding = input.up;

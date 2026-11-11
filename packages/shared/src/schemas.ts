@@ -51,6 +51,11 @@ export const controllerInputSchema = z.discriminatedUnion('t', [
     hand: z.enum(['left', 'right']).optional(),
     source: z.enum(['motion', 'touch', 'key']).optional(),
   }),
+  /** Ângulo de pontaria pela inclinação do telemóvel: -1 esquerda … 1 direita. */
+  z.object({
+    t: z.literal('aim'),
+    angle: z.number().min(-1).max(1),
+  }),
   /** Defesa (boxe): a segurar ou não. */
   z.object({
     t: z.literal('guard'),

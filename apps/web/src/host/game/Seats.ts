@@ -98,6 +98,11 @@ export class SeatControl {
     if (hp) this.hub.vibrate(hp, pattern);
   }
 
+  /** Pontaria por inclinação do telemóvel (0 para bots e teclado). */
+  aim(seat: Seat): number {
+    return this.isAuto(seat) ? 0 : (this.hubPlayer(seat)?.aim ?? 0);
+  }
+
   toast(seat: Seat, text: string): void {
     const hp = this.hubPlayer(seat);
     if (hp) this.hub.toast(hp, text);

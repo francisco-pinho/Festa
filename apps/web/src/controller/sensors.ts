@@ -9,7 +9,7 @@
  * - O limiar do abanão pode ser calibrado e fica guardado no telemóvel.
  */
 type Listener = () => void;
-type MotionSample = { x: number; y: number; z: number; mag: number; gamma: number; dt: number };
+type MotionSample = { x: number; y: number; z: number; mag: number; gamma: number; dt: number; gx: number; gy: number };
 
 const THRESHOLD_KEY = 'festa.shakeThreshold';
 const DEFAULT_THRESHOLD = 11;
@@ -31,6 +31,8 @@ class Sensors {
 
   private listening = false;
   private readonly gravity = { x: 0, y: 0, z: 0 };
+  /** Gravidade suavizada (para saber a inclinação do telemóvel). */
+  private readonly tilt = { x: 0, y: 0 };
   private lastT = 0;
   private readonly sampleListeners = new Set<(s: MotionSample) => void>();
   private readonly changeListeners = new Set<Listener>();
@@ -144,7 +146,11 @@ class Sensors {
       this.active = true;
       this.emitChange();
     }
-    const sample: MotionSample = { x, y, z, mag: Math.hypot(x, y, z), gamma: e.rotationRate?.gamma ?? 0, dt };
+    if (g && g.x !== null && g.y !== null) {
+      this.tilt.x = 0.8 * this.tilt.x + 0.2 * g.x;
+      this.tilt.y = 0.8 * this.tilt.y + 0.2 * g.y;
+    }
+    const sample: MotionSample = { x, y, z, mag: Math.hypot(x, y, z), gamma: e.rotationRate?.gamma ?? 0, dt, gx: this.tilt.x, gy: this.tilt.y };
     for (const fn of this.sampleListeners) fn(sample);
   }
 

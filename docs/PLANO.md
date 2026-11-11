@@ -172,12 +172,12 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [x] Minijogos 1 contra 1 para os duelos: **Saque Rápido** (reflexos ao «JÁ!»), **Cabo de Guerra** (A e B à vez) e **Pontaria** (parar o marcador no verde); teste em `/?minigame=saque|cabo|pontaria&players=2`
 
 ### Fase 2 — Bowling
-- [ ] Salão de bowling completo: várias pistas lado a lado (com bots a jogar ao fundo), retorno de bolas, bancos, máquina de repor pinos, luzes e decoração
-- [ ] **Placar suspenso** por cima da pista, como no bowling real (as 10 jogadas com X, / e totais)
-- [ ] Física com Rapier: óleo/parte seca, curva, pinos como corpos rígidos, paredes laterais
-- [ ] **Lançamento real**: segurar o botão, levar o braço atrás e para a frente (pêndulo); força = velocidade; rodar o pulso no fim = efeito; mais **rodar o telemóvel ao apontar** para mudar o ângulo
-- [ ] Animações: corrida de aproximação, lançamento, reação a strike/spare/calha, câmara lenta no impacto, repetição do strike
-- [ ] Rever a última jogada (ver Q1)
+- [x] Salão de bowling completo: 5 pistas lado a lado (bots a jogar nas vizinhas), retorno de bolas, sofás onde os jogadores esperam sentados, máquina de pinos (levanta, varre, pousa), luzes, néon, alcatifa e máquinas de jogos
+- [x] **Placar suspenso** por cima da pista, como no bowling real (as 10 jogadas com X, / e totais)
+- [x] Física com Rapier (`lanePhysics.ts`): óleo/parte seca, a curva nasce do efeito da bola a agarrar na parte seca, pinos como corpos rígidos, calhas, paredes e fosso. Afinação fora do browser: `npx tsx apps/web/tools/tune-bowling.ts pocket`
+- [x] **Lançamento real**: segurar o botão, levar o braço atrás e para a frente (pêndulo); força = velocidade; rodar o pulso no fim = efeito; **rodar o telemóvel ao apontar** muda o ângulo (nova mensagem `aim`; toca no indicador para centrar). Bots calculam a trajetória para o bolso / para os pinos que sobram — *falta testar a inclinação num telemóvel real*
+- [x] Animações: corrida de aproximação com a bola na mão, lançamento, reação virada para a câmara, câmara lenta no impacto, repetição do strike de outro ângulo
+- [x] Rever a última jogada (ver Q1): o código segue a regra oficial (3.ª bola só com strike ou spare na 10.ª) e está correto; muda-se se preferires 3 bolas sempre
 
 ### Fase 3 — Boxe (refazer)
 - [ ] Personagens com esqueleto e **luvas nas mãos**
@@ -241,3 +241,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-11 | Fase 1: mapas Ilha e Cidade, itens, lojas, duelos, VS, Trapaceiro, vista do mapa, cerimónia | `fase1-festa` | ✔ |
 | 2026-11-11 | Fase 1: mapas Mina do Vulcão, Castelo Assombrado e Parque de Diversões (cenários 3D, vagonetas, elevadores, montanha-russa, erupção, portas, roda, fantasma) | `fase1-festa` | ✔ |
 | 2026-11-11 | Fase 1: minijogos de duelo 1 contra 1 (Saque Rápido, Cabo de Guerra, Pontaria) | `fase1-festa` | ✔ |
+| 2026-11-11 | Fase 2: bowling novo (salão, placar suspenso, física Rapier, pêndulo + inclinação, câmara lenta e repetição) | `fase2-bowling` | ✔ (falta testar no telemóvel) |

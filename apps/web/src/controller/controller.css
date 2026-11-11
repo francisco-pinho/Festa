@@ -784,3 +784,26 @@ button:disabled {
   border: 3px solid var(--opt, transparent);
   font-size: 16px;
 }
+
+/* Pontaria por inclinação (bowling) */
+.tilt-aim {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 60%;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dim);
+  font: inherit;
+  text-align: left;
+}
+.tilt-arrow {
+  display: inline-block;
+  font-size: 26px;
+  transition: transform 0.08s linear;
+}
