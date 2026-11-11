@@ -68,6 +68,12 @@ export class TennisStage extends SportStage {
   private readonly ballMesh: THREE.Mesh;
   private readonly shadow: THREE.Mesh;
   private ball: BallState = { p: { x: 0, y: 1, z: 0 }, v: { x: 0, y: 0, z: 0 }, spin: 0 };
+  /**
+   * Por onde a bola passou (último ~1,5 s). Quem joga de longe vê o ecrã atrasado: a pancada
+   * dele é avaliada com a bola onde ele a viu, e não onde está agora (compensação de atraso).
+   */
+  private readonly ballTrail: { t: number; x: number; y: number; z: number }[] = [];
+  private simTime = 0;
   private phase: Phase = 'idle';
   private lastHitter: Player | null = null;
   private bounces = 0;
@@ -113,7 +119,7 @@ export class TennisStage extends SportStage {
     this.cameraTo({ x: 0, y: 11, z: 25 }, { x: 0, y: 0, z: -1 }, { speed: 0.8 });
     this.offSwing = this.ctx.hub.events.on('swing', ({ player, swing }) => {
       const p = this.tplayers.find((tp) => tp.seat.id === player.id);
-      if (p) this.trySwing(p, swing);
+      if (p) this.trySwing(p, swing, swing.source === 'key' ? 0 : player.lag);
     });
     for (const p of this.tplayers) {
       this.setLayout(p.seat, {
@@ -201,6 +207,7 @@ export class TennisStage extends SportStage {
     this.bounces = 0;
     this.plan = null;
     this.ball = { p: { x: server.pos.x, y: 1, z: server.pos.z }, v: { x: 0, y: 0, z: 0 }, spin: 0 };
+    this.ballTrail.length = 0;
     this.tossT = -0.6;
     this.phase = 'serve';
     // Bots (e humanos desligados) servem sozinhos perto do topo do lançamento.
@@ -219,13 +226,21 @@ export class TennisStage extends SportStage {
     })();
   }
 
-  private trySwing(p: Player, s: SwingInput): void {
+  /** Posição da bola há `lag` segundos (ou a atual, se não houver registo). */
+  private ballPast(lag: number): { x: number; y: number; z: number } {
+    const at = this.simTime - lag;
+    for (let i = this.ballTrail.length - 1; i >= 0; i--) if (this.ballTrail[i]!.t <= at) return this.ballTrail[i]!;
+    return this.ball.p;
+  }
+
+  private trySwing(p: Player, s: SwingInput, lag = 0): void {
     const m = this.model(p.seat.id);
     if (this.phase === 'serve') {
       if (p !== this.server) return;
       m.setAnim('serve');
       // Bater no topo do lançamento dá o melhor serviço.
-      const quality = this.tossT > 0 ? 1 - Math.min(1, Math.abs(this.tossT - 0.56) / 0.35) : 0;
+      const toss = this.tossT - lag;
+      const quality = toss > 0 ? 1 - Math.min(1, Math.abs(toss - 0.56) / 0.35) : 0;
       if (quality <= 0) return; // bola ainda não está no ar
       this.phase = 'rally';
       const zSign = p.team === 0 ? -1 : 1;
@@ -240,7 +255,7 @@ export class TennisStage extends SportStage {
       m.setAnim(p.side > 0 ? 'hook' : 'backhand');
       return;
     }
-    const b = this.ball.p;
+    const b = lag > 0 ? this.ballPast(lag) : this.ball.p;
     const towards = p.team === 0 ? 1 : -1;
     const onMySide = Math.sign(b.z) === towards;
     const dx = b.x - p.pos.x;
@@ -426,6 +441,9 @@ export class TennisStage extends SportStage {
   }
 
   private simulateBall(dt: number): void {
+    this.simTime += dt;
+    this.ballTrail.push({ t: this.simTime, ...this.ball.p });
+    while (this.ballTrail.length && this.ballTrail[0]!.t < this.simTime - 1.5) this.ballTrail.shift();
     const steps = 4;
     const h = dt / steps;
     for (let i = 0; i < steps && this.phase === 'rally'; i++) {

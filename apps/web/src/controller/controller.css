@@ -1287,3 +1287,34 @@ button:disabled {
   justify-content: flex-start;
   text-align: left;
 }
+
+/* ── Ver o ecrã grande por trás do comando (📺) ── */
+#tv-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  z-index: 0;
+}
+body.watching,
+body.watching #app {
+  background: #000;
+}
+body.watching #bar,
+body.watching #view {
+  position: relative;
+  z-index: 1;
+}
+body.watching #bar {
+  background: #140b2b99;
+}
+body.watching .pad {
+  background: transparent;
+}
+body.watching .pad .pb,
+body.watching .pad .db,
+body.watching .pad .stick-zone {
+  opacity: 0.75;
+}

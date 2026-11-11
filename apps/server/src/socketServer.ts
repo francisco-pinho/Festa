@@ -9,6 +9,8 @@ import {
   hostSendSchema,
   playerIdSchema,
   playerJoinSchema,
+  rtcSendSchema,
+  viewerJoinSchema,
 } from '@festa/shared/schemas';
 import type {
   ClientToServerEvents,
@@ -23,6 +25,8 @@ type FestaSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 export interface SocketServerOptions extends RoomManagerOptions {
   /** Máximo de mensagens de input por segundo, por telemóvel. */
   inputRatePerSec: number;
+  /** Máximo de espectadores do vídeo por sala. */
+  maxViewersPerRoom?: number;
 }
 
 export function registerSocketHandlers(io: FestaServer, opts: SocketServerOptions): RoomManager {
@@ -61,8 +65,17 @@ export function registerSocketHandlers(io: FestaServer, opts: SocketServerOption
     }
   };
 
+  /** Espectadores do vídeo: socket → código da sala. Não ocupam lugar de jogador. */
+  const viewers = new Map<string, string>();
+  const viewersOf = (code: string) => [...viewers].filter(([, c]) => c === code).map(([id]) => id);
+  /** O host (re)ligou-se: avisa-o dos espectadores que já estavam à espera. */
+  const announceViewers = (socket: FestaSocket, code: string) => {
+    for (const id of viewersOf(code)) socket.emit('viewer:joined', id);
+  };
+
   io.on('connection', (socket: FestaSocket) => {
     const allowInput = createRateLimiter(opts.inputRatePerSec);
+    const allowSignal = createRateLimiter(60);
 
     // ── Host ──────────────────────────────────────────────
     socket.on('host:create', (ack) => {
@@ -73,6 +86,7 @@ export function registerSocketHandlers(io: FestaServer, opts: SocketServerOption
       void socket.join(res.room.code);
       ack({ ok: true, roomCode: res.room.code, hostToken: res.room.hostToken });
       socket.emit('room:players', res.room.snapshot());
+      announceViewers(socket, res.room.code);
     });
 
     socket.on('host:resume', (req, ack) => {
@@ -87,6 +101,7 @@ export function registerSocketHandlers(io: FestaServer, opts: SocketServerOption
       void socket.join(res.room.code);
       ack({ ok: true, roomCode: res.room.code });
       socket.emit('room:players', res.room.snapshot());
+      announceViewers(socket, res.room.code);
     });
 
     socket.on('host:send', (req) => {
@@ -147,7 +162,47 @@ export function registerSocketHandlers(io: FestaServer, opts: SocketServerOption
       });
     });
 
-    socket.on('disconnect', () => manager.disconnect(socket.id));
+    // ── Espectador (vídeo do ecrã) ────────────────────────
+    socket.on('viewer:join', (req, ack) => {
+      if (typeof ack !== 'function') return;
+      const parsed = viewerJoinSchema.safeParse(req);
+      if (!parsed.success) return ack({ ok: false, error: 'INVALID_REQUEST' });
+      const room = manager.getRoom(parsed.data.roomCode);
+      if (!room) return ack({ ok: false, error: 'ROOM_NOT_FOUND' });
+      if (!viewers.has(socket.id) && viewersOf(room.code).length >= (opts.maxViewersPerRoom ?? 8)) return ack({ ok: false, error: 'ROOM_FULL' });
+      viewers.set(socket.id, room.code);
+      ack({ ok: true, viewerId: socket.id });
+      if (room.hostSocketId) io.to(room.hostSocketId).emit('viewer:joined', socket.id);
+    });
+
+    socket.on('rtc:signal', (msg) => {
+      if (!allowSignal()) return;
+      const parsed = rtcSendSchema.safeParse(msg);
+      if (!parsed.success) return;
+      const { to, data } = parsed.data;
+      const viewerRoom = viewers.get(socket.id);
+      if (viewerRoom) {
+        // Espectador → host da sua sala
+        const room = manager.getRoom(viewerRoom);
+        if (to === 'host' && room?.hostSocketId) io.to(room.hostSocketId).emit('rtc:signal', { from: socket.id, data });
+        return;
+      }
+      // Host → um espectador da sua sala
+      const found = manager.lookup(socket.id);
+      if (found?.binding.role !== 'host') return;
+      if (viewers.get(to) === found.room.code) io.to(to).emit('rtc:signal', { from: 'host', data });
+    });
+
+    socket.on('disconnect', () => {
+      const viewerRoom = viewers.get(socket.id);
+      if (viewerRoom) {
+        viewers.delete(socket.id);
+        const host = manager.getRoom(viewerRoom)?.hostSocketId;
+        if (host) io.to(host).emit('viewer:left', socket.id);
+        return;
+      }
+      manager.disconnect(socket.id);
+    });
   });
 
   return manager;

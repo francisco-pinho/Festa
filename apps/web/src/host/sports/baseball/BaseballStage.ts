@@ -349,7 +349,8 @@ export class BaseballStage extends SportStage {
     const off = this.ctx.hub.events.on('swing', ({ player, swing: s }) => {
       if (player.id === batter.id) {
         this.batY = THREE.MathUtils.clamp(this.batY + s.dir * 0.15, 0.5, 1.8);
-        doSwing(s.power, s.source === 'key' ? 0 : PHONE_LATENCY);
+        // Gesto detetado no fim + atraso de rede/vídeo medido deste jogador.
+        doSwing(s.power, s.source === 'key' ? 0 : PHONE_LATENCY + player.lag);
       }
     });
     const autoBatter = this.ctx.seats.isAuto(batter);

@@ -7,6 +7,7 @@ import { ScreenMenus } from './ui/ScreenMenu';
 import { getAsset, loadCharacterAssets } from './three/characterAssets';
 import { sound } from './audio/Sound';
 import { narrator } from './audio/Narrator';
+import { ScreenShare } from './ScreenShare';
 
 const engine = new Engine(document.getElementById('game')!);
 const hud = new Hud(engine);
@@ -25,6 +26,25 @@ const unlockSound = () => sound.unlock();
 window.addEventListener('pointerdown', unlockSound);
 window.addEventListener('keydown', unlockSound);
 sound.onUnlockChange(() => (soundBtn.hidden = sound.unlocked));
+
+// Vídeo do ecrã para quem joga fora de casa: tecla V partilha este separador (página /ver).
+const screenShare = new ScreenShare(connection);
+const shareBadge = document.createElement('div');
+shareBadge.className = 'share-badge';
+shareBadge.hidden = true;
+document.getElementById('ui')!.appendChild(shareBadge);
+screenShare.events.on('changed', ({ sharing, viewers }) => {
+  shareBadge.hidden = !sharing && viewers === 0;
+  shareBadge.classList.toggle('live', sharing);
+  shareBadge.textContent = sharing
+    ? `📺 A partilhar o ecrã · ${viewers} a ver`
+    : `📺 ${viewers} à espera do vídeo · carrega V para partilhar`;
+});
+window.addEventListener('keydown', (e) => {
+  if (e.code !== 'KeyV' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  if ((e.target as HTMLElement | null)?.closest('input, textarea')) return;
+  void screenShare.toggle();
+});
 
 const params = new URLSearchParams(location.search);
 const testMinigame = import.meta.env.DEV ? params.get('minigame') : null;
@@ -55,7 +75,7 @@ main.catch((err: unknown) => {
 
 // Em desenvolvimento: acesso pela consola do browser para depurar (window.festa).
 if (import.meta.env.DEV) {
-  Object.assign(window, { festa: { engine, hud, hub, connection, director, menu, menus, getAsset, sound, narrator } });
+  Object.assign(window, { festa: { engine, hud, hub, connection, director, menu, menus, getAsset, sound, narrator, screenShare } });
   // Teste rápido do motor de física: na consola, `await festa.physicsSmokeTest()`.
   Object.assign((window as unknown as { festa: object }).festa, {
     physicsSmokeTest: async () => {

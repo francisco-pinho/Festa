@@ -145,3 +145,41 @@ describe('socket server', () => {
     expect(res).toEqual({ ok: false, error: 'ROOM_LOCKED' });
   });
 });
+
+describe('vídeo do ecrã (espectadores)', () => {
+  it('espectador entra sem ocupar lugar e a sinalização passa nos dois sentidos', async () => {
+    const { host, roomCode } = await hostWithRoom();
+    const viewer = client();
+    const joined = next(host, 'viewer:joined');
+    const res = await viewer.emitWithAck('viewer:join', { roomCode });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(await joined).toBe(res.viewerId);
+
+    const toViewer = next(viewer, 'rtc:signal');
+    host.emit('rtc:signal', { to: res.viewerId, data: { kind: 'offer', sdp: 'v=0' } });
+    expect(await toViewer).toEqual({ from: 'host', data: { kind: 'offer', sdp: 'v=0' } });
+
+    const toHost = next(host, 'rtc:signal');
+    viewer.emit('rtc:signal', { to: 'host', data: { kind: 'answer', sdp: 'v=0' } });
+    expect(await toHost).toEqual({ from: res.viewerId, data: { kind: 'answer', sdp: 'v=0' } });
+
+    const left = next(host, 'viewer:left');
+    viewer.disconnect();
+    expect(await left).toBe(res.viewerId);
+  });
+
+  it('sala inexistente e mensagens de outras salas são recusadas', async () => {
+    const { roomCode } = await hostWithRoom();
+    const other = await hostWithRoom();
+    const viewer = client();
+    expect((await viewer.emitWithAck('viewer:join', { roomCode: 'ZZZZ' })).ok).toBe(false);
+    const res = await viewer.emitWithAck('viewer:join', { roomCode });
+    if (!res.ok) throw new Error(res.error);
+    let got = false;
+    viewer.on('rtc:signal', () => (got = true));
+    other.host.emit('rtc:signal', { to: res.viewerId, data: { kind: 'waiting' } });
+    await new Promise((r) => setTimeout(r, 150));
+    expect(got).toBe(false);
+  });
+});

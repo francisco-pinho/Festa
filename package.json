@@ -14,6 +14,7 @@
     "build": "npm run build -w @festa/web",
     "start": "npm run start -w @festa/server",
     "start:https": "cross-env HTTPS=1 npm run start -w @festa/server",
+    "online": "tsx tools/online.ts",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

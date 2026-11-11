@@ -16,6 +16,7 @@ import type {
 import { ACK_TIMEOUT_MS, connectSocket } from '../common/socket';
 import { renderPad } from './pad';
 import { sensors } from './sensors';
+import { ScreenViewer } from '../common/screenViewer';
 
 const SESSION_KEY = 'festa.session';
 const NAME_KEY = 'festa.name';
@@ -61,8 +62,10 @@ if (session && urlRoom && urlRoom !== session.roomCode) session = null;
 // ── DOM base ──────────────────────────────────────────────
 const app = document.getElementById('app')!;
 app.innerHTML = `
+  <video id="tv-video" playsinline autoplay muted hidden></video>
   <header id="bar" hidden>
     <span id="dot"></span><span id="me"></span><span id="room"></span>
+    <button id="tv" class="bar-btn" aria-label="Ver o ecrã">📺</button>
     <button id="sensor" class="bar-btn" aria-label="Sensores">📵</button>
     <button id="menu" class="bar-btn" aria-label="Menu" hidden>☰</button>
   </header>
@@ -75,6 +78,32 @@ app.innerHTML = `
 const $ = <T extends HTMLElement>(sel: string) => app.querySelector<T>(sel)!;
 const view = $('#view');
 $('#sensor').addEventListener('click', openSensorSheet);
+
+// ── Ver o ecrã grande no telemóvel (para quem joga fora de casa) ──
+const tvVideo = $<HTMLVideoElement>('#tv-video');
+let tvTimer = 0;
+const tv = new ScreenViewer(tvVideo, (status, detail) => {
+  if (status === 'waiting') showToast('📺 À espera que o ecrã grande partilhe (tecla V no PC)');
+  if (status === 'error') showToast(`📺 ${detail ?? 'Não deu para ver o ecrã'}`);
+});
+function setWatching(on: boolean): void {
+  document.body.classList.toggle('watching', on);
+  $('#tv').classList.toggle('on', on);
+  tvVideo.hidden = !on;
+  window.clearInterval(tvTimer);
+  if (on && session) {
+    tv.start(session.roomCode);
+    // Diz ao ecrã grande quanto atraso tem o vídeo (para compensar nos desportos de tempo).
+    tvTimer = window.setInterval(async () => {
+      const d = await tv.delay();
+      if (d !== null) send({ t: 'lag', video: Math.round(d * 1000) / 1000 });
+    }, 3000);
+  } else {
+    tv.stop();
+    send({ t: 'lag', video: 0 });
+  }
+}
+$('#tv').addEventListener('click', () => setWatching(!document.body.classList.contains('watching')));
 $('#menu').addEventListener('click', () => {
   send({ t: 'button', button: 'plus', pressed: true });
   send({ t: 'button', button: 'plus', pressed: false });
@@ -115,6 +144,9 @@ socket.on('controller:message', (msg) => {
       break;
     case 'toast':
       showToast(msg.text);
+      break;
+    case 'ping':
+      send({ t: 'pong', id: msg.id });
       break;
   }
 });

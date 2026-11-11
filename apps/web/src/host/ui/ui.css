@@ -1038,3 +1038,18 @@
   color: #8a7fb0;
   font-size: 1.5vh;
 }
+
+/* Vídeo para quem está fora (tecla V) */
+.share-badge {
+  position: absolute;
+  bottom: 1.5vh;
+  left: 1.5vw;
+  padding: 0.6vh 1vw;
+  border-radius: 1vh;
+  background: #1d1433dd;
+  border: 0.25vh solid #ffffff44;
+  font-size: 1.7vh;
+  font-weight: 700;
+  z-index: 40;
+}
+.share-badge.live { border-color: #ff3b5c; }

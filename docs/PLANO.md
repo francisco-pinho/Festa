@@ -274,10 +274,10 @@ Cada fase termina testada, com commit e push no seu ramo.
 - Ferramenta: `npx tsx tools/board-svg.ts` desenha os mapas em `/dev-boards.html` para planear caminhos
 
 ### Fase 11 — Jogar fora de casa (pedido 23, ver §3.7)
-- [ ] `npm run online`: servidor + túnel Cloudflare, link público e QR no lobby (local e online na mesma sala)
-- [ ] Vídeo do ecrã para quem está fora: partilha do separador + WebRTC (STUN/TURN Cloudflare), página `/ver`
-- [ ] Compensação de atraso por jogador nos desportos de tempo
-- [ ] (Opcional) Alojamento fixo no Fly.io com domínio próprio
+- [x] `npm run online`: servidor + túnel Cloudflare, link público e QR no lobby (local e online na mesma sala) — precisa do `cloudflared` instalado (ver docs/ONLINE.md)
+- [x] Vídeo do ecrã para quem está fora: tecla **V** partilha o separador, WebRTC (STUN Cloudflare; TURN com chaves), página `/ver` e botão 📺 no comando
+- [x] Compensação de atraso por jogador (ping/pong + atraso do vídeo): ténis recua a bola, basebol recua o swing
+- [x] (Opcional) `Dockerfile` + `fly.toml` para alojar no Fly.io (não publicado)
 
 ## 5. Perguntas para ti (antes das fases respetivas)
 
@@ -312,3 +312,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-12 | Narrador com corpo e voz; comandos nas pontas do telemóvel; câmara e cordas do boxe | `fase8-comando` | ✔ (voz não confirmada a ouvir) |
 | 2026-11-12 | Fase 9: cenários com modelos CC0 (KayKit e Kenney) nos 5 tabuleiros e em 4 desportos | `fase9-cenarios` | ✔ (primeira passagem) |
 | 2026-11-12 | Fase 10: alavancas e portões, portagens com dono, canhões/géiser, banco, baús e derrocadas por zona, um caminho novo por mapa | `fase10-tabuleiros` | ✔ (testado com bots) |
+| 2026-11-12 | Fase 11: `npm run online` (túnel Cloudflare), vídeo WebRTC `/ver` e 📺 no comando, compensação de atraso, Dockerfile/fly.toml | `fase11-online` | ✔ (vídeo testado entre separadores; túnel por testar: falta instalar o cloudflared) |

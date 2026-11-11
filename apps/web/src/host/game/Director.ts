@@ -15,7 +15,7 @@ import { BOARDS, CHARACTERS, RULES, createRng, getCharacter, seatCount, type Min
 import { MAX_PLAYERS } from '@festa/shared';
 import type { HostConnection } from '../HostConnection';
 import type { HubPlayer, PlayerHub } from '../PlayerHub';
-import { cycleLanAddress, getJoinBaseUrl, getJoinUrl } from '../joinUrl';
+import { cycleLanAddress, getJoinBaseUrl, getJoinUrl, isOnline } from '../joinUrl';
 import type { Engine } from '../three/Engine';
 import { ShowcaseStage } from '../stages/ShowcaseStage';
 import { Hud, esc } from '../ui/Hud';
@@ -116,10 +116,10 @@ export class Director {
       <div class="lobby-join">
         <canvas id="qr" width="220" height="220"></canvas>
         <div class="lobby-join-text">
-          <div class="label">Entra com o telemóvel</div>
+          <div class="label" id="join-label">Entra com o telemóvel</div>
           <div class="code" id="code">····</div>
           <div class="url" id="url"></div>
-          <div class="tip">📱 Android: se não abrir, dá ao Chrome a permissão <b>Dispositivos próximos</b>. Aviso de ligação não privada? <b>Avançadas → Continuar</b>.</div>
+          <div class="tip" id="join-tip"></div>
         </div>
       </div>
       <div class="lobby-cards" id="cards"></div>
@@ -129,11 +129,17 @@ export class Director {
     const renderRoom = async () => {
       const code = this.conn.roomCode;
       if (!code) return;
-      const [url, base] = await Promise.all([getJoinUrl(code), getJoinBaseUrl()]);
+      const [url, base, online] = await Promise.all([getJoinUrl(code), getJoinBaseUrl(), isOnline()]);
       const canvas = ui.querySelector<HTMLCanvasElement>('#qr');
       if (!canvas) return;
+      if (canvas.dataset.url === url) return;
+      canvas.dataset.url = url;
       ui.querySelector('#code')!.textContent = code;
       ui.querySelector('#url')!.textContent = `${base.replace(/^https?:\/\//, '')}/play`;
+      ui.querySelector('#join-label')!.textContent = online ? '🌍 Online · entra em casa ou fora' : 'Entra com o telemóvel';
+      ui.querySelector('#join-tip')!.innerHTML = online
+        ? `📺 Quem está fora vê o ecrã em <b>${esc(base.replace(/^https?:\/\//, ''))}/ver</b> (partilha o ecrã com a tecla <b>V</b>).`
+        : '📱 Android: se não abrir, dá ao Chrome a permissão <b>Dispositivos próximos</b>. Aviso de ligação não privada? <b>Avançadas → Continuar</b>.';
       await QRCode.toCanvas(canvas, url, { width: 220, margin: 1, errorCorrectionLevel: 'M' });
     };
 
@@ -234,7 +240,10 @@ export class Director {
       render();
     };
 
+    // O link público pode chegar depois (túnel a abrir): verifica de vez em quando.
+    const infoTimer = window.setInterval(() => void renderRoom(), 4000);
     const offs: (() => void)[] = [
+      () => window.clearInterval(infoTimer),
       this.conn.events.on('room', () => void renderRoom()),
       this.hub.events.on('changed', render),
       settings.events.on('changed', render),

@@ -12,6 +12,9 @@ const controllerRoute = (): Plugin => ({
       if (req.url === '/play' || req.url?.startsWith('/play?')) {
         req.url = req.url.replace('/play', '/play.html');
       }
+      if (req.url === '/ver' || req.url?.startsWith('/ver?')) {
+        req.url = req.url.replace('/ver', '/ver.html');
+      }
       next();
     });
   },
@@ -36,6 +39,7 @@ export default defineConfig({
       input: {
         host: resolve(import.meta.dirname, 'index.html'),
         controller: resolve(import.meta.dirname, 'play.html'),
+        viewer: resolve(import.meta.dirname, 'ver.html'),
       },
     },
   },

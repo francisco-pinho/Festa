@@ -33,6 +33,21 @@ export class HubPlayer {
   private readonly presses = new Set<ButtonId>();
   /** Direção do joystick já convertida em carregadela da cruz (para os menus). */
   stickDir: 'up' | 'down' | 'left' | 'right' | null = null;
+  /** Últimas medições de ida-e-volta da rede (segundos). */
+  readonly rtts: number[] = [];
+  /** Atraso do vídeo que este jogador vê (0 = está a ver o ecrã grande ao vivo). */
+  videoLag = 0;
+
+  /**
+   * Atraso total deste jogador (segundos): o que ele vê está atrasado `videoLag` e o
+   * gesto demora meia ida-e-volta a chegar. Os desportos de tempo "recuam" este tanto.
+   */
+  get lag(): number {
+    if (this.source !== 'phone') return 0;
+    const sorted = [...this.rtts].sort((a, b) => a - b);
+    const rtt = sorted.length ? sorted[Math.floor(sorted.length / 2)]! : 0;
+    return Math.min(0.8, rtt / 2 + this.videoLag);
+  }
 
   constructor(
     readonly id: PlayerId,
@@ -120,7 +135,22 @@ export class PlayerHub {
   /** Quando começou a segurar cada botão (para a força do gesto no teclado). */
   private readonly chargeStart = new Map<string, number>();
 
+  /** Pings em curso: id → quem e quando. */
+  private readonly pings = new Map<number, { player: PlayerId; at: number }>();
+  private pingId = 0;
+
   constructor(private readonly conn: HostConnection) {
+    // Mede o atraso de rede de cada telemóvel a cada 2 s (para a compensação nos desportos).
+    window.setInterval(() => {
+      const now = performance.now();
+      for (const [id, p] of this.pings) if (now - p.at > 5000) this.pings.delete(id);
+      for (const p of this.phonePlayers) {
+        if (!p.connected) continue;
+        const id = ++this.pingId;
+        this.pings.set(id, { player: p.id, at: now });
+        conn.send(p.id, { t: 'ping', id });
+      }
+    }, 2000);
     conn.events.on('players', (list) => this.syncPhones(list));
     conn.events.on('input', ({ playerId, input }) => this.applyPhoneInput(playerId, input));
     conn.events.on('room', () => this.lastLayout.clear());
@@ -245,6 +275,17 @@ export class PlayerHub {
       case 'guard':
         player.guarding = input.up;
         this.events.emit('guard', { player, up: input.up });
+        break;
+      case 'pong': {
+        const sent = this.pings.get(input.id);
+        if (!sent || sent.player !== playerId) break;
+        this.pings.delete(input.id);
+        player.rtts.push((performance.now() - sent.at) / 1000);
+        if (player.rtts.length > 9) player.rtts.shift();
+        break;
+      }
+      case 'lag':
+        player.videoLag = input.video;
         break;
     }
   }

@@ -16,6 +16,8 @@ import type {
   hostToControllerSchema,
   motionActionSchema,
   playerJoinSchema,
+  rtcSignalSchema,
+  viewerJoinSchema,
 } from './schemas';
 
 export type PlayerId = string;
@@ -29,6 +31,8 @@ export type HostToControllerMessage = z.infer<typeof hostToControllerSchema>;
 export type HostSendRequest = z.infer<typeof hostSendSchema>;
 export type HostResumeRequest = z.infer<typeof hostResumeSchema>;
 export type PlayerJoinRequest = z.input<typeof playerJoinSchema>;
+export type ViewerJoinRequest = z.input<typeof viewerJoinSchema>;
+export type RtcSignal = z.infer<typeof rtcSignalSchema>;
 
 export interface PlayerInfo {
   id: PlayerId;
@@ -71,6 +75,11 @@ export interface ClientToServerEvents {
     ack: Ack<{ roomCode: string; player: PlayerInfo; sessionToken: string }>,
   ) => void;
   'player:input': (input: ControllerInput) => void;
+
+  // ── Espectador (vídeo do ecrã, página /ver) ─────────────
+  'viewer:join': (req: ViewerJoinRequest, ack: Ack<{ viewerId: string }>) => void;
+  /** Host → espectador (`to` = id) ou espectador → host (`to` = 'host'). */
+  'rtc:signal': (msg: { to: string; data: RtcSignal }) => void;
 }
 
 export interface ServerToClientEvents {
@@ -83,6 +92,11 @@ export interface ServerToClientEvents {
   'host:input': (event: { playerId: PlayerId; input: ControllerInput }) => void;
   /** Só para controllers: mensagem vinda do host. */
   'controller:message': (message: HostToControllerMessage) => void;
+  /** Só para o host: entrou/saiu um espectador do vídeo. */
+  'viewer:joined': (viewerId: string) => void;
+  'viewer:left': (viewerId: string) => void;
+  /** Sinalização WebRTC (`from` = id do espectador, ou 'host'). */
+  'rtc:signal': (msg: { from: string; data: RtcSignal }) => void;
 }
 
 /** Resposta de GET /api/info — usada pelo host para gerar o URL/QR de entrada. */

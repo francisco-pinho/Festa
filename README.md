@@ -88,7 +88,10 @@ os ramos juntam-se sem conflitos.
 | Modo | Como | Quem vê o ecrã |
 |---|---|---|
 | **Local (LAN)** | `npm run build` e `npm start` no PC (porta 3000). Telemóveis entram pelo IP do PC. | Todos na sala |
-| **Online** | Alojar o servidor com `PUBLIC_URL` definido. Telemóveis entram de qualquer lado. | À distância, por partilha de ecrã |
+| **Online / misto** | `npm run online`: túnel grátis da Cloudflare, link público e QR no lobby. Em casa e fora usam o mesmo link. | Quem está fora abre `/ver` (ou 📺 no comando); no PC carrega **V** para partilhar o ecrã |
+| **Alojado (opcional)** | Fly.io com `Dockerfile` + `fly.toml`: link fixo. | Igual ao online |
+
+Detalhes, TURN da Cloudflare e compensação de atraso: [docs/ONLINE.md](docs/ONLINE.md).
 
 ## Scripts
 
@@ -97,6 +100,7 @@ os ramos juntam-se sem conflitos.
 | `npm run dev` | Servidor (porta 3000) + Vite (porta 5173), com recarregamento automático |
 | `npm run build` | Compila o cliente web para `apps/web/dist` |
 | `npm start` | Produção: um só processo serve o jogo, o comando e o Socket.IO |
+| `npm run online` | Compila, arranca o servidor e abre um túnel Cloudflare para jogar com quem está fora |
 | `npm test` | Testes das regras do jogo e do servidor |
 | `npm run typecheck` | Verifica tipos em todos os pacotes |
 

@@ -12,7 +12,15 @@ import { getLanAddresses } from './network';
 import { registerSocketHandlers, type FestaServer } from './socketServer';
 
 const PORT = Number(process.env.PORT ?? 3000);
-const PUBLIC_URL = process.env.PUBLIC_URL?.trim().replace(/\/+$/, '') || null;
+/** URL público (modo online). Pode chegar depois do arranque: `npm run online` envia-o quando o túnel abre. */
+let publicUrl = process.env.PUBLIC_URL?.trim().replace(/\/+$/, '') || null;
+process.on('message', (msg: unknown) => {
+  const url = (msg as { publicUrl?: unknown } | null)?.publicUrl;
+  if (typeof url === 'string' && /^https:\/\//.test(url)) {
+    publicUrl = url.replace(/\/+$/, '');
+    console.log(`🌍 URL público: ${publicUrl}`);
+  }
+});
 const VERSION = '0.1.0';
 
 /**
@@ -53,22 +61,51 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.get('/api/info', (_req, res) => {
-  const info: ServerInfo = { publicUrl: PUBLIC_URL, lanAddresses: getLanAddresses(), version: VERSION };
+  const info: ServerInfo = { publicUrl, lanAddresses: getLanAddresses(), version: VERSION };
   res.json(info);
 });
 
-// Em produção, o mesmo servidor entrega o cliente web (ecrã + comando).
+/**
+ * Servidores ICE para o vídeo WebRTC: STUN grátis sempre; TURN da Cloudflare se houver chaves
+ * (CLOUDFLARE_TURN_KEY_ID e CLOUDFLARE_TURN_API_TOKEN), para quando a ligação direta falha.
+ */
+let iceCache: { at: number; servers: unknown[] } | null = null;
+app.get('/api/ice', async (_req, res) => {
+  const stun = [{ urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.l.google.com:19302'] }];
+  const keyId = process.env.CLOUDFLARE_TURN_KEY_ID;
+  const token = process.env.CLOUDFLARE_TURN_API_TOKEN;
+  if (!keyId || !token) return void res.json({ iceServers: stun });
+  if (iceCache && Date.now() - iceCache.at < 3_600_000) return void res.json({ iceServers: iceCache.servers });
+  try {
+    const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(keyId)}/credentials/generate-ice-servers`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ttl: 4 * 3600 }),
+    });
+    const body = (await r.json()) as { iceServers?: unknown };
+    const servers = Array.isArray(body.iceServers) ? body.iceServers : body.iceServers ? [body.iceServers] : [];
+    if (!r.ok || !servers.length) throw new Error(`TURN ${r.status}`);
+    iceCache = { at: Date.now(), servers };
+    res.json({ iceServers: servers });
+  } catch (err) {
+    console.warn('⚠ Não consegui credenciais TURN da Cloudflare; uso só STUN.', err);
+    res.json({ iceServers: stun });
+  }
+});
+
+// Em produção, o mesmo servidor entrega o cliente web (ecrã + comando + vídeo).
 const webDist = resolve(dirname(fileURLToPath(import.meta.url)), '../../web/dist');
 if (existsSync(webDist)) {
   app.use(express.static(webDist, { index: 'index.html' }));
   app.get(CONTROLLER_PATH, (_req, res) => res.sendFile(resolve(webDist, 'play.html')));
+  app.get('/ver', (_req, res) => res.sendFile(resolve(webDist, 'ver.html')));
 } else if (process.env.NODE_ENV === 'production') {
   console.warn(`⚠ Não encontrei ${webDist}. Corre "npm run build" primeiro.`);
 }
 
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🎉 Servidor Festa na porta ${PORT}`);
-  if (PUBLIC_URL) console.log(`   URL público: ${PUBLIC_URL}`);
+  if (publicUrl) console.log(`   URL público: ${publicUrl}`);
   for (const ip of getLanAddresses()) console.log(`   Rede local: ${scheme}://${ip}:${PORT}`);
 });
 
@@ -80,3 +117,5 @@ const shutdown = () => {
 };
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
+// Lançado pelo `npm run online`: se o lançador morrer, o servidor também fecha.
+if (process.send) process.on('disconnect', shutdown);

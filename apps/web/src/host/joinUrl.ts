@@ -4,11 +4,21 @@ let infoPromise: Promise<ServerInfo | null> | null = null;
 /** Índice do IP da rede local escolhido (a tecla I no lobby troca). */
 let lanIndex = 0;
 
-function getServerInfo(): Promise<ServerInfo | null> {
+/** Informação do servidor. Enquanto não houver link público, volta a perguntar (o túnel pode abrir depois). */
+export function getServerInfo(): Promise<ServerInfo | null> {
   infoPromise ??= fetch('/api/info')
     .then((r) => (r.ok ? (r.json() as Promise<ServerInfo>) : null))
-    .catch(() => null);
+    .catch(() => null)
+    .then((info) => {
+      if (!info?.publicUrl) setTimeout(() => (infoPromise = null), 3000);
+      return info;
+    });
   return infoPromise;
+}
+
+/** Estamos em modo online (há um link público)? */
+export async function isOnline(): Promise<boolean> {
+  return !!(await getServerInfo())?.publicUrl;
 }
 
 const isLocalhost = (host: string) => host === 'localhost' || host === '127.0.0.1' || host === '[::1]';

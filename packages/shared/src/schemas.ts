@@ -68,6 +68,10 @@ export const controllerInputSchema = z.discriminatedUnion('t', [
     t: z.literal('guard'),
     up: z.boolean(),
   }),
+  /** Resposta a um `ping` do host (mede o atraso da rede deste telemóvel). */
+  z.object({ t: z.literal('pong'), id: z.number().int().min(0) }),
+  /** Atraso do vídeo do ecrã que este jogador está a ver (segundos; 0 = vê o ecrã ao vivo). */
+  z.object({ t: z.literal('lag'), video: z.number().min(0).max(3) }),
 ]);
 
 const legend = z.string().max(16).optional();
@@ -121,6 +125,8 @@ export const hostToControllerSchema = z.discriminatedUnion('t', [
     ]),
   }),
   z.object({ t: z.literal('toast'), text: z.string().max(120) }),
+  /** Medição de atraso: o telemóvel responde logo com `pong`. */
+  z.object({ t: z.literal('ping'), id: z.number().int().min(0) }),
 ]);
 
 export const hostSendSchema = z.object({
@@ -138,3 +144,26 @@ export const playerJoinSchema = z.object({
   name: z.string().max(64),
   sessionToken: tokenSchema.optional(),
 });
+
+// ── Vídeo do ecrã para quem está fora (WebRTC) ──────────────
+
+export const viewerJoinSchema = z.object({ roomCode: roomCodeSchema });
+
+/** Mensagens de sinalização WebRTC entre o host e um espectador. */
+export const rtcSignalSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('offer'), sdp: z.string().max(14_000) }),
+  z.object({ kind: z.literal('answer'), sdp: z.string().max(14_000) }),
+  z.object({
+    kind: z.literal('ice'),
+    candidate: z.string().max(1_000),
+    sdpMid: z.string().max(64).nullable().optional(),
+    sdpMLineIndex: z.number().int().min(0).max(64).nullable().optional(),
+  }),
+  /** Host: ainda não está a partilhar o ecrã. */
+  z.object({ kind: z.literal('waiting') }),
+  /** Espectador: pede (outra vez) a ligação. */
+  z.object({ kind: z.literal('request') }),
+]);
+
+/** `to`: id do espectador (quando envia o host) ou 'host' (quando envia o espectador). */
+export const rtcSendSchema = z.object({ to: z.string().min(1).max(64), data: rtcSignalSchema });

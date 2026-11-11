@@ -8,6 +8,7 @@ import type {
   HostToControllerMessage,
   PlayerId,
   PlayerInfo,
+  RtcSignal,
 } from '@festa/shared';
 import { Emitter } from '../common/emitter';
 import { ACK_TIMEOUT_MS, connectSocket, type FestaSocket } from '../common/socket';
@@ -21,6 +22,9 @@ interface HostEvents {
   room: string;
   players: PlayerInfo[];
   input: { playerId: PlayerId; input: ControllerInput };
+  viewerJoined: string;
+  viewerLeft: string;
+  signal: { from: string; data: RtcSignal };
 }
 
 export class HostConnection {
@@ -34,6 +38,9 @@ export class HostConnection {
     this.socket.on('disconnect', () => this.setStatus('offline'));
     this.socket.on('room:players', (players) => this.events.emit('players', players));
     this.socket.on('host:input', (e) => this.events.emit('input', e));
+    this.socket.on('viewer:joined', (id) => this.events.emit('viewerJoined', id));
+    this.socket.on('viewer:left', (id) => this.events.emit('viewerLeft', id));
+    this.socket.on('rtc:signal', (msg) => this.events.emit('signal', msg));
     this.socket.on('room:closed', () => {
       // A sala expirou no servidor: cria uma nova.
       sessionStorage.removeItem(STORAGE_KEY);
@@ -43,6 +50,11 @@ export class HostConnection {
 
   send(to: PlayerId | 'all', message: HostToControllerMessage): void {
     this.socket.emit('host:send', { to, message });
+  }
+
+  /** Sinalização WebRTC para um espectador do vídeo. */
+  signal(to: string, data: RtcSignal): void {
+    this.socket.emit('rtc:signal', { to, data });
   }
 
   setLocked(locked: boolean): void {

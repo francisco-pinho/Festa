@@ -1,0 +1,17 @@
+# Alojamento opcional no Fly.io (ver docs/ONLINE.md). Muda o nome da app antes de `fly launch`.
+app = "festa-jogo"
+primary_region = "mad"
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Sempre ligado: uma festa não pode adormecer a meio.
+  auto_stop_machines = "off"
+  min_machines_running = 1
+
+[[vm]]
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
