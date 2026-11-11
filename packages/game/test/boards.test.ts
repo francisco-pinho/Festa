@@ -14,6 +14,8 @@ import {
   createParty,
   createRng,
   distancesTo,
+  ghostCanSell,
+  ghostSellStar,
   lastPlaceIds,
   nearestShop,
   openNext,
@@ -94,6 +96,66 @@ describe('mecânicas dos mapas', () => {
     expect(s.flags.greenNS).toBe(!before);
     const metro = s.board.tunnels[0]!;
     expect(tunnelBetween(s.board, metro.from, metro.to)?.cost).toBe(3);
+  });
+});
+
+describe('mecânicas dos mapas novos', () => {
+  const byId = (id: string) => BOARDS.find((b) => b.id === id)!.create();
+
+  it('vulcão: erupção a cada 3 rondas fecha a cratera e queima moedas', () => {
+    const s = party(byId('vulcao'));
+    const crater = s.board.spaces.find((x) => x.zone === 'crater')!;
+    s.players[0]!.spaceId = crater.id;
+    const rng = createRng(1);
+    s.round = 3;
+    const ev = startRound(s, rng);
+    expect(s.flags.erupting).toBe(true);
+    expect(ev.find((e) => e.kind === 'eruption')).toMatchObject({ active: true, burned: [{ id: 'p0', amount: RULES.eruptionCoins }] });
+    const gate = s.board.gates[0]!;
+    expect(openNext(s.board, s.flags, gate.from)).not.toContain(gate.to);
+    s.round = 4;
+    startRound(s, rng);
+    expect(s.flags.erupting).toBe(false);
+  });
+
+  it('castelo: as portas alternam, os elevadores ligam andares e o fantasma vende estrelas', () => {
+    const s = party(byId('castelo'));
+    const [g0, g1] = s.board.gates as [Board['gates'][number], Board['gates'][number]];
+    expect(openNext(s.board, s.flags, g0.from)).toContain(g0.to);
+    expect(openNext(s.board, s.flags, g1.from)).not.toContain(g1.to);
+    s.round = 2;
+    startRound(s, createRng(2));
+    expect(openNext(s.board, s.flags, g0.from)).not.toContain(g0.to);
+    expect(openNext(s.board, s.flags, g1.from)).toContain(g1.to);
+    expect(new Set(s.board.spaces.map((x) => x.y ?? 0)).size).toBeGreaterThanOrEqual(3);
+    const p = s.players[0]!;
+    expect(ghostCanSell(p)).toBe(false);
+    p.coins = 35;
+    expect(ghostSellStar(p)).toBe(true);
+    expect([p.coins, p.stars]).toEqual([5, 1]);
+  });
+
+  it('parque: a roda gigante gira duas casas por ronda', () => {
+    const s = party(byId('parque'));
+    const wheel = s.board.wheel!;
+    expect(wheel).toHaveLength(8);
+    s.players[0]!.spaceId = wheel[0]!;
+    s.players[1]!.spaceId = wheel[7]!;
+    s.round = 2;
+    const ev = startRound(s, createRng(3));
+    expect(s.players[0]!.spaceId).toBe(wheel[2]);
+    expect(s.players[1]!.spaceId).toBe(wheel[1]);
+    expect(ev.find((e) => e.kind === 'wheel')).toBeDefined();
+  });
+
+  it('casa de evento da mina: a vagoneta leva-te em frente', () => {
+    const s = party(byId('vulcao'));
+    const ev = s.board.spaces.find((x) => x.type === 'event')!;
+    const p = s.players[0]!;
+    p.spaceId = ev.id;
+    const res = resolveLanding(s, p, createRng(4));
+    expect(res.effect.kind).toBe('minecart');
+    expect(p.spaceId).not.toBe(ev.id);
   });
 });
 

@@ -38,6 +38,8 @@ export interface Space {
   zone?: string;
   /** Loja nesta casa. */
   shopId?: string;
+  /** Altura (andares do castelo, rampas). Por omissão 0. */
+  y?: number;
 }
 
 export interface ShopDef {
@@ -50,7 +52,7 @@ export interface ShopDef {
 export interface Tunnel {
   from: number;
   to: number;
-  kind: 'cave' | 'metro';
+  kind: 'cave' | 'metro' | 'cart' | 'elevator' | 'coaster';
   /** Moedas para usar. */
   cost: number;
   name: string;
@@ -66,14 +68,14 @@ export interface Gate {
   name: string;
 }
 
-export type BoardMechanic = 'tide' | 'traffic';
-export type EventKind = 'tornado' | 'taxi';
+export type BoardMechanic = 'tide' | 'traffic' | 'eruption' | 'doors' | 'wheel';
+export type EventKind = 'tornado' | 'taxi' | 'minecart' | 'ghost';
 
 export interface Board {
   id: string;
   name: string;
   description: string;
-  theme: 'island' | 'city';
+  theme: 'island' | 'city' | 'volcano' | 'castle' | 'park';
   spaces: Space[];
   startId: number;
   shops: ShopDef[];
@@ -84,6 +86,8 @@ export interface Board {
   initialFlags: Record<string, boolean>;
   /** O que faz a casa de evento neste mapa. */
   eventKind: EventKind;
+  /** Casas da roda gigante, pela ordem em que giram (só no parque). */
+  wheel?: number[];
 }
 
 export function getSpace(board: Board, id: number): Space {
@@ -243,7 +247,7 @@ function fillTypes(spaces: Space[], startId: number, seed: number, weights: [Spa
 }
 
 /** Zonas atrás de portões: a estrela nunca vai para lá (podia ficar inacessível). */
-const GATED_ZONES = new Set(['bridge', 'avenue', 'plaza']);
+const GATED_ZONES = new Set(['bridge', 'avenue', 'plaza', 'crater', 'stairs', 'wheel']);
 
 function markStarCandidates(spaces: Space[], every = 3, minId = 5): void {
   for (const s of spaces) {
@@ -428,9 +432,254 @@ export function createCityBoard(): Board {
   };
 }
 
+
+// ── Utilidades de geometria para os mapas novos ─────────
+
+const circle = (cx: number, cz: number, r: number, a0: number, a1: number) => (t: number): Point => {
+  const a = a0 + (a1 - a0) * t;
+  return { x: cx + Math.cos(a) * r, z: cz + Math.sin(a) * r };
+};
+
+/** Anel fechado de `n` casas num retângulo de cantos arredondados (superelipse). */
+function ringPoints(cx: number, cz: number, a: number, b: number, n: number, p = 3.2, phase = 0): Point[] {
+  const curve = (t: number): Point => {
+    const th = (t + phase) * Math.PI * 2;
+    const c = Math.cos(th);
+    const s = Math.sin(th);
+    return { x: cx + a * Math.sign(c) * Math.abs(c) ** (2 / p), z: cz + b * Math.sign(s) * Math.abs(s) ** (2 / p) };
+  };
+  return resample(curve, n + 1, true).slice(0, n);
+}
+
+function addRing(b: BoardBuilder, pts: Point[], zone?: string, y?: number): number[] {
+  const ids = b.addChain(pts, zone);
+  b.link(ids[ids.length - 1]!, ids[0]!);
+  if (y !== undefined) for (const id of ids) b.spaces[id]!.y = y;
+  return ids;
+}
+
+// ── Mapa 3: Mina do Vulcão ────────────────────────────────
+
+/**
+ * Anel à volta de um vulcão, com um caminho rente à cratera (fecha durante as
+ * erupções, que acontecem a cada 3 rondas e queimam moedas a quem lá estiver),
+ * uma galeria de mina e duas linhas de vagonetas (2 moedas).
+ */
+export function createVolcanoBoard(): Board {
+  const b = new BoardBuilder();
+  const N = 52;
+  const ring = addRing(b, resample(circle(0, 0, 31, 0, Math.PI * 2), N + 1, true).slice(0, N));
+  // Caminho da cratera (perto do vulcão)
+  const a0 = (9 / N) * Math.PI * 2;
+  const a1 = (22 / N) * Math.PI * 2;
+  const mid = (a0 + a1) / 2;
+  const crater = b.addBranch(ring[9]!, ring[22]!, 11, { x: Math.cos(mid) * 6, z: Math.sin(mid) * 6 }, 'crater');
+  // Galeria da mina (por fora do anel)
+  const b0 = (34 / N) * Math.PI * 2;
+  const b1 = (48 / N) * Math.PI * 2;
+  const bm = (b0 + b1) / 2;
+  const mine = b.addBranch(ring[34]!, ring[48]!, 13, { x: Math.cos(bm) * 80, z: Math.sin(bm) * 80 }, 'mine');
+  // Vagonetas
+  const carts: [number, number][] = [
+    [ring[27]!, ring[41]!],
+    [ring[49]!, ring[5]!],
+  ];
+  for (const [f, t] of carts) b.link(f, t);
+  for (const [f] of carts) b.spaces[f]!.zone = 'cartStop';
+
+  const shops: ShopDef[] = [
+    { id: 'ferreiro', name: 'Ferreiro da Mina', kind: 'geral', spaceId: ring[14]! },
+    { id: 'joias', name: 'Joalharia das Gemas', kind: 'luxo', spaceId: mine[6]! },
+  ];
+  for (const s of shops) {
+    b.set(s.spaceId, 'shop');
+    b.spaces[s.spaceId]!.shopId = s.id;
+  }
+  b.set(crater[5]!, 'vs');
+  for (const id of [ring[31]!, mine[2]!]) b.set(id, 'villain');
+  for (const id of [ring[8]!, ring[19]!, crater[2]!, mine[9]!, ring[44]!]) b.set(id, 'item');
+  fillTypes(b.spaces, 0, 3030303, [
+    ['blue', 55],
+    ['red', 18],
+    ['lucky', 10],
+    ['unlucky', 7],
+    ['event', 10],
+  ], { crater: [['red', 35], ['lucky', 30], ['blue', 35]], mine: [['lucky', 30], ['blue', 40], ['event', 15], ['red', 15]] });
+  markStarCandidates(b.spaces);
+
+  return {
+    id: 'vulcao',
+    name: 'Mina do Vulcão',
+    description: 'A cada 3 rondas o vulcão entra em erupção: fecha o caminho da cratera e queima moedas. Vagonetas levam-te longe por 2 moedas.',
+    theme: 'volcano',
+    spaces: b.spaces,
+    startId: 0,
+    shops,
+    tunnels: carts.map(([from, to], i) => ({ from, to, kind: 'cart' as const, cost: 2, name: `Vagoneta ${i + 1}` })),
+    gates: [{ from: ring[9]!, to: crater[0]!, flag: 'erupting', openWhen: false, name: 'Cratera' }],
+    mechanic: 'eruption',
+    initialFlags: { erupting: false },
+    eventKind: 'minecart',
+  };
+}
+
+// ── Mapa 4: Castelo Assombrado ────────────────────────────
+
+/**
+ * Três andares (pátio, salão e torre) a alturas diferentes. Elevadores ligam
+ * os andares sempre; as escadas têm portas que alternam a cada ronda.
+ * O fantasma troca 30 moedas por uma estrela (ou rouba moedas).
+ */
+export function createCastleBoard(): Board {
+  const b = new BoardBuilder();
+  const Y1 = 3.5;
+  const Y2 = 7;
+  const f0 = addRing(b, ringPoints(0, 22, 26, 10, 28), 'floor0', 0);
+  const f1 = addRing(b, ringPoints(0, -6, 20, 8, 22), 'floor1', Y1);
+  const f2 = addRing(b, ringPoints(0, -31, 14, 7, 16), 'floor2', Y2);
+
+  // Escadas (rampas) entre andares, com portas
+  const nearest = (ids: number[], p: Point) => ids.reduce((best, id) => {
+    const s = b.spaces[id]!;
+    const d = Math.hypot(s.x - p.x, s.z - p.z);
+    return d < best.d ? { id, d } : best;
+  }, { id: ids[0]!, d: Infinity }).id;
+  const s0from = nearest(f0, { x: -8, z: 12 });
+  const s0to = nearest(f1, { x: -8, z: 2 });
+  const stairs0 = b.addBranch(s0from, s0to, 2, null, 'stairs');
+  const s1from = nearest(f1, { x: 8, z: -14 });
+  const s1to = nearest(f2, { x: 8, z: -24 });
+  const stairs1 = b.addBranch(s1from, s1to, 2, null, 'stairs');
+  const ramp = (ids: number[], y0: number, y1: number) => ids.forEach((id, i) => (b.spaces[id]!.y = y0 + ((i + 1) / (ids.length + 1)) * (y1 - y0)));
+  ramp(stairs0, 0, Y1);
+  ramp(stairs1, Y1, Y2);
+
+  // Elevadores (sempre disponíveis)
+  const elevators: [number, number][] = [
+    [nearest(f0, { x: 22, z: 14 }), nearest(f1, { x: 18, z: -2 })],
+    [nearest(f1, { x: -18, z: -10 }), nearest(f2, { x: -12, z: -28 })],
+    [nearest(f2, { x: 12, z: -36 }), nearest(f0, { x: 22, z: 30 })],
+  ];
+  for (const [f, t] of elevators) b.link(f, t);
+
+  const shops: ShopDef[] = [
+    { id: 'taberna', name: 'Taberna do Pátio', kind: 'geral', spaceId: f0[20]! },
+    { id: 'arca', name: 'Arca do Tesouro', kind: 'luxo', spaceId: f2[8]! },
+  ];
+  for (const s of shops) {
+    b.set(s.spaceId, 'shop');
+    b.spaces[s.spaceId]!.shopId = s.id;
+  }
+  b.set(f1[11]!, 'vs');
+  for (const id of [f0[10]!, f2[3]!]) b.set(id, 'villain');
+  for (const id of [f0[4]!, f1[4]!, f1[16]!, f2[12]!]) b.set(id, 'item');
+  fillTypes(b.spaces, 0, 4040404, [
+    ['blue', 52],
+    ['red', 18],
+    ['lucky', 9],
+    ['unlucky', 8],
+    ['event', 13],
+  ]);
+  markStarCandidates(b.spaces);
+  for (const [f, t] of elevators) {
+    b.spaces[f]!.zone = b.spaces[f]!.zone ?? 'elevator';
+    void t;
+  }
+
+  return {
+    id: 'castelo',
+    name: 'Castelo Assombrado',
+    description: 'Três andares ligados por elevadores; as portas das escadas abrem e fecham a cada ronda. O fantasma troca 30 moedas por uma estrela!',
+    theme: 'castle',
+    spaces: b.spaces,
+    startId: 0,
+    shops,
+    tunnels: elevators.map(([from, to], i) => ({ from, to, kind: 'elevator' as const, cost: 0, name: `Elevador ${i + 1}` })),
+    gates: [
+      { from: s0from, to: stairs0[0]!, flag: 'doorsA', openWhen: true, name: 'Porta da escadaria do salão' },
+      { from: s1from, to: stairs1[0]!, flag: 'doorsA', openWhen: false, name: 'Porta da escadaria da torre' },
+    ],
+    mechanic: 'doors',
+    initialFlags: { doorsA: true },
+    eventKind: 'ghost',
+  };
+}
+
+// ── Mapa 5: Parque de Diversões ───────────────────────────
+
+/**
+ * Anel do parque, avenida dos doces pelo meio, roda gigante (8 casas que giram
+ * no início de cada ronda e mudam quem lá está de sítio) e montanha-russa
+ * (grande atalho por 5 moedas).
+ */
+export function createParkBoard(): Board {
+  const b = new BoardBuilder();
+  const N = 50;
+  const main = addRing(b, ringPoints(0, 0, 38, 25, N));
+  // Roda gigante: arco de 8 casas à volta de um centro, entre duas casas do anel
+  const e0 = b.spaces[main[9]!]!;
+  const e1 = b.spaces[main[15]!]!;
+  const wc = { x: ((e0.x + e1.x) / 2) * 0.8, z: ((e0.z + e1.z) / 2) * 0.8 };
+  const ang = (p: Point) => Math.atan2(p.z - wc.z, p.x - wc.x);
+  let aStart = ang(e0);
+  let aEnd = ang(e1);
+  // percorre o lado de dentro (longe do anel)
+  if (aEnd > aStart) aEnd -= Math.PI * 2;
+  const rWheel = Math.hypot(e0.x - wc.x, e0.z - wc.z);
+  const wheel = b.addChain(resample(circle(wc.x, wc.z, rWheel, aStart, aEnd), 8, false), 'wheel');
+  b.link(main[9]!, wheel[0]!);
+  b.link(wheel[wheel.length - 1]!, main[15]!);
+  void aStart;
+  // Avenida dos doces (pelo meio)
+  const midway = b.addBranch(main[28]!, main[3]!, 10, { x: 0, z: 0 }, 'midway');
+  // Montanha-russa
+  const coaster: [number, number] = [main[20]!, main[40]!];
+  b.link(coaster[0], coaster[1]);
+
+  const shops: ShopDef[] = [
+    { id: 'doces', name: 'Banca de Doces', kind: 'geral', spaceId: main[6]! },
+    { id: 'feira', name: 'Feira dos Achados', kind: 'barata', spaceId: midway[5]! },
+    { id: 'premios', name: 'Loja de Prémios', kind: 'luxo', spaceId: main[34]! },
+  ];
+  for (const s of shops) {
+    b.set(s.spaceId, 'shop');
+    b.spaces[s.spaceId]!.shopId = s.id;
+  }
+  b.set(main[25]!, 'vs');
+  for (const id of [main[44]!, midway[2]!]) b.set(id, 'villain');
+  for (const id of [main[12]!, wheel[3]!, main[30]!, midway[8]!]) b.set(id, 'item');
+  fillTypes(b.spaces, 0, 5050505, [
+    ['blue', 56],
+    ['red', 16],
+    ['lucky', 11],
+    ['unlucky', 7],
+    ['event', 10],
+  ], { wheel: [['lucky', 40], ['blue', 40], ['red', 20]] });
+  markStarCandidates(b.spaces);
+
+  return {
+    id: 'parque',
+    name: 'Parque de Diversões',
+    description: 'A roda gigante gira no início de cada ronda e muda de sítio quem lá está. A montanha-russa é um grande atalho por 5 moedas.',
+    theme: 'park',
+    spaces: b.spaces,
+    startId: 0,
+    shops,
+    tunnels: [{ from: coaster[0], to: coaster[1], kind: 'coaster', cost: 5, name: 'Montanha-russa' }],
+    gates: [],
+    mechanic: 'wheel',
+    initialFlags: {},
+    eventKind: 'tornado',
+    wheel,
+  };
+}
+
 export const BOARDS: { id: string; create: () => Board }[] = [
   { id: 'ilha', create: createIslandBoard },
   { id: 'cidade', create: createCityBoard },
+  { id: 'vulcao', create: createVolcanoBoard },
+  { id: 'castelo', create: createCastleBoard },
+  { id: 'parque', create: createParkBoard },
 ];
 
 export function createBoard(id: string): Board {

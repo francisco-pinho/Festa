@@ -29,6 +29,10 @@ export const RULES = {
   vsStake: 5,
   /** Armadilha: quem cai nela paga isto ao dono. */
   trapCoins: 10,
+  /** Erupção: quem está na cratera perde isto. */
+  eruptionCoins: 5,
+  /** Fantasma do castelo: preço da estrela. */
+  ghostStarPrice: 30,
 };
 
 export type SpaceColor = 'blue' | 'red';
@@ -190,6 +194,8 @@ export type LandingEffect =
   | { kind: 'give'; to: string; amount: number }
   | { kind: 'swap'; with: string }
   | { kind: 'taxi'; from: number; to: number }
+  | { kind: 'minecart'; from: number; to: number }
+  | { kind: 'ghost' }
   | { kind: 'item'; item: ItemId | null; coins: number }
   | { kind: 'vs' }
   | { kind: 'villain'; event: VillainEvent }
@@ -249,6 +255,20 @@ export function resolveLanding(state: PartyState, p: PartyPlayer, rng: Rng): Lan
     }
     case 'event': {
       p.stats.eventSpaces++;
+      if (state.board.eventKind === 'minecart') {
+        // Vagoneta: segue em frente 4 a 8 casas pelo caminho aberto.
+        const from = p.spaceId;
+        let cur = from;
+        const n = rng.int(4, 8);
+        for (let i = 0; i < n; i++) cur = openNext(state.board, state.flags, cur).find((o) => !tunnelBetween(state.board, cur, o)) ?? cur;
+        p.spaceId = cur;
+        effect = { kind: 'minecart', from, to: cur };
+        break;
+      }
+      if (state.board.eventKind === 'ghost') {
+        effect = { kind: 'ghost' };
+        break;
+      }
       if (state.board.eventKind === 'taxi') {
         // Táxi: leva-te para perto da estrela.
         const from = p.spaceId;
@@ -479,6 +499,9 @@ export function villainRoll(state: PartyState, p: PartyPlayer, rng: Rng): Villai
 export type RoundEvent =
   | { kind: 'tide'; high: boolean }
   | { kind: 'traffic'; greenNS: boolean }
+  | { kind: 'eruption'; active: boolean; burned: { id: string; amount: number }[] }
+  | { kind: 'doors'; open: boolean }
+  | { kind: 'wheel'; moved: { id: string; from: number; to: number }[] }
   | { kind: 'sale'; shopId: string };
 
 /** Atualiza interruptores e saldos no início de uma ronda. */
@@ -492,6 +515,35 @@ export function startRound(state: PartyState, rng: Rng): RoundEvent[] {
     state.flags.greenNS = !state.flags.greenNS;
     events.push({ kind: 'traffic', greenNS: state.flags.greenNS });
   }
+  if (state.board.mechanic === 'eruption') {
+    const erupt = state.round % 3 === 0;
+    if (erupt) {
+      state.flags.erupting = true;
+      const burned = state.players
+        .filter((p) => state.board.spaces[p.spaceId]?.zone === 'crater')
+        .map((p) => ({ id: p.id, amount: -addCoins(p, -RULES.eruptionCoins) }));
+      events.push({ kind: 'eruption', active: true, burned });
+    } else if (state.flags.erupting) {
+      state.flags.erupting = false;
+      events.push({ kind: 'eruption', active: false, burned: [] });
+    }
+  }
+  if (state.board.mechanic === 'doors' && state.round > 1) {
+    state.flags.doorsA = !state.flags.doorsA;
+    events.push({ kind: 'doors', open: state.flags.doorsA });
+  }
+  if (state.board.mechanic === 'wheel' && state.round > 1 && state.board.wheel?.length) {
+    const wheel = state.board.wheel;
+    const moved: { id: string; from: number; to: number }[] = [];
+    for (const p of state.players) {
+      const i = wheel.indexOf(p.spaceId);
+      if (i < 0) continue;
+      const to = wheel[(i + 2) % wheel.length]!;
+      moved.push({ id: p.id, from: p.spaceId, to });
+      p.spaceId = to;
+    }
+    events.push({ kind: 'wheel', moved });
+  }
   state.saleShopId = null;
   const shops = state.board.shops.filter((s) => s.kind !== 'ultimo');
   if (shops.length && state.round > 1 && rng.next() < 0.35) {
@@ -499,6 +551,25 @@ export function startRound(state: PartyState, rng: Rng): RoundEvent[] {
     events.push({ kind: 'sale', shopId: state.saleShopId });
   }
   return events;
+}
+
+// ── Fantasma do castelo ───────────────────────────────────
+
+export function ghostCanSell(p: PartyPlayer): boolean {
+  return p.coins >= RULES.ghostStarPrice;
+}
+
+/** O fantasma vende uma estrela por 30 moedas. */
+export function ghostSellStar(p: PartyPlayer): boolean {
+  if (!ghostCanSell(p)) return false;
+  addCoins(p, -RULES.ghostStarPrice);
+  p.stars++;
+  return true;
+}
+
+/** Sem moedas para a estrela (ou recusando), o fantasma rouba 3 a 8 moedas. */
+export function ghostSteal(p: PartyPlayer, rng: Rng): number {
+  return -addCoins(p, -rng.int(3, 8));
 }
 
 /** Táxi: leva-te para perto da estrela (3 a 6 casas antes dela). */
