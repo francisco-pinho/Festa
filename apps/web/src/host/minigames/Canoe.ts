@@ -95,22 +95,30 @@ class CanoeRun extends RowMinigame {
         // Remo: um rema à direita, o seguinte à esquerda (a canoa anda para +x, a direita é +z).
         const side = k % 2 === 0 ? 1 : -1;
         const pivot = new THREE.Group();
-        pivot.position.set(x + 0.2, 1.05, side * 0.78);
+        pivot.position.set(x + 0.25, 0.85, side * 0.8);
         const tilt = new THREE.Group();
         tilt.rotation.x = side * 0.3; // inclinado para fora, para a pá chegar à água ao lado do casco
         const wood = toon('#e0a96a');
-        const shaft = mesh(new THREE.CylinderGeometry(0.075, 0.075, 2.4, 10), wood);
-        shaft.position.y = -0.7;
+        const shaft = mesh(new THREE.CylinderGeometry(0.075, 0.075, 2.3, 10), wood);
+        shaft.position.y = -0.75;
         const grip = mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.28, 8), toon('#5b3a1e'));
         grip.rotation.x = Math.PI / 2;
-        grip.position.y = 0.5;
+        grip.position.y = 0.4;
         const blade = mesh(new THREE.CapsuleGeometry(0.24, 0.5, 4, 12), toonUnique(TEAM_COLORS[team]));
         blade.scale.set(1, 1, 0.25);
         blade.rotation.y = Math.PI / 2; // a pá de frente para a água (empurra para trás)
-        blade.position.y = -1.9;
-        tilt.add(shaft, grip, blade);
+        blade.position.y = -1.85;
+        // Pontos onde as mãos agarram: a de fora mais abaixo no cabo, a de dentro no punho.
+        const lowHold = new THREE.Object3D();
+        lowHold.position.y = -0.45;
+        const topHold = new THREE.Object3D();
+        topHold.position.y = 0.32;
+        tilt.add(shaft, grip, blade, lowHold, topHold);
         pivot.add(tilt);
         group.add(pivot);
+        // A direita do boneco é +z (olha para +x): quem rema à direita tem a mão direita em baixo.
+        if (side === 1) r.model.reach(topHold, lowHold);
+        else r.model.reach(lowHold, topHold);
         this.paddles.set(r.seat.id, { pivot, side, t: STROKE });
       });
       const z = i === 0 ? 2.6 : -2.6;
@@ -195,7 +203,7 @@ class CanoeRun extends RowMinigame {
       const swing = 0.55 - pull * 1.15; // + = pá à frente (+x), − = pá atrás
       const lift = k < 0.6 ? 0 : Math.sin(((k - 0.6) / 0.4) * Math.PI) * 0.35; // fora de água ao voltar
       p.pivot.rotation.z = swing;
-      p.pivot.position.y = 1.05 + lift;
+      p.pivot.position.y = 0.85 + lift;
       const r = this.row.find((x) => x.seat.id === id);
       if (r) {
         r.model.pose.chestY = p.side * -0.35 * (1 - pull) + p.side * 0.15;
@@ -219,7 +227,10 @@ class CanoeRun extends RowMinigame {
 
   override endGame(): void {
     super.endGame();
-    for (const r of this.row) r.model.restAnim = 'idle';
+    for (const r of this.row) {
+      r.model.restAnim = 'idle';
+      r.model.reach(null, null);
+    }
   }
 
   override dispose(): void {

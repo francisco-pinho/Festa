@@ -132,6 +132,54 @@ export class CharacterModel {
   /** Contorno de luz (rim) na cor do jogador, partilhado por todos os materiais deste boneco. */
   private readonly rim = { rimColor: { value: new THREE.Color('#ffffff') }, rimStrength: { value: 0 } };
   private ring: THREE.Mesh | null = null;
+  /** Mãos presas a objetos (IK dos braços): cada mão vai ao ponto do mundo onde está o alvo. */
+  private readonly reachTargets: { left: THREE.Object3D | null; right: THREE.Object3D | null } = { left: null, right: null };
+  private arms: Record<'left' | 'right', THREE.Object3D[]> | null = null;
+
+  /** Agarra objetos com as mãos (ex.: remo): os braços dobram-se para as mãos chegarem lá. `null` larga. */
+  reach(left: THREE.Object3D | null, right: THREE.Object3D | null): void {
+    this.reachTargets.left = left;
+    this.reachTargets.right = right;
+    if (!this.arms) {
+      const get = (n: string) => this.model.getObjectByName(n);
+      const chain = (s: 'l' | 'r') => [get(`upperarm${s}`), get(`lowerarm${s}`), get(`hand${s}`)].filter(Boolean) as THREE.Object3D[];
+      this.arms = { left: chain('l'), right: chain('r') };
+    }
+  }
+
+  /** IK simples (CCD): roda antebraço e braço para a mão se aproximar do alvo. */
+  private solveArms(): void {
+    if (!this.arms || (!this.reachTargets.left && !this.reachTargets.right)) return;
+    this.root.updateWorldMatrix(true, true);
+    const target = new THREE.Vector3();
+    const eff = new THREE.Vector3();
+    const pos = new THREE.Vector3();
+    const q = new THREE.Quaternion();
+    const wq = new THREE.Quaternion();
+    const pq = new THREE.Quaternion();
+    for (const side of ['left', 'right'] as const) {
+      const t = this.reachTargets[side];
+      const chain = this.arms[side];
+      if (!t || chain.length < 3) continue;
+      t.updateWorldMatrix(true, false);
+      t.getWorldPosition(target);
+      const hand = chain[2]!;
+      for (let iter = 0; iter < 6; iter++) {
+        for (const bone of [chain[1]!, chain[0]!]) {
+          bone.getWorldPosition(pos);
+          hand.getWorldPosition(eff);
+          const a = eff.sub(pos).normalize();
+          const b = target.clone().sub(pos).normalize();
+          if (a.dot(b) > 0.9999) continue;
+          q.setFromUnitVectors(a, b);
+          bone.getWorldQuaternion(wq);
+          bone.parent!.getWorldQuaternion(pq);
+          bone.quaternion.copy(pq.invert().multiply(q.multiply(wq)));
+          bone.updateWorldMatrix(false, true);
+        }
+      }
+    }
+  }
 
   /** Acrescenta ao material toon um brilho nas bordas (efeito fresnel) com a cor do jogador. */
   private addRim(m: THREE.MeshToonMaterial): void {
@@ -356,6 +404,7 @@ export class CharacterModel {
       if (this.flashTime <= 0) for (const m of this.materials) m.emissive.set('#000000');
     }
     if (this.propeller) this.propeller.rotation.y += dt * (this.anim === 'cheer' ? 30 : 8);
+    this.solveArms();
   }
 
   dispose(): void {
