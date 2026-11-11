@@ -1450,7 +1450,7 @@ export class PartyFlow {
       });
     const vip = this.d.hub.vip;
     if (vip) this.d.hub.setLayout({ kind: 'pad', title: 'Obrigado por jogares!', sub: 'Escolhe no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher' } }, vip);
-    await this.ctl.menus.ask({ player: vip ?? null, keyboard: true, title: 'Fim da festa', options: [{ id: 'lobby', label: '↩ Voltar ao menu principal' }] });
+    await this.ctl.menus.ask({ player: vip ?? null, keyboard: true, corner: true, title: 'Fim da festa', options: [{ id: 'lobby', label: '↩ Voltar ao menu principal' }] });
     panel.classList.remove('compact');
     this.hud.panel(null);
     this.hud.hint(null);

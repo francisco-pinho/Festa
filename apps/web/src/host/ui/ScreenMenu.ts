@@ -44,6 +44,8 @@ export interface MenuRequest {
   initial?: string;
   /** Mostrar grande, a meio (menus principais). */
   big?: boolean;
+  /** Encostado ao canto inferior direito (para não tapar um painel ao centro). */
+  corner?: boolean;
 }
 
 interface OpenMenu {
@@ -98,7 +100,7 @@ export class ScreenMenus {
   ask(req: MenuRequest): Promise<string> {
     return new Promise((resolve) => {
       const el = document.createElement('div');
-      el.className = `smenu ${req.big ? 'smenu-big' : ''}`;
+      el.className = `smenu ${req.big ? 'smenu-big' : ''} ${req.corner ? 'smenu-corner' : ''}`;
       if (req.color) el.style.setProperty('--c', req.color);
       this.root.appendChild(el);
       let sel = Math.max(0, req.options.findIndex((o) => o.id === req.initial));
