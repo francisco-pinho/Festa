@@ -23,6 +23,14 @@ npm run dev
 
 > **Windows:** da primeira vez, o Windows pergunta se o Node.js pode aceitar ligações na rede. Aceita para **redes privadas**, senão os telemóveis não chegam ao PC.
 
+### O telemóvel não abre a página?
+
+| Sintoma | Solução |
+|---|---|
+| Android: `ERR_TOO_MANY_RETRIES` | O Android 17 exige uma permissão para o Chrome aceder à rede local: **Definições → Apps → Chrome → Permissões → Dispositivos próximos** (ou "Rede local") → Permitir. Alternativa: usar o Firefox. |
+| "A ligação não é privada" | Normal com `npm run dev:https` (certificado feito por nós): **Avançadas → Continuar**. |
+| Não abre de todo | Telemóvel e PC têm de estar na **mesma rede Wi-Fi** (não a de convidados) e sem VPN; desliga os dados móveis. |
+
 ## Como se joga
 
 1. **Lobby** — entram de 1 a 10 jogadores. Os **bots** completam a mesa: mínimo 4 e sempre um número **par**.

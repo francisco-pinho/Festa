@@ -110,6 +110,9 @@ export class Director {
           <div class="label">CÓDIGO DA SALA</div>
           <div class="code" id="code">····</div>
           <div class="url" id="url"></div>
+          <div class="android-tip">📱 Android: se não abrir (<b>ERR_TOO_MANY_RETRIES</b>), dá ao Chrome a permissão
+            <b>Dispositivos próximos</b> (Definições → Apps → Chrome → Permissões) ou usa o Firefox.<br />
+            Aviso "ligação não privada"? Toca em <b>Avançadas → Continuar</b>.</div>
         </div>
         <div>
           <h2 id="lobby-hint">Lê o código com o telemóvel para entrar!</h2>
