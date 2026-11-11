@@ -147,13 +147,13 @@ Fontes: [Cinevva — personagens rigged gratuitas](https://app.cinevva.com/guide
 Cada fase termina testada, com commit e push no seu ramo.
 
 ### Fase 0 — Fundações (desbloqueia o resto)
-- [ ] Dica do Android 17 (permissão "Dispositivos próximos") no lobby e no README (P1)
-- [ ] Comando na horizontal + "roda o telemóvel" (3.3)
-- [ ] Ecrã "Ativar sensores" com indicador e calibração; corrigir abanar dados (3.4, P2)
-- [ ] Menu de pausa com Sair e Definições (3.5)
-- [ ] Dificuldade dos bots (3.6)
+- [x] Dica do Android 17 (permissão "Dispositivos próximos") no lobby e no README (P1)
+- [x] Comando na horizontal + "roda o telemóvel" (3.3)
+- [x] Ecrã "Ativar sensores" com indicador e calibração; corrigir abanar dados (3.4, P2) — falta confirmar num telemóvel real
+- [x] Menu de pausa com Sair e Definições (3.5) — sem volume ainda (não há sons)
+- [x] Dificuldade dos bots (3.6)
 - [ ] Escolher o pack de modelos, descarregar (com autorização) e criar o novo `CharacterModel` com esqueleto (3.1)
-- [ ] Integrar o Rapier (3.2)
+- [x] Integrar o Rapier (3.2)
 
 ### Fase 1 — Festa
 - [ ] **Vista do mapa**: ao lançar os dados, botão "🗺️ Ver mapa" (telemóvel e PC) que mostra o mapa todo com a estrela, as lojas e os jogadores; nos cruzamentos, câmara aérea que mostra os caminhos com a distância até à estrela
@@ -233,3 +233,5 @@ Cada fase termina testada, com commit e push no seu ramo.
 | Data | Fase/tarefa | Ramo | Estado |
 |---|---|---|---|
 | 2026-11-11 | Plano criado | `jogos-todos` | ✔ |
+| 2026-11-11 | Fase 0: dica Android, horizontal, sensores, pausa/definições, dificuldade, Rapier | `fase0-fundacoes` | ✔ |
+| 2026-11-11 | Fase 0: modelos 3D com esqueleto | `fase0-fundacoes` | à espera da escolha do pack |
