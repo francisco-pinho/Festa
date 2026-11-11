@@ -153,6 +153,20 @@ describe('festa', () => {
     const bonuses = bonusStars(s);
     expect(bonuses.find((b) => b.id === 'minigame')?.winners).toEqual(['p1']);
 
+    // Com sorteio: 3 categorias diferentes, que mudam conforme a semente.
+    s.players[0]!.stats.steps = 30;
+    s.players[2]!.stats.redSpaces = 4;
+    s.players[3]!.stats.itemsUsed = 2;
+    s.players[1]!.stats.duelsWon = 1;
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 20; seed++) {
+      const pick = bonusStars(s, createRng(seed));
+      expect(pick).toHaveLength(3);
+      expect(new Set(pick.map((b) => b.id)).size).toBe(3);
+      for (const b of pick) seen.add(b.id);
+    }
+    expect(seen.size).toBeGreaterThan(3);
+
     s.players[2]!.stars = 2;
     const r = ranking(s);
     expect(r[0]).toMatchObject({ rank: 1, player: { id: 'p2' } });

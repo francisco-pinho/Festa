@@ -117,18 +117,24 @@ export class TennisStage extends SportStage {
   async play(): Promise<SportStanding[]> {
     this.cameraTo({ x: 14, y: 14, z: 26 }, { x: 0, y: 0, z: 0 }, { instant: true });
     this.cameraTo({ x: 0, y: 11, z: 25 }, { x: 0, y: 0, z: -1 }, { speed: 0.8 });
-    this.offSwing = this.ctx.hub.events.on('swing', ({ player, swing }) => {
+    // Pancadas com os botões (como no Mario Tennis): A normal, B slice, Y forte; o joystick dá a direção.
+    const SHOTS = { a: { power: 0.72, spin: 0.45 }, b: { power: 0.6, spin: -0.7 }, y: { power: 1, spin: 0.1 } } as const;
+    this.offSwing = this.ctx.hub.events.on('press', ({ player, button }) => {
+      if (button !== 'a' && button !== 'b' && button !== 'y') return;
       const p = this.tplayers.find((tp) => tp.seat.id === player.id);
-      if (p) this.trySwing(p, swing, swing.source === 'key' ? 0 : player.lag);
+      if (!p || this.ctx.seats.isAuto(p.seat)) return;
+      const shot = SHOTS[button];
+      const dir = THREE.MathUtils.clamp(this.ctx.seats.pad(p.seat).stick.x * (p.team === 0 ? 1 : -1), -1, 1);
+      this.trySwing(p, { t: 'swing', power: shot.power, dir, spin: shot.spin, source: 'key' }, player.lag);
     });
     for (const p of this.tplayers) {
       this.setLayout(p.seat, {
-        kind: 'motion',
-        action: 'swing',
-        aim: true,
-        aimLabel: 'Correr',
-        prompt: `Equipa ${TEAM_NAMES[p.team]} · bate quando a bola chegar!`,
-        hint: 'Cedo = cruzada · tarde = paralela · de baixo para cima = topspin · de cima para baixo = slice',
+        kind: 'pad',
+        title: `Equipa ${TEAM_NAMES[p.team]} · bate quando a bola chegar!`,
+        sub: 'Joystick para o lado ao bater = direção · cedo = cruzada · tarde = paralela',
+        stick: 'stick',
+        stickLabel: 'Correr',
+        buttons: { a: 'Batida', b: 'Slice', y: 'Forte', plus: 'Menu' },
       });
     }
     this.drawBoard();

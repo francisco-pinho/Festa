@@ -221,6 +221,11 @@ export class PlayerHub {
     this.sendTo(player, { t: 'toast', text });
   }
 
+  /** Estado para o menu 📊 do telemóvel. */
+  status(player: HubPlayer, status: Extract<HostToControllerMessage, { t: 'status' }>['status']): void {
+    this.sendTo(player, { t: 'status', status });
+  }
+
   clearPresses(): void {
     for (const p of this.players) p.clearPresses();
   }

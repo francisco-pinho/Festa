@@ -118,6 +118,10 @@ export class PartyFlow {
   private stage!: BoardStage;
   private lastMinigame: string | null = null;
   private mapOpen = false;
+  /** Quem está a jogar agora (destacado no mapa dos telemóveis). */
+  private activeId: string | null = null;
+  /** Telemóveis que estão a mostrar o mapa (e com que mensagem): atualizam-se a cada casa. */
+  private readonly boardWatchers = new Map<string, string>();
 
   constructor(private readonly d: PartyDeps) {}
 
@@ -143,7 +147,18 @@ export class PartyFlow {
   }
 
   private waitAll(message: string, except?: string): void {
-    for (const s of this.d.seats) if (s.id !== except) this.ctl.setLayout(s, this.state ? this.boardLayout(message, s.id) : { kind: 'wait', message });
+    this.boardWatchers.clear();
+    for (const s of this.d.seats) {
+      if (s.id === except) continue;
+      if (this.state) this.boardWatchers.set(s.id, message);
+      this.ctl.setLayout(s, this.state ? this.boardLayout(message, s.id) : { kind: 'wait', message });
+    }
+  }
+
+  /** Mapa dos telemóveis em tempo real: volta a enviar as posições a quem o está a ver. */
+  private refreshBoards(): void {
+    if (!this.state) return;
+    for (const [id, message] of this.boardWatchers) this.ctl.setLayout(this.seat(id), this.boardLayout(message, id));
   }
 
   /** As minhas estatísticas para o telemóvel: moedas, estrelas, lugar e itens. */
@@ -193,6 +208,7 @@ export class PartyFlow {
         color: getCharacter(p.characterId).color,
         label: [...p.name][0]?.toUpperCase() ?? '?',
         me: p.id === seatId || undefined,
+        active: p.id === this.activeId || undefined,
       };
     });
     const star = this.state.starSpaceId >= 0 ? getSpace(board, this.state.starSpaceId) : null;
@@ -200,11 +216,14 @@ export class PartyFlow {
       kind: 'board',
       message,
       palette: types.map((t) => SPACE_STYLE[t].color),
+      symbols: types.map((t) => (['blue', 'red', 'start'].includes(t) ? '' : SPACE_STYLE[t].symbol)),
+      tunnels: board.tunnels.map((t) => [t.from, t.to] as [number, number]),
       spaces,
       links: links.slice(0, 500),
       players,
       star: star ? [r1(star.x), r1(star.z)] : null,
       stats: this.phoneStats(seatId),
+      color: getCharacter(getPlayer(this.state, seatId).characterId).color,
     };
   }
 
@@ -224,9 +243,28 @@ export class PartyFlow {
       };
     });
     this.hud.setScoreboard(entries);
+    this.pushStatus();
+  }
+
+  /** Último estado enviado a cada telemóvel (para só enviar quando muda). */
+  private readonly sentStatus = new Map<string, string>();
+
+  /** Menu 📊 do telemóvel: moedas, estrelas, lugar, itens e classificação, sempre atualizados. */
+  private pushStatus(end = false): void {
+    for (const p of this.state.players) {
+      if (p.isBot) continue;
+      const status = end
+        ? null
+        : { title: `Ronda ${this.state.round} / ${this.state.totalRounds}`, stats: this.phoneStats(p.id), rows: this.phoneTable(p.id).rows };
+      const json = JSON.stringify(status);
+      if (this.sentStatus.get(p.id) === json) continue;
+      this.sentStatus.set(p.id, json);
+      this.ctl.status(this.seat(p.id), status);
+    }
   }
 
   private arrangeAll(instant = false): Promise<void> {
+    this.refreshBoards();
     return this.stage.arrange(new Map(this.state.players.map((o) => [o.id, o.spaceId])), instant);
   }
 
@@ -295,6 +333,7 @@ export class PartyFlow {
       window.removeEventListener('keydown', onKey);
     }
     this.hud.setRound(null);
+    this.pushStatus(true);
     return state;
   }
 
@@ -320,11 +359,20 @@ export class PartyFlow {
     if (seat) this.ctl.vibrate(seat, pattern);
   }
 
+  /**
+   * Vibração em todos os telemóveis (acontecimentos do mapa). Intensidades usadas:
+   * passo 15 ms · aviso curto 40 · mudança do mapa [60,40,60] · sismo/erupção longo e forte.
+   */
+  private buzzAll(pattern: number | number[], except?: string): void {
+    for (const p of this.state.players) if (p.id !== except) this.buzz(p.id, pattern);
+  }
+
   private async roundEvents(events: RoundEvent[]): Promise<void> {
     for (const ev of events) {
       if (ev.kind === 'tide') {
         this.stage.setFlags(this.state.flags);
         this.stage.overview();
+        this.buzzAll([60, 40, 60, 40, 60]);
         await this.hud.banner(ev.high ? '🌊 Maré alta!' : '🏖️ Maré baixa!', {
           sub: ev.high ? 'A ponte ficou debaixo de água · o túnel da gruta abriu' : 'A ponte voltou · a gruta fechou',
           hold: 2.6,
@@ -332,6 +380,7 @@ export class PartyFlow {
         });
       } else if (ev.kind === 'traffic') {
         this.stage.setFlags(this.state.flags);
+        this.buzzAll([40, 30, 40]);
         await this.hud.banner('🚦 Os semáforos mudaram!', {
           sub: ev.greenNS ? 'Verde na Avenida Norte · vermelho na Oeste' : 'Verde na Avenida Oeste · vermelho na Norte',
           hold: 2,
@@ -340,13 +389,15 @@ export class PartyFlow {
         this.stage.setFlags(this.state.flags);
         this.stage.overview();
         if (ev.active) {
+          // A terra treme para toda a gente; quem está na cratera sente muito mais.
+          this.buzzAll([250, 80, 250, 80, 400]);
           await this.hud.banner('🌋 Erupção!', { sub: 'A cratera fechou nesta ronda · quem lá estava queimou-se', hold: 2.4, color: '#ff5a1f' });
           for (const b of ev.burned) {
             this.stage.focus(b.id, true);
             this.stage.token(b.id).setAnim('hurt');
             this.coinBurst(b.id, -b.amount);
             this.stage.floatText(b.id, `🔥 -${b.amount} 🪙`, '#ff6b7a');
-            this.ctl.vibrate(this.seat(b.id), [120, 60, 120]);
+            this.ctl.vibrate(this.seat(b.id), [400, 100, 400, 100, 600]);
             await this.wait(1.1);
             this.stage.token(b.id).setAnim('idle');
           }
@@ -357,9 +408,11 @@ export class PartyFlow {
       } else if (ev.kind === 'doors') {
         this.stage.setFlags(this.state.flags);
         this.stage.overview();
+        this.buzzAll([50, 60, 50]);
         await this.hud.banner('🚪 As portas do castelo mudaram!', { sub: ev.open ? 'Abriu a escadaria Este · fechou a Oeste' : 'Abriu a escadaria Oeste · fechou a Este', hold: 2.2, color: '#b98cff' });
       } else if (ev.kind === 'wheel') {
         this.stage.spinWheel();
+        for (const m of ev.moved) this.buzz(m.id, [120, 60, 120]);
         const s = getSpace(this.state.board, this.state.board.wheel![0]!);
         this.stage.focusPoint(s.x, s.z, 1.4);
         await this.hud.banner('🎡 A roda gigante girou!', { sub: ev.moved.length ? 'Quem estava na roda mudou de lugar' : 'Ninguém estava lá em cima', hold: 1.8, color: '#ff6fb5' });
@@ -369,6 +422,7 @@ export class PartyFlow {
         const shop = this.state.board.shops.find((s) => s.id === ev.shopId)!;
         const s = getSpace(this.state.board, shop.spaceId);
         this.stage.focusPoint(s.x, s.z, 1.3);
+        this.buzzAll(40);
         await this.hud.banner('💥 Saldos relâmpago!', { sub: `${shop.name}: tudo a metade do preço nesta ronda`, hold: 2.2, color: '#ff6fb5' });
       }
     }
@@ -378,24 +432,33 @@ export class PartyFlow {
     const state = this.state;
     await this.hud.banner('Quem começa?', { sub: 'Lancem o dado! O maior número joga primeiro', hold: 1.6 });
     const rolls = rollTurnOrder(state, this.rng);
-    await Promise.all(
-      state.players.map(async (p) => {
-        const seat = this.seat(p.id);
-        this.stage.faceCamera(p.id);
-        await this.ctl.decide(seat, {
-          layout: { kind: 'dice', prompt: 'Lança o dado para decidir a ordem!', label: 'Lançar!' },
-          valid: ['roll'],
-          bot: () => 'roll',
-          keyboardA: 'roll',
-          botDelay: 0.6 + this.rng.next() * 1.5,
-        });
-        this.ctl.setLayout(seat, { kind: 'wait', message: `Tiraste ${rolls.get(p.id)}!` });
-        this.stage.token(p.id).setAnim('cheer');
-        this.stage.floatText(p.id, String(rolls.get(p.id)), '#ffd23f');
-        await this.wait(0.7);
-        this.stage.token(p.id).setAnim('idle');
-      }),
-    );
+    // Um de cada vez, com o bloco de dados por cima da cabeça e a câmara bem perto
+    // (estão todos na partida, uns em cima dos outros). Os outros ficam afastados.
+    this.waitAll('À espera da tua vez de lançar…');
+    for (const p of state.players) {
+      const seat = this.seat(p.id);
+      await this.stage.spotlight(p.id, true);
+      this.stage.faceCamera(p.id);
+      this.stage.spawnDice(p.id, 1, false, 10);
+      this.hud.hint(`${p.name}: lança o dado!`, true);
+      await this.ctl.decide(seat, {
+        layout: { kind: 'dice', prompt: 'Lança o dado para decidir a ordem!', label: 'Lançar!' },
+        valid: ['roll'],
+        bot: () => 'roll',
+        keyboardA: 'roll',
+        botDelay: 0.8 + this.rng.next() * 0.6,
+      });
+      this.buzz(p.id, [30, 30, 60]);
+      await this.stage.hitDice(p.id, [rolls.get(p.id)!]);
+      this.ctl.setLayout(seat, { kind: 'wait', message: `Tiraste ${rolls.get(p.id)}!` });
+      this.stage.token(p.id).setAnim('cheer');
+      await this.wait(1.1);
+      this.stage.clearDice();
+      this.stage.floatText(p.id, `🎲 ${rolls.get(p.id)}`, '#ffd23f');
+      this.stage.token(p.id).setAnim('idle');
+    }
+    this.hud.hint(null);
+    await this.stage.spotlight(null, true);
     applyTurnOrder(state, rolls);
     this.scoreboard();
     this.hud.panel(`
@@ -418,7 +481,12 @@ export class PartyFlow {
     const seat = this.seat(p.id);
     this.scoreboard(p.id);
     this.stage.focus(p.id);
+    this.activeId = p.id;
     this.waitAll(`Vez de ${p.name}`, p.id);
+    this.buzz(p.id, [70, 50, 70]); // «é a tua vez!»
+    // Vários na mesma casa (ex.: partida): o da vez vem para a frente e os outros afastam-se.
+    const crowded = playersOnSpace(state, p).length > 0;
+    if (crowded) await this.stage.spotlight(p.id);
     await this.hud.banner(`Vez de ${p.name}!`, { sub: p.slowDice ? '🐌 Dados preguiçosos: só 1 a 3' : undefined, hold: 1.1 });
     this.stage.faceCamera(p.id);
 
@@ -456,6 +524,7 @@ export class PartyFlow {
       this.stage.floatText(p.id, `⚡ +${plan.bonus}`, '#ffd23f');
     }
     await this.stage.collapseDice(p.id, total);
+    if (crowded) await this.stage.spotlight(null);
     this.ctl.setLayout(seat, { kind: 'wait', message: `Andas ${total} casas!` });
     this.scoreboard(p.id);
     await this.wait(0.3);
@@ -479,10 +548,12 @@ export class PartyFlow {
         await this.stage.travelTunnel(p.id, next, tunnel.kind);
         this.stage.focus(p.id);
       } else {
-        this.buzz(p.id, 12);
+        this.buzz(p.id, 15);
         await this.stage.hop(p.id, next);
       }
       p.spaceId = next;
+      p.stats.steps++;
+      this.refreshBoards();
       steps--;
       this.stage.setStepCounter(p.id, steps > 0 ? steps : null);
       if (next === state.starSpaceId) await this.starOffer(p);
@@ -498,6 +569,7 @@ export class PartyFlow {
     const lostDuel = await this.arrivalDuel(p);
     if (!lostDuel) await this.land(p);
     await this.arrangeAll();
+    this.refreshBoards();
     this.scoreboard(p.id);
     await this.wait(0.5);
     this.stage.token(p.id).setAnim('idle');
@@ -581,6 +653,7 @@ export class PartyFlow {
       return;
     }
     removeItem(p, item);
+    p.stats.itemsUsed++;
     const token = this.stage.token(p.id);
     token.setAnim('throw');
     await this.hud.banner(`${def.emoji} ${def.name}!`, { sub: def.description, hold: 1.4, color: '#ff6fb5' });
@@ -613,6 +686,7 @@ export class PartyFlow {
         await this.swapPlayers(p, target!);
         break;
       case 'ima': {
+        this.buzz(target!.id, [150, 60, 150]);
         const got = stealCoins(target!, p, this.rng.int(5, 10));
         this.coinBurst(target!.id, -got);
         this.coinBurst(p.id, got);
@@ -631,6 +705,7 @@ export class PartyFlow {
         break;
       case 'ladraoEstrela':
         if (stealStar(target!, p)) {
+          this.buzz(target!.id, [300, 100, 300]);
           await this.starFly(target!.id, p.id);
           await this.hud.banner(`🦹 ${p.name} roubou uma estrela a ${target!.name}!`, { hold: 2, color: '#ffd23f' });
         }
@@ -764,6 +839,7 @@ export class PartyFlow {
     if (answer === 'pull') {
       const now = pullLever(state, lever);
       this.buzz(p.id, [40, 30, 120]);
+      this.buzzAll(40, p.id);
       await this.stage.pullLever(p.id, lever.spaceId, state.flags);
       await this.hud.banner(`🎚️ ${now ? lever.onText : lever.offText}`, { sub: `${p.name} puxou a ${lever.name}`, hold: 1.6, color: '#ffa41b' });
     }
@@ -904,6 +980,7 @@ export class PartyFlow {
       const item = choice.slice(4) as ItemId;
       const price = stock.find((x) => x.item === item)!.price;
       addCoins(p, -price);
+      p.stats.shopSpent += price;
       p.items.push(item);
       this.coinBurst(p.id, -price);
       this.stage.token(p.id).setAnim('cheer');
@@ -1115,12 +1192,16 @@ export class PartyFlow {
     ta.setAnim('dizzy');
     tb.setAnim('dizzy');
     this.stage.overview();
+    const ra = ta.root.rotation.y;
+    const rb = tb.root.rotation.y;
     await this.engine.tween(2.2, (t) => {
       const lift = Math.sin(t * Math.PI) * 8;
       ta.root.position.lerpVectors(pa, pb, t).setY(pa.y + lift);
       tb.root.position.lerpVectors(pb, pa, t).setY(pb.y + lift);
-      ta.root.rotation.y += 0.4;
-      tb.root.rotation.y += 0.4;
+      // Volta e meia suave durante a viagem (acelera e trava), em vez de rodar a cada imagem.
+      const spin = (t * t * (3 - 2 * t)) * Math.PI * 3;
+      ta.root.rotation.y = ra + spin;
+      tb.root.rotation.y = rb - spin;
     });
     ta.setAnim('idle');
     tb.setAnim('idle');
@@ -1254,6 +1335,7 @@ export class PartyFlow {
       botSkill: settings.botSkill,
     };
     for (const s of this.d.seats) s.botPad.reset();
+    this.boardWatchers.clear();
     this.d.hub.clearPresses();
     await loadProps(MINIGAME_PROPS);
     const run = def.create(ctx);
@@ -1280,6 +1362,7 @@ export class PartyFlow {
     sound.music('minigame');
     for (const n of ['3', '2', '1']) await this.hud.big(n, 0.8);
     run.start();
+    for (const p of players) this.buzz(p.id, 120); // «Já!»
     void this.hud.big('JÁ!', 0.6);
     while (!run.finished) {
       updateHud();
@@ -1310,7 +1393,7 @@ export class PartyFlow {
     const ceremony = new ShowcaseStage();
     this.engine.setStage(ceremony);
     ceremony.view({ distance: 11, height: 3.5, orbitSpeed: 0.05 });
-    for (const bonus of bonusStars(state)) {
+    for (const bonus of bonusStars(state, this.rng)) {
       const winners = bonus.winners.map((id) => getPlayer(state, id));
       ceremony.setLineup(winners.map((w) => ({ key: w.id, characterId: w.characterId, label: w.name, labelColor: '#ffd23f' })));
       await this.hud.banner(`⭐ ${bonus.title}`, { sub: bonus.description, hold: 2, color: '#ffd23f' });

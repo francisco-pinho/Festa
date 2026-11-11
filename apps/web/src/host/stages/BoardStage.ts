@@ -85,6 +85,7 @@ export class BoardStage implements Stage {
     this.objects = new BoardObjects(board);
     this.objects.setFlags(board.initialFlags);
     this.scene.add(this.objects.group);
+    this.declutter(this.theme.group);
     this.buildSpaces();
     this.scene.add(this.mapLabels);
 
@@ -107,6 +108,8 @@ export class BoardStage implements Stage {
 
     for (const seat of seats) {
       const model = new CharacterModel(getCharacter(seat.characterId));
+      // No tabuleiro: contorno mais forte e anel no chão com a cor do jogador.
+      model.setHighlight(getCharacter(seat.characterId).color, 0.6, true);
       this.tokens.set(seat.id, model);
       this.scene.add(model.root);
     }
@@ -176,9 +179,52 @@ export class BoardStage implements Stage {
     return Promise.all(moves).then(() => undefined);
   }
 
+  /** Posições guardadas antes do destaque (para repor). */
+  private readonly spotlit = new Map<string, THREE.Vector3>();
+
+  /**
+   * Destaca um jogador quando estão vários na mesma casa (ex.: a partida): ele vem para o
+   * centro e os outros afastam-se para trás, em arco. `null` repõe toda a gente.
+   */
+  async spotlight(id: string | null, animate = true): Promise<void> {
+    const dur = animate ? 0.35 : 0;
+    const moves: Promise<void>[] = [];
+    const moveTo = (tid: string, to: THREE.Vector3) => {
+      const root = this.token(tid).root;
+      const from = root.position.clone();
+      if (dur) moves.push(this.engine.tween(dur, (k) => root.position.lerpVectors(from, to, k)));
+      else root.position.copy(to);
+    };
+    // Repõe quem estava afastado.
+    for (const [tid, pos] of this.spotlit) moveTo(tid, pos);
+    this.spotlit.clear();
+    if (!id) {
+      await Promise.all(moves);
+      return;
+    }
+    await Promise.all(moves);
+    moves.length = 0;
+    const me = this.token(id).root.position;
+    const center = this.board.spaces.reduce((best, sp) => (Math.hypot(sp.x - me.x, sp.z - me.z) < Math.hypot(best.x - me.x, best.z - me.z) ? sp : best));
+    const y = TILE_TOP + (center.y ?? 0);
+    const others = [...this.tokens.keys()].filter((tid) => tid !== id && Math.hypot(this.token(tid).root.position.x - center.x, this.token(tid).root.position.z - center.z) < 1.8);
+    this.spotlit.set(id, me.clone());
+    moveTo(id, new THREE.Vector3(center.x, y, center.z));
+    others.forEach((tid, i) => {
+      this.spotlit.set(tid, this.token(tid).root.position.clone());
+      // Alternados à esquerda e à direita, um pouco para trás (nunca atrás do destacado).
+      const side = i % 2 === 0 ? -1 : 1;
+      const rank = Math.floor(i / 2);
+      moveTo(tid, new THREE.Vector3(center.x + side * (2.3 + rank * 1.5), y, center.z - 0.5 - rank * 0.9));
+    });
+    this.follow = this.token(id);
+    this.followDistance = 0.55;
+    await Promise.all(moves);
+  }
+
   private slotOffset(i: number, n: number): { x: number; z: number } {
     const a = (i / n) * Math.PI * 2;
-    const r = n <= 2 ? 0.55 : 0.75;
+    const r = n <= 2 ? 0.6 : n <= 4 ? 0.85 : 1.05;
     return { x: Math.cos(a) * r, z: Math.sin(a) * r };
   }
 
@@ -211,13 +257,13 @@ export class BoardStage implements Stage {
   // ── Dados ───────────────────────────────────────────────
 
   /** Dados a girar por cima da cabeça. Com `append`, junta-os por cima dos que já lá estão. */
-  spawnDice(id: string, count: number, append = false): void {
+  spawnDice(id: string, count: number, append = false, numbers = 0): void {
     if (!append) this.clearDice();
     const root = this.token(id).root;
     const yaw = this.cameraYawTo(root.position.x, root.position.z);
-    const lift = append ? 1.35 : 0;
+    const lift = (append ? 1.35 : 0) + (numbers ? 1.1 : 0);
     for (let i = 0; i < count; i++) {
-      const d = new Dice(0.95);
+      const d = new Dice(numbers ? 1.15 : 0.95, { numbers });
       const side = (i - (count - 1) / 2) * 1.25;
       d.root.position.set(
         root.position.x + Math.cos(yaw) * side,
@@ -832,6 +878,65 @@ export class BoardStage implements Stage {
 
 
   // ── Construção do cenário ───────────────────────────────
+
+  /**
+   * Nada de decoração em cima das casas nem dos bonecos: cada modelo de cenário (árvores,
+   * pedras, prédios, tendas…) cuja base fique a menos de 1,4 m do centro de uma casa é
+   * empurrado para fora; se não couber, fica escondido. Terreno, água e caminhos não contam.
+   */
+  private declutter(root: THREE.Object3D): void {
+    const CLEAR = 1.4;
+    root.updateMatrixWorld(true);
+    const all: THREE.Object3D[] = [];
+    root.traverse((o) => {
+      if (o !== root && (o.userData.prop || o.userData.deco)) all.push(o);
+    });
+    const isInside = (o: THREE.Object3D) => all.some((p) => p !== o && p.getObjectById(o.id) !== undefined);
+    const targets = all.filter((o) => !isInside(o));
+    const box = new THREE.Box3();
+    const overlap = (): { push: THREE.Vector2; need: number } | null => {
+      let best: { push: THREE.Vector2; need: number } | null = null;
+      for (const s of this.board.spaces) {
+        const sy = s.y ?? 0;
+        if (box.max.y < sy + 0.3 || box.min.y > sy + 3) continue; // outro andar
+        const dx = Math.max(box.min.x - s.x, 0, s.x - box.max.x);
+        const dz = Math.max(box.min.z - s.z, 0, s.z - box.max.z);
+        const d = Math.hypot(dx, dz);
+        if (d >= CLEAR) continue;
+        const need = CLEAR - d + 0.15;
+        if (best && best.need >= need) continue;
+        const cx = (box.min.x + box.max.x) / 2 - s.x;
+        const cz = (box.min.z + box.max.z) / 2 - s.z;
+        const push = new THREE.Vector2(cx, cz);
+        if (push.lengthSq() < 1e-4) push.set(1, 0);
+        best = { push: push.normalize(), need };
+      }
+      return best;
+    };
+    let moved = 0;
+    let hidden = 0;
+    for (const o of targets) {
+      box.setFromObject(o);
+      if (box.isEmpty() || box.max.y - box.min.y < 0.4) continue;
+      if (box.max.x - box.min.x > 14 || box.max.z - box.min.z > 14) continue; // montanhas, recintos…
+      let hit = overlap();
+      for (let i = 0; hit && i < 4; i++) {
+        const wp = o.getWorldPosition(new THREE.Vector3());
+        wp.x += hit.push.x * hit.need;
+        wp.z += hit.push.y * hit.need;
+        o.position.copy(o.parent!.worldToLocal(wp));
+        o.updateMatrixWorld(true);
+        box.setFromObject(o);
+        hit = overlap();
+        moved++;
+      }
+      if (hit) {
+        o.visible = false;
+        hidden++;
+      }
+    }
+    if (import.meta.env.DEV && (moved || hidden)) console.info(`Cenário arrumado: ${moved} empurrões, ${hidden} escondidos`);
+  }
 
   private buildSpaces(): void {
     const side = new Map<SpaceType, THREE.Material>();

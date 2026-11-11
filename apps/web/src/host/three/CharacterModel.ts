@@ -129,6 +129,46 @@ export class CharacterModel {
   readonly pose = { headX: 0, headY: 0, headZ: 0, chestY: 0, chestZ: 0 };
   /** Recuo da cabeça ao levar um soco (rad), decai sozinho. */
   private headKick = new THREE.Vector2();
+  /** Contorno de luz (rim) na cor do jogador, partilhado por todos os materiais deste boneco. */
+  private readonly rim = { rimColor: { value: new THREE.Color('#ffffff') }, rimStrength: { value: 0 } };
+  private ring: THREE.Mesh | null = null;
+
+  /** Acrescenta ao material toon um brilho nas bordas (efeito fresnel) com a cor do jogador. */
+  private addRim(m: THREE.MeshToonMaterial): void {
+    const rim = this.rim;
+    m.onBeforeCompile = (shader) => {
+      shader.uniforms.rimColor = rim.rimColor;
+      shader.uniforms.rimStrength = rim.rimStrength;
+      shader.fragmentShader = shader.fragmentShader
+        .replace('void main() {', 'uniform vec3 rimColor;\nuniform float rimStrength;\nvoid main() {')
+        .replace(
+          '#include <opaque_fragment>',
+          `#include <opaque_fragment>
+          float rimF = 1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0);
+          gl_FragColor.rgb += rimColor * smoothstep(0.45, 1.0, rimF) * rimStrength;`,
+        );
+    };
+    m.customProgramCacheKey = () => 'festa-rim';
+  }
+
+  /**
+   * Destaque na cor do jogador: contorno de luz no boneco e (opcional) anel no chão.
+   * `strength` 0 desliga o contorno.
+   */
+  setHighlight(color: THREE.ColorRepresentation, strength = 0.55, ring = false): void {
+    this.rim.rimColor.value.set(color);
+    this.rim.rimStrength.value = strength;
+    if (ring && !this.ring) {
+      const geo = new THREE.RingGeometry(0.55, 0.78, 40);
+      geo.rotateX(-Math.PI / 2);
+      this.ring = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false }));
+      this.ring.position.y = 0.03;
+      this.ring.renderOrder = 2;
+      this.root.add(this.ring);
+    } else if (this.ring) (this.ring.material as THREE.MeshBasicMaterial).color.set(color);
+    if (!ring && this.ring) this.ring.visible = false;
+    else if (this.ring) this.ring.visible = true;
+  }
 
   constructor(def: CharacterDef) {
     this.def = def;
@@ -138,6 +178,7 @@ export class CharacterModel {
 
     const texture = getCharacterTexture(def.id);
     const material = toonUnique('#ffffff', { map: texture });
+    this.addRim(material);
     this.materials.push(material);
     this.model.traverse((o) => {
       const parentName = o.parent?.name ?? '';
@@ -175,6 +216,8 @@ export class CharacterModel {
     });
     this.play('idle', 0);
     this.mixer.update(Math.random() * 2); // cada um começa num ponto diferente
+    // Cada personagem tem a sua cor: um contorno de luz suave dessa cor em todo o lado.
+    this.setHighlight(def.color, 0.4);
   }
 
   /** Muda de animação com uma transição suave. */
@@ -345,6 +388,7 @@ export class CharacterModel {
 
     const mat = (c: THREE.ColorRepresentation) => {
       const m = toonUnique(c);
+      this.addRim(m);
       this.materials.push(m);
       return m;
     };

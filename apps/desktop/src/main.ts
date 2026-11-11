@@ -129,6 +129,10 @@ ipcMain.handle('festa:goOnline', async (): Promise<{ url?: string; error?: strin
   }
 });
 
+ipcMain.handle('festa:quit', () => {
+  app.quit();
+});
+
 let quitting = false;
 app.on('before-quit', (event) => {
   if (quitting) return;

@@ -480,6 +480,7 @@ class Particles {
 function deco(keys: readonly string[], rng: ReturnType<typeof createRng>, size: { height?: number; width?: number }, fallback: () => THREE.Object3D): THREE.Object3D {
   const o = pickProp(keys, rng.next(), size) ?? fallback();
   o.rotation.y = rng.next() * Math.PI * 2;
+  o.userData.deco = true; // decoração: pode ser afastada das casas (ver BoardStage.declutter)
   return o;
 }
 

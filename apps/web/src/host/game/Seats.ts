@@ -210,6 +210,12 @@ export class SeatControl {
     if (hp) this.hub.toast(hp, text);
   }
 
+  /** Estado para o menu 📊 do telemóvel (moedas, estrelas, itens, classificação). */
+  status(seat: Seat, status: Parameters<PlayerHub['status']>[1]): void {
+    const hp = this.hubPlayer(seat);
+    if (hp) this.hub.status(hp, status);
+  }
+
   /**
    * Pede um gesto de desporto (lançar, tacada…) e espera por ele.
    * Bots, desligados e quem não responder a tempo usam `bot()`.

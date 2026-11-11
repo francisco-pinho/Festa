@@ -11,12 +11,13 @@ import type {
   ControllerInput,
   ControllerLayout,
   ErrorCode,
+  HostToControllerMessage,
   PlayerInfo,
 } from '@festa/shared';
 import { ACK_TIMEOUT_MS, connectSocket } from '../common/socket';
 import { renderPad } from './pad';
 import { renderBoard } from './boardview';
-import { renderInfo } from './infoview';
+import { renderInfo, statsHtml } from './infoview';
 import { sensors } from './sensors';
 import { ScreenViewer } from '../common/screenViewer';
 
@@ -67,6 +68,7 @@ app.innerHTML = `
   <video id="tv-video" playsinline autoplay muted hidden></video>
   <header id="bar" hidden>
     <span id="dot"></span><span id="me"></span><span id="room"></span>
+    <button id="stats" class="bar-btn" aria-label="Classificação" hidden>📊</button>
     <button id="tv" class="bar-btn" aria-label="Ver o ecrã">📺</button>
     <button id="sensor" class="bar-btn" aria-label="Sensores">📵</button>
     <button id="menu" class="bar-btn" aria-label="Menu" hidden>☰</button>
@@ -80,6 +82,39 @@ app.innerHTML = `
 const $ = <T extends HTMLElement>(sel: string) => app.querySelector<T>(sel)!;
 const view = $('#view');
 $('#sensor').addEventListener('click', openSensorSheet);
+
+// ── Menu 📊: moedas, estrelas, itens e classificação (abre-se a qualquer altura) ──
+let gameStatus: Extract<HostToControllerMessage, { t: 'status' }>['status'] = null;
+let statsOpen = false;
+function renderStatsSheet(): void {
+  const sheet = $('#sheet');
+  if (!gameStatus) {
+    statsOpen = false;
+    sheet.hidden = true;
+    return;
+  }
+  sheet.hidden = false;
+  sheet.innerHTML = `
+    <div class="card sheet-card stats-sheet">
+      <h2>📊 ${escapeHtml(gameStatus.title)}</h2>
+      ${statsHtml(gameStatus.stats)}
+      <div class="iv-table">${gameStatus.rows
+        .map(
+          (r, i) => `<div class="iv-row ${r.me ? 'me' : ''}"><span class="iv-pos">${i + 1}</span><span class="iv-dot" style="background:${r.color}"></span>
+            <span class="iv-name">${escapeHtml(r.name)}${r.mark ? ` ${escapeHtml(r.mark)}` : ''}</span><span class="iv-val">${escapeHtml(r.value)}</span></div>`,
+        )
+        .join('')}</div>
+      <button id="st-close">Fechar</button>
+    </div>`;
+  sheet.querySelector('#st-close')!.addEventListener('click', () => {
+    statsOpen = false;
+    sheet.hidden = true;
+  });
+}
+$('#stats').addEventListener('click', () => {
+  statsOpen = true;
+  renderStatsSheet();
+});
 
 // ── Ver o ecrã grande no telemóvel (para quem joga fora de casa) ──
 const tvVideo = $<HTMLVideoElement>('#tv-video');
@@ -149,6 +184,11 @@ socket.on('controller:message', (msg) => {
       break;
     case 'ping':
       send({ t: 'pong', id: msg.id });
+      break;
+    case 'status':
+      gameStatus = msg.status;
+      $('#stats').hidden = !gameStatus;
+      if (statsOpen) renderStatsSheet();
       break;
   }
 });
@@ -294,6 +334,12 @@ function renderBar(): void {
 function renderLayout(): void {
   if (!me) return;
   const l = layout ?? { kind: 'wait', message: 'Estás dentro! Olha para o ecrã 👀' };
+  // O comando fica com a cor da personagem (fundo e destaques).
+  const color = 'color' in l ? l.color : undefined;
+  if (color) {
+    document.documentElement.style.setProperty('--player', color);
+    document.body.classList.add('tinted');
+  }
   switch (l.kind) {
     case 'wait':
       setView(`<div class="wait"><div class="pulse"></div><p>${escapeHtml(l.message)}</p></div>`);

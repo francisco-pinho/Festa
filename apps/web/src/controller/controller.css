@@ -1466,3 +1466,67 @@ body.watching .pad .stick-zone {
 }
 .iv-opt:disabled { opacity: 0.45; }
 .iv-opt.on { opacity: 1; outline: 3px solid #fff; }
+
+/* ── Comando na cor da personagem ── */
+body.tinted {
+  background:
+    radial-gradient(120% 90% at 50% 110%, color-mix(in srgb, var(--player) 55%, transparent), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--player) 22%, var(--bg)), var(--bg));
+  background-attachment: fixed;
+}
+body.tinted #bar {
+  background: color-mix(in srgb, var(--player) 30%, var(--panel));
+}
+body.tinted .pb:not(.off),
+body.tinted .db {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--player) 70%, transparent), inset 0 -4px 0 #0004;
+}
+
+/* Mapa em tempo real: bonecos a andar, símbolos, túneis e quem está a jogar */
+.boardview .bv-stats-slot { width: 100%; display: flex; justify-content: center; }
+.boardview .bv-p { transition: transform 0.32s ease-in-out; }
+.boardview .bv-tunnels line {
+  stroke: #ffffffaa;
+  stroke-width: 0.5;
+  stroke-dasharray: 1.4 1.2;
+  fill: none;
+}
+.boardview .bv-sym {
+  font-size: 1.5px;
+  text-anchor: middle;
+}
+.boardview .bv-halo {
+  fill: #ffd23f55;
+  stroke: #ffd23f;
+  stroke-width: 0.35;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bv-halo 0.9s ease-in-out infinite alternate;
+}
+@keyframes bv-halo {
+  to { transform: scale(1.25); opacity: 0.55; }
+}
+
+/* Menu 📊 (classificação a qualquer altura) */
+.stats-sheet {
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  gap: 10px;
+}
+.stats-sheet .iv-table { max-height: 50dvh; }
+
+/* Telemóvel deitado: estatísticas numa coluna à esquerda, mapa grande à direita */
+@media (orientation: landscape) {
+  .boardview {
+    display: grid;
+    grid-template-columns: minmax(150px, 26%) 1fr;
+    grid-template-rows: auto 1fr auto;
+    gap: 4px 12px;
+    align-items: stretch;
+  }
+  .boardview .bv-msg { grid-column: 1 / -1; }
+  .boardview .bv-stats-slot { grid-column: 1; grid-row: 2; align-self: center; }
+  .boardview .bv-stats-slot .iv-stats { grid-template-columns: 1fr 1fr; }
+  .boardview svg { grid-column: 2; grid-row: 2; height: 100%; }
+  .boardview .bv-hint { grid-column: 1 / -1; text-align: center; }
+}

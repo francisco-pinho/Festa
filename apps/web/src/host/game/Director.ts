@@ -321,6 +321,7 @@ export class Director {
           { id: 'party', label: '🎲 Festa', sub: 'Tabuleiro, estrelas, itens e minijogos' },
           { id: 'sports', label: '🏆 Desportos', sub: 'Bowling, ténis, golfe, boxe e basebol' },
           { id: 'settings', label: '⚙️ Definições' },
+          { id: 'quit', label: '🚪 Sair do jogo' },
         ],
       };
       const pickMode = await this.menus.ask(mainMenu);
@@ -332,6 +333,22 @@ export class Director {
       } else if (pickMode === 'settings') {
         this.menu.show('settings');
         while (this.menu.isOpen) await this.engine.wait(0.2);
+      } else if (pickMode === 'quit') {
+        const sure = await this.menus.ask({
+          player: leader,
+          keyboard: true,
+          title: 'Sair do jogo?',
+          options: [
+            { id: 'no', label: '↩ Não, continuar' },
+            { id: 'yes', label: '🚪 Sim, sair' },
+          ],
+        });
+        if (sure === 'yes') {
+          const app = (window as unknown as { festaDesktop?: { quit(): Promise<void> } }).festaDesktop;
+          if (app) await app.quit();
+          else this.hud.panel('<h1>Até à próxima! 👋</h1><p>Já podes fechar este separador.</p>');
+          await new Promise(() => undefined); // fica aqui até a janela fechar
+        }
       }
       render();
     }

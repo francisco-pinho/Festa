@@ -103,11 +103,16 @@ export const controllerLayoutSchema = z.discriminatedUnion('kind', [
     /** Ligações entre casas (índices em `spaces`). */
     links: z.array(z.tuple([z.number().int().min(0).max(249), z.number().int().min(0).max(249)])).max(500),
     players: z
-      .array(z.object({ x: coord, z: coord, color: hexColor, label: z.string().max(4), me: z.boolean().optional() }))
+      .array(z.object({ x: coord, z: coord, color: hexColor, label: z.string().max(4), me: z.boolean().optional(), active: z.boolean().optional() }))
       .max(10),
     star: z.tuple([coord, coord]).nullable(),
     /** As minhas estatísticas (moedas, estrelas, itens, lugar). */
     stats: statsSchema.optional(),
+    /** Símbolo de cada tipo de casa (mesmo índice que `palette`). */
+    symbols: z.array(z.string().max(4)).max(16).optional(),
+    /** Túneis, metro, elevadores… (desenhados a tracejado). */
+    tunnels: z.array(z.tuple([z.number().int().min(0).max(249), z.number().int().min(0).max(249)])).max(20).optional(),
+    color: hexColor.optional(),
   }),
   /**
    * Quando o comando não está a ser usado: o que interessa a este jogador agora
@@ -175,6 +180,17 @@ export const hostToControllerSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('toast'), text: z.string().max(120) }),
   /** Medição de atraso: o telemóvel responde logo com `pong`. */
   z.object({ t: z.literal('ping'), id: z.number().int().min(0) }),
+  /** Estado do jogo para o menu 📊 do telemóvel (abre-se a qualquer altura). `null` esconde o botão. */
+  z.object({
+    t: z.literal('status'),
+    status: z
+      .object({
+        title: z.string().max(80),
+        stats: statsSchema.optional(),
+        rows: z.array(z.object({ name: z.string().max(24), color: hexColor, value: z.string().max(32), me: z.boolean().optional(), mark: z.string().max(8).optional() })).max(10),
+      })
+      .nullable(),
+  }),
 ]);
 
 export const hostSendSchema = z.object({

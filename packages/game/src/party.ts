@@ -50,6 +50,12 @@ export interface PlayerStats {
   maxCoins: number;
   eventSpaces: number;
   redSpaces: number;
+  blueSpaces: number;
+  /** Casas andadas. */
+  steps: number;
+  itemsUsed: number;
+  shopSpent: number;
+  duelsWon: number;
 }
 
 export interface PartyPlayer {
@@ -118,7 +124,7 @@ export function createParty(
       stars: 0,
       spaceId: board.startId,
       color: null,
-      stats: { minigameCoins: 0, maxCoins: RULES.startCoins, eventSpaces: 0, redSpaces: 0 },
+      stats: { minigameCoins: 0, maxCoins: RULES.startCoins, eventSpaces: 0, redSpaces: 0, blueSpaces: 0, steps: 0, itemsUsed: 0, shopSpent: 0, duelsWon: 0 },
       items: [],
       slowDice: false,
     })),
@@ -246,6 +252,7 @@ export function resolveLanding(state: PartyState, p: PartyPlayer, rng: Rng): Lan
     case 'start':
     case 'lever':
       color = 'blue';
+      p.stats.blueSpaces++;
       effect = { kind: 'coins', amount: addCoins(p, RULES.blueCoins * mult) };
       break;
     case 'red':
@@ -518,6 +525,7 @@ export interface DuelResult {
 /** Quem perde o duelo dá moedas a quem ganha e recua casas. */
 export function resolveDuel(state: PartyState, winner: PartyPlayer, loser: PartyPlayer): DuelResult {
   const coins = stealCoins(loser, winner, RULES.duelCoins);
+  winner.stats.duelsWon++;
   const loserFrom = loser.spaceId;
   loser.spaceId = stepsBack(state.board, loser.spaceId, RULES.duelStepsBack);
   return { coins, loserFrom, loserTo: loser.spaceId };
@@ -779,37 +787,42 @@ export function awardMinigame(state: PartyState, winners: string[]): Map<string,
 // ── Fim da festa ──────────────────────────────────────────
 
 export interface BonusStar {
-  id: 'minigame' | 'rich' | 'event';
+  id: string;
   title: string;
   description: string;
   winners: string[];
 }
 
-export function bonusStars(state: PartyState): BonusStar[] {
+/** Todas as estrelas bónus possíveis; em cada festa sorteiam-se 3 (as clássicas sem sorteio). */
+export const BONUS_POOL: { id: string; title: string; description: string; value: (p: PartyPlayer) => number }[] = [
+  { id: 'minigame', title: 'Estrela dos Minijogos', description: 'Quem ganhou mais moedas em minijogos', value: (p) => p.stats.minigameCoins },
+  { id: 'rich', title: 'Estrela da Fortuna', description: 'Quem chegou a ter mais moedas', value: (p) => p.stats.maxCoins },
+  { id: 'event', title: 'Estrela da Aventura', description: 'Quem parou em mais casas especiais', value: (p) => p.stats.eventSpaces },
+  { id: 'unlucky', title: 'Estrela do Azar', description: 'Quem parou em mais casas vermelhas', value: (p) => p.stats.redSpaces },
+  { id: 'blue', title: 'Estrela Azul', description: 'Quem parou em mais casas azuis', value: (p) => p.stats.blueSpaces },
+  { id: 'walker', title: 'Estrela do Caminhante', description: 'Quem andou mais casas', value: (p) => p.stats.steps },
+  { id: 'stroll', title: 'Estrela do Passeio', description: 'Quem andou menos casas (com calma!)', value: (p) => (p.stats.steps > 0 ? 10_000 - p.stats.steps : 0) },
+  { id: 'shopper', title: 'Estrela das Compras', description: 'Quem gastou mais nas lojas', value: (p) => p.stats.shopSpent },
+  { id: 'items', title: 'Estrela dos Itens', description: 'Quem usou mais itens', value: (p) => p.stats.itemsUsed },
+  { id: 'duel', title: 'Estrela do Duelista', description: 'Quem ganhou mais duelos', value: (p) => p.stats.duelsWon },
+];
+
+const CLASSIC_BONUS = ['minigame', 'rich', 'event'];
+
+/**
+ * Estrelas bónus do fim. Com `rng`, sorteia 3 categorias diferentes da bolsa (mudam de festa
+ * para festa, e só entram categorias em que alguém pontuou); sem `rng`, as 3 clássicas.
+ */
+export function bonusStars(state: PartyState, rng?: Rng, count = 3): BonusStar[] {
   const top = (value: (p: PartyPlayer) => number) => {
     const max = Math.max(...state.players.map(value));
     return max > 0 ? state.players.filter((p) => value(p) === max).map((p) => p.id) : [];
   };
-  return [
-    {
-      id: 'minigame' as const,
-      title: 'Estrela dos Minijogos',
-      description: 'Quem ganhou mais moedas em minijogos',
-      winners: top((p) => p.stats.minigameCoins),
-    },
-    {
-      id: 'rich' as const,
-      title: 'Estrela da Fortuna',
-      description: 'Quem chegou a ter mais moedas',
-      winners: top((p) => p.stats.maxCoins),
-    },
-    {
-      id: 'event' as const,
-      title: 'Estrela da Aventura',
-      description: 'Quem parou em mais casas especiais',
-      winners: top((p) => p.stats.eventSpaces),
-    },
-  ].filter((b) => b.winners.length > 0);
+  const all = BONUS_POOL.map((b) => ({ id: b.id, title: b.title, description: b.description, winners: top(b.value) })).filter((b) => b.winners.length > 0);
+  if (!rng) return all.filter((b) => CLASSIC_BONUS.includes(b.id));
+  // Uma categoria que toda a gente empata não tem graça: fica de fora.
+  const useful = all.filter((b) => b.winners.length < state.players.length);
+  return rng.shuffle(useful.length >= count ? useful : all).slice(0, count);
 }
 
 export function applyBonusStars(state: PartyState, bonuses: BonusStar[]): void {

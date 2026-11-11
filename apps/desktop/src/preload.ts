@@ -4,4 +4,6 @@ import { contextBridge, ipcRenderer } from 'electron';
 contextBridge.exposeInMainWorld('festaDesktop', {
   /** Abre o túnel da Cloudflare; devolve o link público ou uma mensagem de erro. */
   goOnline: (): Promise<{ url?: string; error?: string }> => ipcRenderer.invoke('festa:goOnline'),
+  /** Fecha a app (opção «Sair do jogo» do menu principal). */
+  quit: (): Promise<void> => ipcRenderer.invoke('festa:quit'),
 });
