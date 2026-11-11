@@ -757,6 +757,19 @@ export class BaseballStage extends SportStage {
     );
   }
 
+  /** No telemóvel de quem espera: resultado da equipa, as minhas corridas, entrada e eliminados. */
+  protected override phoneStats(seat: Seat) {
+    const i = this.players.findIndex((p) => p.id === seat.id);
+    if (i < 0) return undefined;
+    const team = (i % 2) as 0 | 1;
+    return [
+      { icon: team === 0 ? '🔵' : '🔴', label: 'Resultado', value: `${this.game.runs[team]}–${this.game.runs[team === 0 ? 1 : 0]}` },
+      { icon: '🏃', label: 'As tuas corridas', value: String(this.runsByPlayer.get(seat.id) ?? 0) },
+      { icon: '⚾', label: 'Entrada', value: `${this.game.inning}${this.game.half === 0 ? '▲' : '▼'}` },
+      { icon: '❌', label: 'Eliminados', value: String(this.game.state.outs) },
+    ];
+  }
+
   // ── Por frame ───────────────────────────────────────────
 
   protected override tick(dt: number, time: number): void {

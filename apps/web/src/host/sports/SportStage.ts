@@ -8,7 +8,10 @@ import { CharacterModel } from '../three/CharacterModel';
 import { disposeObject } from '../three/materials';
 import { damp } from '../three/tweens';
 import { setupSky } from '../stages/environment';
+import type { ControllerLayout } from '@festa/shared';
 import type { HostLayout, Seat } from '../game/Seats';
+
+type Stats = NonNullable<Extract<ControllerLayout, { kind: 'info' }>['stats']>;
 import type { SportContext, SportRun, SportStanding } from './types';
 
 export abstract class SportStage implements SportRun {
@@ -22,6 +25,10 @@ export abstract class SportStage implements SportRun {
   private readonly camPosTarget = new THREE.Vector3(0, 6, 12);
   private readonly camLookTarget = new THREE.Vector3(0, 1, 0);
   private camSpeed = 3;
+  /** Último placar (também vai para os telemóveis de quem está à espera). */
+  private lastRows: { id: string; text: string; active?: boolean }[] = [];
+  /** Quem está à espera e com que mensagem (o ecrã de informação atualiza-se com o placar). */
+  private readonly waiting = new Map<string, string>();
 
   constructor(protected readonly ctx: SportContext) {
     this.sun = setupSky(this.scene);
@@ -66,6 +73,13 @@ export abstract class SportStage implements SportRun {
   }
 
   protected setLayout(seat: Seat, layout: HostLayout): void {
+    if (layout.kind === 'wait') {
+      // Em vez de um ecrã vazio: placar ao vivo e as minhas estatísticas.
+      this.waiting.set(seat.id, layout.message);
+      this.ctx.seats.setLayout(seat, this.phoneInfo(seat, layout.message));
+      return;
+    }
+    if (layout.kind !== 'info') this.waiting.delete(seat.id);
     this.ctx.seats.setLayout(seat, layout);
   }
 
@@ -73,8 +87,48 @@ export abstract class SportStage implements SportRun {
     for (const p of this.players) if (p.id !== except) this.setLayout(p, { kind: 'wait', message });
   }
 
+  /** Estatísticas deste jogador para o telemóvel (cada desporto escolhe as suas). */
+  protected phoneStats(_seat: Seat): Stats | undefined {
+    return undefined;
+  }
+
+  /** Aposta/pergunta para quem está a ver (opcional). */
+  protected phoneAsk(_seat: Seat): Extract<ControllerLayout, { kind: 'info' }>['ask'] {
+    return undefined;
+  }
+
+  private phoneInfo(seat: Seat, message: string): ControllerLayout {
+    return {
+      kind: 'info',
+      title: message,
+      stats: this.phoneStats(seat),
+      ask: this.phoneAsk(seat),
+      table: this.lastRows.length
+        ? {
+            title: 'Placar',
+            rows: this.lastRows.slice(0, 10).map((r) => {
+              const p = this.players.find((x) => x.id === r.id)!;
+              return { name: p.name, color: getCharacter(p.characterId).color, value: r.text.slice(0, 32), me: r.id === seat.id || undefined, mark: r.active ? '▶' : undefined };
+            }),
+          }
+        : undefined,
+      color: getCharacter(seat.characterId).color,
+    };
+  }
+
+  /** O placar mudou: atualiza os telemóveis de quem está à espera. */
+  protected refreshWaiting(): void {
+    for (const [id, msg] of this.waiting) {
+      const seat = this.players.find((p) => p.id === id);
+      if (seat) this.ctx.seats.setLayout(seat, this.phoneInfo(seat, msg));
+    }
+  }
+
   /** Placar à direita: uma linha por jogador com um texto de pontuação. */
   protected scoreboard(rows: { id: string; text: string; active?: boolean }[]): void {
+    const changed = JSON.stringify(rows) !== JSON.stringify(this.lastRows);
+    this.lastRows = rows;
+    if (changed) this.refreshWaiting();
     this.ctx.hud.setScoreboard(
       rows.map((r) => {
         const seat = this.players.find((p) => p.id === r.id)!;

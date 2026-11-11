@@ -3,6 +3,7 @@
  * casas com a cor do tipo, a estrela e toda a gente (eu a pulsar).
  */
 import type { ControllerLayout } from '@festa/shared';
+import { statsHtml } from './infoview';
 
 type BoardLayout = Extract<ControllerLayout, { kind: 'board' }>;
 
@@ -39,6 +40,7 @@ export function renderBoard(view: HTMLElement, l: BoardLayout): void {
   view.innerHTML = `
     <div class="boardview">
       <p class="bv-msg">${esc(l.message)}</p>
+      ${statsHtml(l.stats)}
       <svg viewBox="${minX} ${minZ} ${w} ${h}" preserveAspectRatio="xMidYMid meet">
         <g class="bv-links">${lines}</g>${dots}${star}${players}
       </svg>

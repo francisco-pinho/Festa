@@ -487,6 +487,19 @@ export class BowlingStage extends SportStage {
 
   // ── Placar ──────────────────────────────────────────────
 
+  /** No telemóvel de quem espera: pontos, jogada, strikes e spares. */
+  protected override phoneStats(seat: Seat) {
+    const frames = this.frames.get(seat.id) ?? [];
+    const strikes = frames.filter((f) => f[0] === 10).length;
+    const spares = frames.filter((f) => f[0] !== undefined && f[0] < 10 && f[0] + (f[1] ?? 0) === 10).length;
+    return [
+      { icon: '🎳', label: 'Pontos', value: String(runningTotal(frames, this.totalFrames)) },
+      { icon: '🧮', label: 'Jogada', value: `${Math.min(frames.length + 1, this.totalFrames)}/${this.totalFrames}` },
+      { icon: '💥', label: 'Strikes', value: String(strikes) },
+      { icon: '✨', label: 'Spares', value: String(spares) },
+    ];
+  }
+
   private updateScoreboard(activeId: string): void {
     this.scoreboard(
       this.players.map((p) => {

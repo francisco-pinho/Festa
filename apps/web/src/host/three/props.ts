@@ -117,6 +117,19 @@ export const PROPS = {
 /** Objetos interativos usados em todos os tabuleiros (baú do tesouro, canhão). */
 const BOARD_COMMON = ['kenney-pirate/chest', 'kenney-pirate/cannon'];
 
+/** Cenário comum dos minijogos (árvores, tendas, barris…). */
+export const MINIGAME_PROPS: readonly string[] = [
+  ...PROPS.trees,
+  ...PROPS.plants,
+  'kaykit-medieval/tent',
+  'kaykit-medieval/barrel',
+  'kaykit-medieval/crate_A_big',
+  'kaykit-medieval/flag_red',
+  'kenney-nature/tent_detailedOpen',
+  'kenney-pirate/barrel',
+  'kenney-pirate/crate',
+];
+
 /** Que modelos cada tema/desporto precisa. */
 export const THEME_PROPS: Record<string, readonly string[]> = {
   island: [...PROPS.palms, ...PROPS.sandRocks, ...PROPS.beach, ...PROPS.ships, ...PROPS.pirateBits, ...PROPS.plants, ...PROPS.rocks],

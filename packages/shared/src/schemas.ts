@@ -84,6 +84,9 @@ const legend = z.string().max(16).optional();
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const coord = z.number().min(-500).max(500);
 
+/** Cartões de estatísticas pessoais (moedas, pontos, lugar…). */
+const statsSchema = z.array(z.object({ label: z.string().max(24), value: z.string().max(24), icon: z.string().max(8).optional() })).max(6);
+
 export const controllerLayoutSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('wait'),
@@ -103,6 +106,33 @@ export const controllerLayoutSchema = z.discriminatedUnion('kind', [
       .array(z.object({ x: coord, z: coord, color: hexColor, label: z.string().max(4), me: z.boolean().optional() }))
       .max(10),
     star: z.tuple([coord, coord]).nullable(),
+    /** As minhas estatísticas (moedas, estrelas, itens, lugar). */
+    stats: statsSchema.optional(),
+  }),
+  /**
+   * Quando o comando não está a ser usado: o que interessa a este jogador agora
+   * (estatísticas, classificação ao vivo e, às vezes, uma aposta).
+   */
+  z.object({
+    kind: z.literal('info'),
+    title: z.string().max(80),
+    sub: z.string().max(160).optional(),
+    stats: statsSchema.optional(),
+    table: z
+      .object({
+        title: z.string().max(40).optional(),
+        rows: z.array(z.object({ name: z.string().max(24), color: hexColor, value: z.string().max(32), me: z.boolean().optional(), mark: z.string().max(8).optional() })).max(10),
+      })
+      .optional(),
+    /** Aposta/pergunta: os botões enviam `choice` com o id. */
+    ask: z
+      .object({
+        prompt: z.string().max(80),
+        options: z.array(z.object({ id: z.string().min(1).max(32), label: z.string().max(30), color: hexColor.optional() })).min(1).max(6),
+        chosen: z.string().max(32).optional(),
+      })
+      .optional(),
+    color: hexColor.optional(),
   }),
   z.object({
     kind: z.literal('pad'),

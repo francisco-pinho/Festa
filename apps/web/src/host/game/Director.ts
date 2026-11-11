@@ -536,7 +536,20 @@ export class Director {
         .join('')}</div>`);
     this.hud.panelElement().classList.add('compact');
     for (const st of standings) {
-      this.seatsCtl.setLayout(byId.get(st.id)!, { kind: 'wait', message: `Ficaste em ${st.rank}.º lugar (${st.score})` });
+      const seat = byId.get(st.id)!;
+      this.seatsCtl.setLayout(seat, {
+        kind: 'info',
+        title: st.rank === 1 ? `🏆 Ganhaste! ${def.emoji}` : `Ficaste em ${st.rank}.º lugar`,
+        sub: st.score,
+        table: {
+          title: `${def.emoji} ${def.name}`,
+          rows: standings.map((o) => {
+            const os = byId.get(o.id)!;
+            return { name: os.name, color: getCharacter(os.characterId).color, value: o.score.slice(0, 32), me: o.id === st.id || undefined, mark: o.rank === 1 ? '🏆' : undefined };
+          }),
+        },
+        color: getCharacter(seat.characterId).color,
+      });
     }
     const leader = this.leader;
     if (leader) this.hub.setLayout({ kind: 'pad', title: 'E agora?', sub: 'Escolhe no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher' } }, leader);

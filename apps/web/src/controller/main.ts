@@ -16,6 +16,7 @@ import type {
 import { ACK_TIMEOUT_MS, connectSocket } from '../common/socket';
 import { renderPad } from './pad';
 import { renderBoard } from './boardview';
+import { renderInfo } from './infoview';
 import { sensors } from './sensors';
 import { ScreenViewer } from '../common/screenViewer';
 
@@ -304,6 +305,10 @@ function renderLayout(): void {
     case 'board':
       setView('');
       renderBoard(view, l);
+      break;
+    case 'info':
+      setView('');
+      renderInfo(view, l, send);
       break;
   }
   shownLayout = layout;

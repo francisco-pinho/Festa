@@ -606,6 +606,18 @@ export class GolfStage extends SportStage {
     g.ball.position.set(g.pos.x, heightAt(this.hole, g.pos.x, g.pos.y) + BALL_R + 0.03, g.pos.y);
   }
 
+  /** No telemóvel de quem espera: buraco, pancadas, distância e resultado. */
+  protected override phoneStats(seat: Seat) {
+    const g = this.golfers.find((x) => x.seat.id === seat.id);
+    if (!g || !this.hole) return undefined;
+    return [
+      { icon: '⛳', label: `Par ${this.hole.par}`, value: this.hole.name.split(' · ')[0]!.replace('Buraco ', 'N.º ') },
+      { icon: '🏌', label: 'Pancadas', value: String(g.strokes) },
+      { icon: '📏', label: 'Até à bandeira', value: g.done ? '✔' : `${Math.round(this.distToHole(g))} m` },
+      { icon: '📊', label: 'Total', value: relativeToPar(g.total, g.par - (g.done ? 0 : this.hole.par)) },
+    ];
+  }
+
   private updateHud(activeId?: string): void {
     const windDir = Math.round(((Math.atan2(this.wind.x, -this.wind.y) * 180) / Math.PI + 360) % 360);
     this.ctx.hud.setRound(

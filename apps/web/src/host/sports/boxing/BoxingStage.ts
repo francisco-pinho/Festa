@@ -83,6 +83,10 @@ interface Spark {
 
 export class BoxingStage extends SportStage {
   private readonly records = new Map<string, FighterRecord>();
+  /** Apostas de quem está a ver: espectador → lutador em quem apostou. */
+  private readonly bets = new Map<string, string>();
+  private readonly betHits = new Map<string, number>();
+  private offBets: (() => void) | null = null;
   private fight: [Fighter, Fighter] | null = null;
   private fighting = false;
   private clock = 0;
@@ -111,7 +115,34 @@ export class BoxingStage extends SportStage {
     for (const p of ctx.players) this.records.set(p.id, { id: p.id, wins: 0, kos: 0, damage: 0 });
   }
 
+  /** No telemóvel: vitórias, KOs, dano e acertos nas apostas. */
+  protected override phoneStats(seat: Seat) {
+    const r = this.records.get(seat.id);
+    if (!r) return undefined;
+    return [
+      { icon: '🏆', label: 'Vitórias', value: String(r.wins) },
+      { icon: '💫', label: 'KO', value: String(r.kos) },
+      { icon: '💥', label: 'Dano dado', value: String(r.damage) },
+      { icon: '🔮', label: 'Apostas certas', value: String(this.betHits.get(seat.id) ?? 0) },
+    ];
+  }
+
+  /** Quem está a ver aposta em quem ganha o combate. */
+  protected override phoneAsk(seat: Seat) {
+    if (!this.fight || this.fight.some((f) => f.seat.id === seat.id)) return undefined;
+    const bet = this.bets.get(seat.id);
+    return {
+      prompt: 'Quem ganha este combate?',
+      options: this.fight.map((f) => ({ id: `bet:${f.seat.id}`, label: f.seat.name, color: getCharacter(f.seat.characterId).color })),
+      chosen: bet ? `bet:${bet}` : undefined,
+    };
+  }
+
   async play(): Promise<SportStanding[]> {
+    this.offBets = this.ctx.hub.events.on('choice', ({ player, id }) => {
+      if (!id.startsWith('bet:') || !this.fight || this.fight.some((f) => f.seat.id === player.id)) return;
+      if (!this.bets.has(player.id)) this.bets.set(player.id, id.slice(4));
+    });
     // Socos com os botões: A alterna jab/direto, X gancho, Y uppercut (B segura a defesa).
     this.offSwing = this.ctx.hub.events.on('press', ({ player, button }) => {
       const f = this.fight?.find((x) => x.seat.id === player.id);
@@ -139,6 +170,7 @@ export class BoxingStage extends SportStage {
       champion = await this.runFight(champion, this.players[i]!);
     }
     this.offSwing?.();
+    this.offBets?.();
     const ranked = boxingRanking([...this.records.values()]);
     return ranked.map((r) => ({
       id: r.id,
@@ -220,6 +252,14 @@ export class BoxingStage extends SportStage {
     rw.wins++;
     if (ko) rw.kos++;
     for (const f of this.fight) this.records.get(f.seat.id)!.damage += Math.round(f.damage);
+    // Apostas: quem acertou ganha um ponto de adivinho (e uma vibração).
+    for (const [spectator, pick] of this.bets) {
+      if (pick !== winner.seat.id) continue;
+      this.betHits.set(spectator, (this.betHits.get(spectator) ?? 0) + 1);
+      const seat = this.players.find((p) => p.id === spectator);
+      if (seat) this.ctx.seats.vibrate(seat, [40, 30, 40]);
+    }
+    this.bets.clear();
     winner.model.restAnim = 'idle';
     loser.model.restAnim = 'idle';
     winner.model.setAnim('cheer');

@@ -7,7 +7,7 @@
  */
 import { sound } from '../audio/Sound';
 import { narrator } from '../audio/Narrator';
-import { THEME_PROPS, loadProps } from '../three/props';
+import { MINIGAME_PROPS, THEME_PROPS, loadProps } from '../three/props';
 import * as THREE from 'three';
 import {
   ITEMS,
@@ -92,6 +92,8 @@ import type { DiceLayout, Seat, SeatControl } from './Seats';
 import { settings } from './Settings';
 
 const PATH_COLORS = ['#ffd23f', '#3fd0ff', '#ff6fb5'];
+/** Moedas para quem acerta no vencedor de um duelo (apostas no telemóvel). */
+const BET_COINS = 2;
 
 export interface PartyDeps {
   engine: Engine;
@@ -144,6 +146,32 @@ export class PartyFlow {
     for (const s of this.d.seats) if (s.id !== except) this.ctl.setLayout(s, this.state ? this.boardLayout(message, s.id) : { kind: 'wait', message });
   }
 
+  /** As minhas estatísticas para o telemóvel: moedas, estrelas, lugar e itens. */
+  private phoneStats(id: string): { icon: string; label: string; value: string }[] {
+    const p = getPlayer(this.state, id);
+    const rank = ranking(this.state).find((r) => r.player.id === id)?.rank ?? 0;
+    return [
+      { icon: '🪙', label: 'Moedas', value: String(p.coins) },
+      { icon: '⭐', label: 'Estrelas', value: String(p.stars) },
+      { icon: '🏅', label: 'Lugar', value: `${rank}.º` },
+      { icon: '🎒', label: 'Itens', value: p.items.map((i) => ITEMS[i].emoji).join('') || '—' },
+    ];
+  }
+
+  /** Classificação da festa (para o telemóvel), comigo destacado. */
+  private phoneTable(meId: string, extra?: (p: PartyPlayer) => string | undefined) {
+    return {
+      title: `Ronda ${this.state.round} / ${this.state.totalRounds}`,
+      rows: ranking(this.state).map((r) => ({
+        name: r.player.name,
+        color: getCharacter(r.player.characterId).color,
+        value: `⭐ ${r.player.stars} · 🪙 ${r.player.coins}`,
+        me: r.player.id === meId || undefined,
+        mark: extra?.(r.player),
+      })),
+    };
+  }
+
   /** Mapa em miniatura para o telemóvel de quem está à espera (com a posição de toda a gente). */
   private boardLayout(message: string, seatId: string): ControllerLayout {
     const board = this.state.board;
@@ -176,6 +204,7 @@ export class PartyFlow {
       links: links.slice(0, 500),
       players,
       star: star ? [r1(star.x), r1(star.z)] : null,
+      stats: this.phoneStats(seatId),
     };
   }
 
@@ -905,7 +934,30 @@ export class PartyFlow {
     this.stage.token(b.id).setAnim('block');
     await this.hud.banner(title, { sub: `${a.name} vs ${b.name} · quem perde dá ${RULES.duelCoins} 🪙 e recua ${RULES.duelStepsBack} casas`, hold: 2.2, color: '#ff6b7a' });
     const teams: MinigameTeams = { mode: 'ffa', blue: [a.id, b.id], red: [] };
-    const winners = await this.runMinigame([a, b], teams, title, true);
+    // Quem está de fora aposta no telemóvel (os bots apostam ao acaso).
+    const bets = new Map<string, string>();
+    const offBets = this.d.hub.events.on('choice', ({ player, id }) => {
+      if (!id.startsWith('bet:') || player.id === a.id || player.id === b.id || bets.has(player.id)) return;
+      if (this.state.players.some((p) => p.id === player.id)) bets.set(player.id, id.slice(4));
+    });
+    for (const p of this.state.players) if (p.isBot && p.id !== a.id && p.id !== b.id) bets.set(p.id, this.rng.next() < 0.5 ? a.id : b.id);
+    let winners: string[];
+    try {
+      winners = await this.runMinigame([a, b], teams, title, true);
+    } finally {
+      offBets();
+    }
+    if (winners.length === 1) {
+      const right = [...bets].filter(([, pick]) => pick === winners[0]).map(([id]) => getPlayer(this.state, id));
+      if (right.length) {
+        for (const p of right) {
+          addCoins(p, BET_COINS);
+          this.coinBurst(p.id, BET_COINS);
+        }
+        this.scoreboard();
+        await this.hud.banner('🔮 Apostas certas!', { sub: `${right.map((p) => p.name).join(', ')} ganha${right.length > 1 ? 'm' : ''} ${BET_COINS} 🪙`, hold: 1.6, color: '#b98cff' });
+      }
+    }
     this.stage.token(a.id).setAnim('idle');
     this.stage.token(b.id).setAnim('idle');
     if (winners.length !== 1) {
@@ -1100,9 +1152,17 @@ export class PartyFlow {
     await this.hud.banner('Minijogo!', { sub: MODE_LABEL[teams.mode], hold: 1.6, color: '#ffd23f' });
     const winners = await this.runMinigame(state.players, teams, null);
     const awarded = awardMinigame(state, winners);
-    for (const id of winners) {
-      this.ctl.vibrate(this.seat(id), [80, 50, 80]);
-      this.ctl.toast(this.seat(id), `Ganhaste! +${awarded.get(id) ?? 0} 🪙`);
+    for (const id of winners) this.ctl.vibrate(this.seat(id), [80, 50, 80]);
+    for (const p of state.players) {
+      const win = winners.includes(p.id);
+      this.ctl.setLayout(this.seat(p.id), {
+        kind: 'info',
+        title: win ? `🏆 Ganhaste! +${awarded.get(p.id) ?? 0} 🪙` : winners.length ? 'Desta vez não… 😅' : 'Ninguém ganhou!',
+        sub: 'Classificação depois do minijogo',
+        stats: this.phoneStats(p.id),
+        table: this.phoneTable(p.id, (o) => (winners.includes(o.id) ? '🏆' : undefined)),
+        color: getCharacter(p.characterId).color,
+      });
     }
     const sorted = [...state.players].sort((a, b) => Number(winners.includes(b.id)) - Number(winners.includes(a.id)));
     this.hud.panel(`
@@ -1154,7 +1214,18 @@ export class PartyFlow {
       <p><span class="controls">${esc(def.controls)}</span></p>
       <div class="timerbar"><div style="animation-duration:${INTRO}s"></div></div>`);
     for (const s of this.d.seats) {
-      if (!ids.has(s.id)) this.ctl.setLayout(s, { kind: 'wait', message: `A ver: ${def.name}` });
+      if (!ids.has(s.id))
+        this.ctl.setLayout(s, {
+          kind: 'info',
+          title: `A ver: ${def.name}`,
+          sub: duel ? `Duelo: ${players.map((p) => p.name).join(' vs ')} · aposta e ganha ${BET_COINS} 🪙 se acertares` : undefined,
+          stats: this.phoneStats(s.id),
+          ask: duel
+            ? { prompt: 'Quem ganha o duelo?', options: players.map((p) => ({ id: `bet:${p.id}`, label: p.name, color: getCharacter(p.characterId).color })) }
+            : undefined,
+          table: this.phoneTable(s.id),
+          color: getCharacter(s.characterId).color,
+        });
       else
         this.ctl.setLayout(s, {
           kind: 'gamepad',
@@ -1184,6 +1255,7 @@ export class PartyFlow {
     };
     for (const s of this.d.seats) s.botPad.reset();
     this.d.hub.clearPresses();
+    await loadProps(MINIGAME_PROPS);
     const run = def.create(ctx);
     this.engine.setStage(run, false);
 
@@ -1279,7 +1351,20 @@ export class PartyFlow {
         .join('')}</div>`);
     const panel = this.hud.panelElement();
     panel.classList.add('compact');
-    for (const r of ranked) this.ctl.setLayout(this.seat(r.player.id), { kind: 'wait', message: `Ficaste em ${r.rank}.º lugar com ${r.player.stars} ⭐!` });
+    for (const r of ranked)
+      this.ctl.setLayout(this.seat(r.player.id), {
+        kind: 'info',
+        title: r.rank === 1 ? '👑 Ganhaste a festa!' : `Ficaste em ${r.rank}.º lugar`,
+        sub: `${r.player.stars} ⭐ · ${r.player.coins} 🪙`,
+        stats: [
+          { icon: '🎮', label: 'Moedas em minijogos', value: String(r.player.stats.minigameCoins) },
+          { icon: '💰', label: 'Mais moedas', value: String(r.player.stats.maxCoins) },
+          { icon: '❗', label: 'Casas especiais', value: String(r.player.stats.eventSpaces) },
+          { icon: '🔴', label: 'Casas vermelhas', value: String(r.player.stats.redSpaces) },
+        ],
+        table: { title: 'Classificação final', rows: ranked.map((o) => ({ name: o.player.name, color: getCharacter(o.player.characterId).color, value: `⭐ ${o.player.stars} · 🪙 ${o.player.coins}`, me: o.player.id === r.player.id || undefined })) },
+        color: getCharacter(r.player.characterId).color,
+      });
     const vip = this.d.hub.vip;
     if (vip) this.d.hub.setLayout({ kind: 'pad', title: 'Obrigado por jogares!', sub: 'Escolhe no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher' } }, vip);
     await this.ctl.menus.ask({ player: vip ?? null, keyboard: true, title: 'Fim da festa', options: [{ id: 'lobby', label: '↩ Voltar ao menu principal' }] });
