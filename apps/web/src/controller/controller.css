@@ -1153,7 +1153,17 @@ button:disabled {
 .pb.off {
   opacity: 0.22;
 }
-.pad-top .pb {
+.pad-spacer {
+  min-width: 52px;
+}
+/* Botão − ao centro, em baixo (como o «select» de um comando) */
+.pad-bottom {
+  display: flex;
+  justify-content: center;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pad-top .pb,
+.pad-bottom .pb {
   min-width: 52px;
   height: 36px;
   border-radius: 18px;
@@ -1163,7 +1173,8 @@ button:disabled {
   gap: 6px;
   padding: 0 10px;
 }
-.pad-top .pb .legend {
+.pad-top .pb .legend,
+.pad-bottom .pb .legend {
   position: static;
   transform: none;
 }

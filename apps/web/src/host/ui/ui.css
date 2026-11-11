@@ -35,8 +35,7 @@
   width: clamp(220px, 21vw, 380px);
 }
 .score {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  display: flex;
   align-items: center;
   gap: 0.6vw;
   padding: 0.7vh 0.8vw;
@@ -61,7 +60,32 @@
   background: var(--c);
   border: 2px solid #fff;
 }
+.score .rank {
+  min-width: 2.2em;
+  text-align: center;
+  font-size: 0.85em;
+  color: #b9a9e8;
+}
+.score .rank.r1 { color: #ffd23f; }
+.score .rank.r2 { color: #dfe6f0; }
+.score .rank.r3 { color: #e0a36a; }
+.score .face {
+  width: 3.6vh;
+  height: 3.6vh;
+  min-width: 26px;
+  min-height: 26px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--c) 45%, #1d1433);
+  border: 2px solid var(--c);
+  object-fit: cover;
+  margin: -0.4vh 0;
+}
+.score.first .face {
+  box-shadow: 0 0 0 2px #ffd23f;
+}
 .score .name {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

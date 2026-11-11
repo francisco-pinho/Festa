@@ -136,6 +136,7 @@ export abstract class SportStage implements SportRun {
           id: r.id,
           name: seat.name,
           color: getCharacter(seat.characterId).color,
+          characterId: seat.characterId,
           active: !!r.active,
           isBot: seat.isBot,
           connected: seat.isBot || !this.ctx.seats.isAuto(seat),

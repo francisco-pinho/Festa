@@ -40,8 +40,8 @@ class ColorFloorRun extends ArenaMinigame {
   private sign: THREE.Sprite | null = null;
   private readonly bar: THREE.Mesh;
   private readonly falling = new Set<Actor>();
-  /** Ronda repetida (ninguém acertou): os azulejos não caem. */
-  private redo = false;
+  /** Quem estava em jogo antes da última queda (se caírem todos, empatam entre si). */
+  private lastAlive: Actor[] = [];
   /** Saltos (Ⓑ): tempo que falta no ar. Como no Fall Guys: Ⓐ mergulha, Ⓑ salta. */
   private readonly air = new Map<string, number>();
   /** Bots: quanto tempo ainda «pensam» antes de reagir à cor. */
@@ -122,7 +122,9 @@ class ColorFloorRun extends ArenaMinigame {
   }
 
   winners(): string[] {
-    const alive = this.actors.filter((a) => a.alive);
+    let alive = this.actors.filter((a) => a.alive);
+    // Ninguém acertou na última cor: caem todos os que restavam e empatam.
+    if (!alive.length) alive = this.lastAlive;
     if (this.ctx.mode === 'ffa') return alive.length === this.actors.length ? [] : alive.map((a) => a.seat.id);
     const count = (t: 'blue' | 'red') => alive.filter((a) => a.seat.team === t).length;
     if (count('blue') === count('red')) return [];
@@ -170,24 +172,23 @@ class ColorFloorRun extends ArenaMinigame {
         this.phase = 'drop';
         this.phaseT = 0;
         sound.play('whoosh');
-        // Quem não está num azulejo da cor certa cai — a não ser que caíssem todos os que restam:
-        // aí ninguém sai e repete-se («ninguém acertou!»).
+        // Quem não está num azulejo da cor certa cai. Se caírem todos os que restam, empatam.
+        this.lastAlive = this.actors.filter((a) => a.alive);
         const wrong = this.actors.filter((a) => {
           if (!a.alive) return false;
           const t = this.tileAt(a.pos.x, a.pos.z);
           return !t || t.color !== this.target;
         });
         const everyone = wrong.length === this.actors.filter((a) => a.alive).length;
-        this.redo = everyone && wrong.length > 0;
         if (everyone && wrong.length) {
-          const sign = textSprite('Ninguém acertou — outra vez!', { height: 1, color: '#ffffff', stroke: '#1d1433' });
+          const sign = textSprite('Ninguém acertou — empate!', { height: 1, color: '#ffffff', stroke: '#1d1433' });
           sign.position.set(0, 3, 0);
           this.scene.add(sign);
           setTimeout(() => this.scene.remove(sign), 1500);
         }
       }
     } else if (this.phase === 'drop') {
-      if (!this.redo) for (const t of this.tiles) if (t.color !== this.target) t.drop = Math.min(1, t.drop + dt * 2.5);
+      for (const t of this.tiles) if (t.color !== this.target) t.drop = Math.min(1, t.drop + dt * 2.5);
       // Enquanto os azulejos caem: quem está no chão por cima de um buraco vai à água
       // (um salto bem medido salva — e quem aterra num buraco cai).
       for (const a of this.actors) {

@@ -6,6 +6,7 @@ import { sound } from '../audio/Sound';
 import './ui.css';
 import type { Engine } from '../three/Engine';
 import { settings } from '../game/Settings';
+import { portrait } from '../three/portraits';
 
 export interface ScoreEntry {
   id: string;
@@ -19,6 +20,10 @@ export interface ScoreEntry {
   connected: boolean;
   /** Etiqueta pequena opcional (ex.: equipa). */
   tag?: string;
+  /** Personagem (para o retrato da cara ao lado do nome). */
+  characterId?: string;
+  /** Lugar atual (1.º, 2.º…), mostrado à esquerda. */
+  rank?: number;
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -64,17 +69,29 @@ export class Hud {
       this.board.innerHTML = '';
       return;
     }
+    // Animação FLIP: guarda onde estava cada linha para a fazer deslizar até ao novo lugar.
+    const before = new Map<string, number>();
+    for (const el of this.board.querySelectorAll<HTMLElement>('.score')) before.set(el.dataset.id!, el.getBoundingClientRect().top);
     this.board.innerHTML = entries
-      .map(
-        (e) => `
-        <div class="score ${e.active ? 'active' : ''} ${e.connected ? '' : 'away'}" style="--c:${e.color}">
-          <span class="dot"></span>
+      .map((e) => {
+        const face = e.characterId ? portrait(e.characterId) : '';
+        return `
+        <div class="score ${e.active ? 'active' : ''} ${e.connected ? '' : 'away'} ${e.rank === 1 ? 'first' : ''}" data-id="${esc(e.id)}" style="--c:${e.color}">
+          ${e.rank ? `<span class="rank r${e.rank}">${e.rank}.º</span>` : ''}
+          ${face ? `<img class="face" src="${face}" alt="">` : '<span class="dot"></span>'}
           <span class="name">${esc(e.name)}${e.isBot ? ' <small>CPU</small>' : ''}${e.tag && e.coins !== undefined ? ` <small>${esc(e.tag)}</small>` : ''}</span>
           <span class="stars">${e.stars !== undefined ? `⭐ ${e.stars}` : ''}</span>
           <span class="coins">${e.coins !== undefined ? `🪙 ${e.coins}` : esc(e.tag ?? '')}</span>
-        </div>`,
-      )
+        </div>`;
+      })
       .join('');
+    for (const el of this.board.querySelectorAll<HTMLElement>('.score')) {
+      const old = before.get(el.dataset.id!);
+      if (old === undefined) continue;
+      const dy = old - el.getBoundingClientRect().top;
+      if (Math.abs(dy) < 1) continue;
+      el.animate([{ translate: `0 ${dy}px` }, { translate: '0 0' }], { duration: 450, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    }
   }
 
   /** Faixa grande a meio do ecrã durante `hold` segundos. */

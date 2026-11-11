@@ -28,7 +28,7 @@ export function renderPad(view: HTMLElement, l: PadLayout, send: Send, stickSend
   view.innerHTML = `
     <div class="pad" style="${l.color ? `--accent:${l.color}` : ''}">
       <div class="pad-top">
-        ${btn('minus', '−')}
+        <span class="pad-spacer"></span>
         <div class="pad-title"><b>${esc(l.title)}</b>${l.sub ? `<small>${esc(l.sub)}</small>` : ''}</div>
         ${btn('plus', '+')}
       </div>
@@ -45,6 +45,7 @@ export function renderPad(view: HTMLElement, l: PadLayout, send: Send, stickSend
         </div>
         <div class="pad-face">${btn('x', 'X')}${btn('y', 'Y')}${btn('a', 'A')}${btn('b', 'B')}</div>
       </div>
+      <div class="pad-bottom">${btn('minus', '−')}</div>
     </div>`;
 
   // ── Botões ──────────────────────────────────────────────

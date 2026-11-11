@@ -228,9 +228,12 @@ export class PartyFlow {
   }
 
   private scoreboard(activeId: string | null = null): void {
-    const entries: ScoreEntry[] = this.state.players.map((p) => {
+    // Ordenado pela classificação atual (1.º lugar em cima).
+    const entries: ScoreEntry[] = ranking(this.state).map(({ player: p, rank }) => {
       const hp = this.ctl.hubPlayer(this.seat(p.id));
       return {
+        rank,
+        characterId: p.characterId,
         id: p.id,
         name: p.name,
         color: getCharacter(p.characterId).color,
@@ -1349,8 +1352,13 @@ export class PartyFlow {
       const updateHud = () => {
         const scores = new Map(run.scores().map((sc) => [sc.id, sc.value]));
         this.hud.setRound(`${totalRounds > 1 ? `Ronda ${round}/${totalRounds} · ` : ''}⏱ ${Math.ceil(run.timeLeft())}`);
+        // Em minijogos de várias rondas, ordena por rondas ganhas e depois pela classificação da festa.
+        const order = ranking(this.state).map((r) => r.player.id);
+        const sorted = [...players].sort((a, b) => (roundWins.get(b.id) ?? 0) - (roundWins.get(a.id) ?? 0) || order.indexOf(a.id) - order.indexOf(b.id));
         this.hud.setScoreboard(
-          players.map((p) => ({
+          sorted.map((p, i) => ({
+            rank: totalRounds > 1 && roundWins.size ? i + 1 - sorted.slice(0, i).filter((o) => (roundWins.get(o.id) ?? 0) === (roundWins.get(p.id) ?? 0)).length : undefined,
+            characterId: p.characterId,
             id: p.id,
             name: p.name,
             color: getCharacter(p.characterId).color,
