@@ -31,6 +31,7 @@ import {
 } from '@festa/game/sports/tennis';
 import type { SwingInput } from '@festa/shared';
 import { CharacterModel } from '../../three/CharacterModel';
+import { PROPS, pickProp, prop } from '../../three/props';
 import { disposeObject, mesh, textSprite, toon, toonUnique } from '../../three/materials';
 import { SportStage } from '../SportStage';
 import type { SportContext, SportStanding } from '../types';
@@ -672,6 +673,24 @@ export class TennisStage extends SportStage {
     this.scene.add(crowd);
     this.crowd = { mesh: crowd, base: spots, phase: spots.map(() => rnd() * Math.PI * 2) };
 
+    // Árvores e candeeiros à volta do estádio.
+    let tseed = 9;
+    const trnd = () => ((tseed = (tseed * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 26; i++) {
+      const th = (i / 26) * Math.PI * 2;
+      const t = pickProp(PROPS.trees, trnd(), { height: 6 + trnd() * 4 });
+      if (!t) break;
+      t.position.set(Math.cos(th) * 27, 0, Math.sin(th) * 30);
+      t.rotation.y = trnd() * 6;
+      this.scene.add(t);
+    }
+    for (const [x, z] of [[-14, 18], [14, 18], [-14, -18], [14, -18]] as const) {
+      const l = prop('kaykit-city/streetlight', { height: 7 });
+      if (!l) break;
+      l.position.set(x, 0, z);
+      l.rotation.y = Math.atan2(-x, -z);
+      this.scene.add(l);
+    }
     // Placar ao fundo.
     const canvas = document.createElement('canvas');
     canvas.width = 1024;

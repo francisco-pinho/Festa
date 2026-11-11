@@ -40,6 +40,7 @@ import {
   type Vec3,
 } from '@festa/game/sports/baseball';
 import { CharacterModel } from '../../three/CharacterModel';
+import { PROPS, pickProp, prop } from '../../three/props';
 import { disposeObject, mesh, textSprite, toon, toonUnique } from '../../three/materials';
 import { ease } from '../../three/tweens';
 import { SportStage } from '../SportStage';
@@ -1063,6 +1064,23 @@ export class BaseballStage extends SportStage {
     this.scene.add(crowd);
     this.crowd = { mesh: crowd, base: spots, phase: spots.map(() => rnd() * Math.PI * 2) };
 
+    // Árvores para lá da vedação e comida junto às bancadas.
+    let bseed = 21;
+    const brnd = () => ((bseed = (bseed * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 34; i++) {
+      const th = Math.PI * 0.75 + (i / 33) * Math.PI * 0.5;
+      const t = pickProp(PROPS.trees, brnd(), { height: 9 + brnd() * 6 });
+      if (!t) break;
+      const r = F + 10 + brnd() * 14;
+      t.position.set(Math.sin(th) * r, 0, Math.cos(th) * r);
+      this.scene.add(t);
+    }
+    for (const [x, z] of [[-26, 14], [26, 14]] as const) {
+      const f = prop('kaykit-restaurant/table_round_A_decorated', { height: 2.4 });
+      if (!f) break;
+      f.position.set(x, 0, z);
+      this.scene.add(f);
+    }
     // Torres de luz.
     for (const [x, z] of [[-60, 10], [60, 10], [-85, -70], [85, -70]] as const) {
       const pole = mesh(new THREE.CylinderGeometry(0.6, 0.9, 34), toon('#8a8f99'));

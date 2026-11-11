@@ -35,6 +35,7 @@ import {
 import { CharacterModel } from '../../three/CharacterModel';
 import { disposeObject, mesh, textSprite, toon, toonUnique } from '../../three/materials';
 import { bush, palmTree } from '../../stages/environment';
+import { PROPS, pickProp } from '../../three/props';
 import { SportStage } from '../SportStage';
 import { rankBy, type SportContext, type SportStanding } from '../types';
 import type { Seat } from '../../game/Seats';
@@ -693,7 +694,15 @@ export class GolfStage extends SportStage {
       if (lie === 'rough' && rng.next() < 0.6) continue;
       if (Math.hypot(x - hole.hole.x, z - hole.hole.z) < hole.greenRadius + 5) continue;
       if (Math.hypot(x, z) < 7) continue;
-      const tree = rng.next() < 0.6 ? palmTree(rng, 1 + rng.next() * 0.6) : bush(rng);
+      const r = rng.next();
+      const tree =
+        (r < 0.62
+          ? pickProp(rng.next() < 0.8 ? PROPS.trees : PROPS.treesFall, rng.next(), { height: 4 + rng.next() * 3.5 })
+          : r < 0.85
+            ? pickProp(PROPS.plants, rng.next(), { height: 0.7 + rng.next() * 0.8 })
+            : pickProp([...PROPS.rocks, ...PROPS.natureBits.filter((k) => /log|stump/.test(k))], rng.next(), { height: 0.6 + rng.next() * 1 })) ??
+        (rng.next() < 0.6 ? palmTree(rng, 1 + rng.next() * 0.6) : bush(rng));
+      tree.rotation.y = rng.next() * Math.PI * 2;
       tree.position.set(x, heightAt(hole, x, z), z);
       g.add(tree);
       placed++;

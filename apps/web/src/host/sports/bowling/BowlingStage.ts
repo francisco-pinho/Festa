@@ -15,6 +15,7 @@ import type { SwingInput } from '@festa/shared';
 import { CharacterModel } from '../../three/CharacterModel';
 import { disposeObject, mesh, textSprite, toon, toonUnique } from '../../three/materials';
 import { loadRapier } from '../../three/physics';
+import { prop } from '../../three/props';
 import { ease } from '../../three/tweens';
 import { SportStage } from '../SportStage';
 import { rankBy, type SportContext, type SportStanding } from '../types';
@@ -680,6 +681,24 @@ export class BowlingStage extends SportStage {
       this.scene.add(sofa, back);
       for (let i = 0; i < 5; i++) this.benchSpots.push(new THREE.Vector3(-3.6 + i * 1.8, 0.45, z - 0.05));
     }
+    // Mobília da sala de espera (KayKit Furniture e Restaurant).
+    const place = (key: string, size: { height?: number; width?: number }, x: number, z: number, rotY = Math.PI) => {
+      const o = prop(key, size);
+      if (!o) return;
+      o.position.set(x, key.includes('rug') ? -0.17 : -0.2, z);
+      o.rotation.y = rotY;
+      this.scene.add(o);
+    };
+    place('kaykit-furniture/rug_rectangle_stripes_A', { width: 12 }, 0, 10.4, 0);
+    for (const sx of [-1, 1]) {
+      place('kaykit-furniture/couch_pillows', { width: 3.6 }, sx * 7.4, 9.6, Math.PI);
+      place('kaykit-furniture/lamp_standing', { height: 2.6 }, sx * 9.6, 8.4);
+      place('kaykit-furniture/cactus_medium_A', { height: 1 }, sx * 9.2, 11.6);
+      place('kaykit-furniture/armchair', { width: 1.8 }, sx * 7.4, 12.2, Math.PI);
+    }
+    place('kaykit-furniture/table_low', { width: 2.2 }, 0, 13.4, 0);
+    place('kaykit-restaurant/food_burger', { height: 0.5 }, 0.3, 13.4, 0.4);
+    place('kaykit-furniture/shelf_B_large_decorated', { width: 3 }, -12, 14, Math.PI / 2);
     const table = mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.08, 20), toon('#e8e2f0'));
     table.position.set(5.6, 0.75, 9.2);
     const leg = mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.75), toon('#8a8f99'));

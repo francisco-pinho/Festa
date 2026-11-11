@@ -7,6 +7,7 @@
  */
 import { sound } from '../audio/Sound';
 import { narrator } from '../audio/Narrator';
+import { THEME_PROPS, loadProps } from '../three/props';
 import * as THREE from 'three';
 import {
   ITEMS,
@@ -165,6 +166,7 @@ export class PartyFlow {
       this.rng,
     );
     const state = this.state;
+    await loadProps(THEME_PROPS[board.theme] ?? []);
     this.stage = new BoardStage(this.engine, board, this.d.seats);
     this.engine.setStage(this.stage);
     this.stage.setFlags(state.flags);
@@ -1138,6 +1140,7 @@ export class PartyFlow {
       this.rng,
     );
     this.state.players.forEach((p, i) => (p.color = colors[i] ?? 'blue'));
+    await loadProps(THEME_PROPS[this.state.board.theme] ?? []);
     this.stage = new BoardStage(this.engine, this.state.board, this.d.seats);
     this.engine.setStage(this.stage);
     for (;;) await this.roundMinigame();
@@ -1157,6 +1160,7 @@ export class PartyFlow {
       1,
       this.rng,
     );
+    await loadProps(THEME_PROPS[this.state.board.theme] ?? []);
     this.stage = new BoardStage(this.engine, this.state.board, this.d.seats);
     this.engine.setStage(this.stage);
     await this.arrangeAll();

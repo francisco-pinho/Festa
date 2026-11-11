@@ -8,6 +8,7 @@ import { createRng, getSpace, type Board, type ShopKind, type Space } from '@fes
 import { canvasTexture, mesh, textSprite, toon, toonUnique } from '../three/materials';
 import { damp } from '../three/tweens';
 import { Clouds, Water, bush, palmTree, rock, setupSky } from './environment';
+import { PROPS, pickProp, prop } from '../three/props';
 
 export interface BoardTheme {
   readonly group: THREE.Group;
@@ -144,6 +145,8 @@ class IslandTheme implements BoardTheme {
   private waterTarget = -0.75;
   private bridgeTarget = 0;
   private doorTarget = 0;
+  /** Barcos a balançar na água. */
+  private readonly ships: THREE.Object3D[] = [];
 
   constructor(board: Board, scene: THREE.Scene) {
     setupSky(scene, { fog: [120, 320] });
@@ -224,8 +227,11 @@ class IslandTheme implements BoardTheme {
         const cave = new THREE.Group();
         const rng = createRng(id * 7);
         for (let i = 0; i < 7; i++) {
-          const r = rock(rng);
-          r.scale.setScalar(2 + rng.next() * 1.5);
+          const r = deco(PROPS.sandRocks, rng, { height: 2 + rng.next() * 1.6 }, () => {
+            const o = rock(rng);
+            o.scale.setScalar(2 + rng.next() * 1.5);
+            return o;
+          });
           r.position.set((rng.next() - 0.5) * 4, 0.2, -1.5 - rng.next() * 2);
           cave.add(r);
         }
@@ -266,11 +272,56 @@ class IslandTheme implements BoardTheme {
       if (!segs.every(([ax, az, bx, bz]) => distToSegment(x, z, ax, az, bx, bz) > 2.6)) continue;
       if (avoid.some((s) => Math.hypot(s.x - x, s.z - z) < 5)) continue;
       const r = rng.next();
-      const obj = r < 0.45 ? palmTree(rng, 0.8 + rng.next() * 0.6) : r < 0.8 ? bush(rng) : rock(rng);
+      const obj =
+        r < 0.45
+          ? deco(PROPS.palms, rng, { height: 4.2 + rng.next() * 2.2 }, () => palmTree(rng, 0.8 + rng.next() * 0.6))
+          : r < 0.72
+            ? deco(PROPS.plants, rng, { height: 0.6 + rng.next() * 0.8 }, () => bush(rng))
+            : r < 0.86
+              ? deco(PROPS.beach.slice(1, 5), rng, { height: 0.8 + rng.next() * 0.4 }, () => bush(rng))
+              : deco(PROPS.sandRocks, rng, { height: 1 + rng.next() * 1.2 }, () => rock(rng));
       obj.position.set(x, 0, z);
-      obj.rotation.y = rng.next() * Math.PI * 2;
       this.group.add(obj);
       placed++;
+    }
+    // Barcos ao largo, cais, torre de vigia e bandeira pirata na praia.
+    const ringPoint = (k: number, extra: number) => {
+      const th = k * Math.PI * 2;
+      return new THREE.Vector3(cx + Math.cos(th) * (a + extra), 0, cz + Math.sin(th) * (b + extra));
+    };
+    [0.08, 0.42, 0.7].forEach((k, i) => {
+      const ship = pickProp(PROPS.ships, i / 3, { height: 9 + i });
+      if (!ship) return;
+      const at = ringPoint(k, 16 + i * 4);
+      ship.position.copy(at).setY(-1.6);
+      ship.rotation.y = Math.atan2(at.x - cx, at.z - cz) + Math.PI / 2;
+      this.ships.push(ship);
+      this.group.add(ship);
+    });
+    [0.25, 0.9].forEach((k) => {
+      const dock = prop('kenney-pirate/structure-platform-dock', { width: 5 });
+      if (!dock) return;
+      const at = ringPoint(k, 3.5);
+      dock.position.copy(at).setY(-0.9);
+      dock.rotation.y = Math.atan2(at.x - cx, at.z - cz);
+      this.group.add(dock);
+      const boat = prop('kenney-pirate/boat-row-small', { width: 3 });
+      if (boat) {
+        boat.position.copy(ringPoint(k + 0.015, 6)).setY(-0.7);
+        boat.rotation.y = dock.rotation.y + 1.2;
+        this.ships.push(boat);
+        this.group.add(boat);
+      }
+    });
+    const tower = prop('kenney-pirate/tower-watch', { height: 6 });
+    if (tower) {
+      tower.position.copy(ringPoint(0.58, -3));
+      this.group.add(tower);
+    }
+    const flag = prop('kenney-pirate/flag-pirate-high', { height: 5 });
+    if (flag) {
+      flag.position.copy(ringPoint(0.12, -2.5));
+      this.group.add(flag);
     }
     scene.add(this.group);
   }
@@ -289,6 +340,11 @@ class IslandTheme implements BoardTheme {
     this.water.mesh.position.y += (this.waterTarget - this.water.mesh.position.y) * k;
     this.bridge.position.y += (this.bridgeTarget - this.bridge.position.y) * k;
     for (const d of this.caveDoors) d.position.y += (0.7 + this.doorTarget - d.position.y) * k;
+    this.ships.forEach((sh, i) => {
+      const big = (sh.userData.prop as string | undefined)?.includes('ship') ?? false;
+      sh.position.y = this.water.mesh.position.y + (big ? -0.9 : 0.05) + Math.sin(time * 0.9 + i) * 0.15;
+      sh.rotation.z = Math.sin(time * 0.7 + i * 2) * 0.04;
+    });
     this.water.update(time);
     this.clouds.update(dt);
   }
@@ -353,6 +409,13 @@ function tunnelCurve(board: Board, t: Board['tunnels'][number]): THREE.CatmullRo
   const b = getSpace(board, t.to);
   const kind = t.kind === 'coaster' ? 'coaster' : t.kind === 'elevator' ? 'elevator' : 'cart';
   return rideCurve(new THREE.Vector3(a.x, 0.32 + (a.y ?? 0), a.z), new THREE.Vector3(b.x, 0.32 + (b.y ?? 0), b.z), kind);
+}
+
+/** Modelo de cenário rodado ao acaso; se não estiver carregado usa `fallback`. */
+function deco(keys: readonly string[], rng: ReturnType<typeof createRng>, size: { height?: number; width?: number }, fallback: () => THREE.Object3D): THREE.Object3D {
+  const o = pickProp(keys, rng.next(), size) ?? fallback();
+  o.rotation.y = rng.next() * Math.PI * 2;
+  return o;
 }
 
 function decorate(board: Board, group: THREE.Group, area: { cx: number; cz: number; w: number; d: number }, count: number, seed: number, make: (rng: ReturnType<typeof createRng>) => THREE.Object3D, clearance = 2.8, skip?: (x: number, z: number) => boolean): void {
@@ -474,10 +537,12 @@ class VolcanoTheme implements BoardTheme {
     decorate(board, this.group, { cx: 0, cz: 0, w: 140, d: 140 }, 110, 77, (rng) => {
       const r = rng.next();
       if (r < 0.55) {
-        const o = rock(rng);
-        o.scale.setScalar(1 + rng.next() * 1.4);
-        (o.material as THREE.Material) = toon(rng.next() < 0.5 ? '#5b4a44' : '#7a665a');
-        return o;
+        return deco(rng.next() < 0.5 ? PROPS.tallRocks : PROPS.rocks, rng, { height: 1.2 + rng.next() * 3 }, () => {
+          const o = rock(rng);
+          o.scale.setScalar(1 + rng.next() * 1.4);
+          (o.material as THREE.Material) = toon(rng.next() < 0.5 ? '#5b4a44' : '#7a665a');
+          return o;
+        });
       }
       if (r < 0.8) {
         const g = new THREE.Group();
@@ -490,15 +555,47 @@ class VolcanoTheme implements BoardTheme {
         }
         return g;
       }
-      const tree = new THREE.Group();
-      const trunk = mesh(new THREE.CylinderGeometry(0.12, 0.2, 2.6, 6), toon('#3a2a22'));
-      trunk.position.y = 1.3;
-      const branch = mesh(new THREE.CylinderGeometry(0.06, 0.1, 1.2, 5), toon('#3a2a22'));
-      branch.position.set(0.35, 2, 0);
-      branch.rotation.z = -0.8;
-      tree.add(trunk, branch);
-      return tree;
+      return deco(PROPS.deadTrees, rng, { height: 3 + rng.next() * 2 }, () => {
+        const tree = new THREE.Group();
+        const trunk = mesh(new THREE.CylinderGeometry(0.12, 0.2, 2.6, 6), toon('#3a2a22'));
+        trunk.position.y = 1.3;
+        const branch = mesh(new THREE.CylinderGeometry(0.06, 0.1, 1.2, 5), toon('#3a2a22'));
+        branch.position.set(0.35, 2, 0);
+        branch.rotation.z = -0.8;
+        tree.add(trunk, branch);
+        return tree;
+      });
     }, 2.6, (x, z) => Math.hypot(x, z) < 16);
+    // Montanhas à volta e acampamento dos mineiros junto à mina.
+    const mrng = createRng(5);
+    for (let i = 0; i < 12; i++) {
+      const th = (i / 12) * Math.PI * 2 + mrng.next() * 0.2;
+      const m = pickProp(PROPS.mountains, mrng.next(), { height: 18 + mrng.next() * 14 });
+      if (!m) break;
+      m.position.set(Math.cos(th) * (80 + mrng.next() * 12), -1, Math.sin(th) * (80 + mrng.next() * 12));
+      m.rotation.y = mrng.next() * Math.PI * 2;
+      this.group.add(m);
+    }
+    const mine = board.spaces.filter((sp) => sp.zone === 'mine');
+    if (mine.length) {
+      const first = mine[0]!;
+      const out = outward(first, 0, 0);
+      const house = prop('kaykit-medieval/building_mine_red', { height: 4.5 });
+      if (house) {
+        house.position.set(first.x + out.x * 4.5, 0, first.z + out.y * 4.5);
+        house.rotation.y = Math.atan2(-out.x, -out.y);
+        this.group.add(house);
+      }
+      PROPS.camp.forEach((key, i) => {
+        const mid = mine[Math.floor((i / PROPS.camp.length) * mine.length)]!;
+        const o = outward(mid, 0, 0);
+        const c = prop(key, { height: key.includes('tent') ? 2.4 : key.includes('flag') ? 2.6 : 1 });
+        if (!c) return;
+        c.position.set(mid.x + o.x * 3.2, 0, mid.z + o.y * 3.2);
+        c.rotation.y = i;
+        this.group.add(c);
+      });
+    }
     scene.add(this.group);
   }
 
@@ -628,27 +725,66 @@ class CastleTheme implements BoardTheme {
       this.doors.push({ gate, door: pivot });
     }
     shopsFor(board, this.group, 0, -6, false);
+    const b0 = boundsOf(board.spaces);
     // Fantasma
     this.ghost = textSprite('👻', { height: 2.4 });
     this.group.add(this.ghost);
     // Árvores secas e lápides à volta
     decorate(board, this.group, { cx: 0, cz: -4, w: 120, d: 110 }, 60, 13, (rng) => {
-      if (rng.next() < 0.5) {
-        const g = new THREE.Group();
-        const stone = mesh(new THREE.BoxGeometry(0.9, 1.2, 0.25), toon('#8a8f99'));
-        stone.position.y = 0.6;
-        g.add(stone);
-        g.rotation.y = rng.next();
-        return g;
+      const r = rng.next();
+      if (r < 0.45) {
+        return deco(PROPS.graveyard, rng, { height: 1.3 + rng.next() * 0.6 }, () => {
+          const g = new THREE.Group();
+          const stone = mesh(new THREE.BoxGeometry(0.9, 1.2, 0.25), toon('#8a8f99'));
+          stone.position.y = 0.6;
+          g.add(stone);
+          return g;
+        });
       }
-      const tree = new THREE.Group();
-      const trunk = mesh(new THREE.CylinderGeometry(0.15, 0.25, 3, 6), toon('#2b2224'));
-      trunk.position.y = 1.5;
-      const top = mesh(new THREE.SphereGeometry(1.2, 6, 5), toon('#3a2a4d'));
-      top.position.y = 3.4;
-      tree.add(trunk, top);
-      return tree;
+      if (r < 0.62) {
+        const keys = PROPS.spooky.filter((k) => /lantern|pumpkin|skull|candle|coffin|bone|ribcage/.test(k));
+        return deco(keys, rng, { height: 0.9 + rng.next() * 0.8 }, () => new THREE.Group());
+      }
+      return deco(PROPS.deadTrees, rng, { height: 4 + rng.next() * 2.5 }, () => {
+        const tree = new THREE.Group();
+        const trunk = mesh(new THREE.CylinderGeometry(0.15, 0.25, 3, 6), toon('#2b2224'));
+        trunk.position.y = 1.5;
+        const top = mesh(new THREE.SphereGeometry(1.2, 6, 5), toon('#3a2a4d'));
+        top.position.y = 3.4;
+        tree.add(trunk, top);
+        return tree;
+      });
     }, 4);
+    // Ao fundo: o castelo e as torres; à frente, a cripta e o portão do cemitério.
+    const castle = prop('kaykit-medieval/building_castle_red', { height: 26 });
+    if (castle) {
+      castle.position.set(0, -0.5, b0.minZ - 26);
+      this.group.add(castle);
+      for (const sx of [-1, 1]) {
+        const t = prop('kaykit-medieval/building_tower_B_red', { height: 18 });
+        if (!t) continue;
+        t.position.set(sx * 28, -0.5, b0.minZ - 18);
+        this.group.add(t);
+      }
+    }
+    const crypt = prop('kaykit-halloween/crypt', { height: 7 });
+    if (crypt) {
+      crypt.position.set(b0.maxX + 14, 0, b0.maxZ - 4);
+      crypt.rotation.y = -Math.PI / 2;
+      this.group.add(crypt);
+    }
+    const gateArch = prop('kaykit-halloween/arch_gate', { height: 5 });
+    if (gateArch) {
+      gateArch.position.set(0, 0, b0.maxZ + 10);
+      this.group.add(gateArch);
+      for (let i = 1; i <= 5; i++)
+        for (const sx of [-1, 1]) {
+          const f = prop('kaykit-halloween/fence', { width: 4 });
+          if (!f) continue;
+          f.position.set(sx * (2.1 + i * 4), 0, b0.maxZ + 10);
+          this.group.add(f);
+        }
+    }
     scene.add(this.group);
   }
 
@@ -759,15 +895,24 @@ class ParkTheme implements BoardTheme {
     // Tendas, balões e bancas
     decorate(board, this.group, { cx: 0, cz: 0, w: (maxX - minX) + 40, d: (maxZ - minZ) + 40 }, 70, 21, (rng) => {
       const r = rng.next();
-      if (r < 0.35) {
-        const g = new THREE.Group();
-        const color = rng.pick(['#ff5a5f', '#3fa7ff', '#b36bff', '#4cd964']);
-        const tent = mesh(new THREE.ConeGeometry(2, 2.6, 8), toonUnique(color));
-        tent.position.y = 1.3;
-        const flag = mesh(new THREE.ConeGeometry(0.25, 0.6, 4), toon('#ffd23f'));
-        flag.position.y = 2.9;
-        g.add(tent, flag);
-        return g;
+      if (r < 0.3) {
+        const stalls = PROPS.park.filter((k) => k.includes('stall'));
+        const food = PROPS.food.filter((k) => k.includes('table'));
+        return deco(rng.next() < 0.75 ? stalls : food, rng, { height: 3.2 + rng.next() * 0.6 }, () => {
+          const g = new THREE.Group();
+          const color = rng.pick(['#ff5a5f', '#3fa7ff', '#b36bff', '#4cd964']);
+          const tent = mesh(new THREE.ConeGeometry(2, 2.6, 8), toonUnique(color));
+          tent.position.y = 1.3;
+          const flag = mesh(new THREE.ConeGeometry(0.25, 0.6, 4), toon('#ffd23f'));
+          flag.position.y = 2.9;
+          g.add(tent, flag);
+          return g;
+        });
+      }
+      if (r < 0.42) {
+        const bits = [...PROPS.park.filter((k) => /bench|trash|flowers/.test(k)), 'kaykit-city/streetlight'];
+        const key = bits[Math.floor(rng.next() * bits.length)]!;
+        return deco([key], rng, key.includes('streetlight') ? { height: 4.2 } : key.includes('flowers') ? { width: 2.4 } : { height: 1 }, () => new THREE.Group());
       }
       if (r < 0.65) {
         const g = new THREE.Group();
@@ -780,8 +925,24 @@ class ParkTheme implements BoardTheme {
         this.balloons.push(balloon);
         return g;
       }
-      return palmTree(rng, 0.8 + rng.next() * 0.4);
+      return deco([...PROPS.park.filter((k) => k.includes('tree')), ...PROPS.trees.slice(0, 4)], rng, { height: 3.5 + rng.next() * 2 }, () => palmTree(rng, 0.8 + rng.next() * 0.4));
     }, 3);
+    // Entrada do parque junto à partida e moinhos de minigolfe.
+    const start = getSpace(board, board.startId);
+    const entrance = prop('kenney-coaster/park-entrance', { width: 9 });
+    if (entrance) {
+      const o = outward(start, (minX + maxX) / 2, (minZ + maxZ) / 2);
+      entrance.position.set(start.x + o.x * 5, 0, start.z + o.y * 5);
+      entrance.rotation.y = Math.atan2(o.x, o.y);
+      this.group.add(entrance);
+    }
+    [[maxX + 14, minZ + 6], [minX - 14, maxZ - 6]].forEach(([x, z], i) => {
+      const w = prop(i ? 'kenney-minigolf/structure-windmill' : 'kenney-minigolf/windmill', { height: 6 });
+      if (!w) return;
+      w.position.set(x!, 0, z!);
+      w.rotation.y = i * 2;
+      this.group.add(w);
+    });
     scene.add(this.group);
   }
 
@@ -867,6 +1028,15 @@ class CityTheme implements BoardTheme {
         if (!segs.every(([ax, az, bx, bz]) => distToSegment(px, pz, ax, az, bx, bz) > 4.6)) continue;
         if (avoid.some((s) => Math.hypot(s.x - px, s.z - pz) < 6)) continue;
         const inside = px > minX && px < maxX && pz > minZ && pz < maxZ;
+        if (inside && rng.next() < 0.8) {
+          const b = pickProp(PROPS.buildings, rng.next(), { width: 4.4 });
+          if (b) {
+            b.position.set(px, 0, pz);
+            b.rotation.y = Math.floor(rng.next() * 4) * (Math.PI / 2);
+            this.group.add(b);
+            continue;
+          }
+        }
         const h = inside ? 3 + rng.next() * 7 : 6 + rng.next() * 16;
         const tex = texes[Math.floor(rng.next() * texes.length)]!.clone();
         tex.needsUpdate = true;
@@ -937,6 +1107,26 @@ class CityTheme implements BoardTheme {
       this.group.add(building);
     }
 
+    // Candeeiros, carros estacionados, bancos e pormenores ao longo das ruas.
+    const srng = createRng(77);
+    segs.forEach(([ax, az, bx, bz], i) => {
+      if (i % 2) return;
+      const len = Math.hypot(bx - ax, bz - az) || 1;
+      const nx = -(bz - az) / len;
+      const nz = (bx - ax) / len;
+      const side = srng.next() < 0.5 ? -1 : 1;
+      const mx = (ax + bx) / 2 + nx * 2.3 * side;
+      const mz = (az + bz) / 2 + nz * 2.3 * side;
+      if (avoid.some((sp) => Math.hypot(sp.x - mx, sp.z - mz) < 3)) return;
+      const r = srng.next();
+      const key = r < 0.4 ? 'kaykit-city/streetlight' : r < 0.65 ? PROPS.cars[Math.floor(srng.next() * PROPS.cars.length)]! : r < 0.8 ? 'kaykit-city/bench' : r < 0.9 ? 'kaykit-city/firehydrant' : 'kaykit-city/dumpster';
+      const size = key.includes('streetlight') ? { height: 4.4 } : key.includes('car') ? { width: 2.6 } : key.includes('bench') ? { width: 1.8 } : key.includes('hydrant') ? { height: 0.8 } : { width: 1.6 };
+      const o = prop(key, size);
+      if (!o) return;
+      o.position.set(mx, 0, mz);
+      o.rotation.y = Math.atan2(bx - ax, bz - az) + (key.includes('car') ? 0 : side > 0 ? Math.PI / 2 : -Math.PI / 2);
+      this.group.add(o);
+    });
     // Candeeiros
     for (let i = 0; i < 6; i++) {
       const s = board.spaces[Math.floor((i / 6) * board.spaces.length)]!;

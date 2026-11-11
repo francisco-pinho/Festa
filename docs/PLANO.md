@@ -263,9 +263,9 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [x] Comando: cruz e botões encostados às pontas do ecrã; boxe com câmara de lado que só acompanha para os lados e cordas da frente quase transparentes quando os lutadores se aproximam
 
 ### Fase 9 — Cenários novos (pedido 19)
-- [ ] Packs de cenários CC0 (KayKit, Kenney, Quaternius — descarregados dos sites oficiais) para árvores, rochas, casas, mobiliário, adereços
-- [ ] Refazer cada tabuleiro com os modelos novos, iluminação e pormenores (água animada, luzes, partículas)
-- [ ] Refazer os cenários dos desportos: salão de bowling, ringue, estádio, campo de golfe, campo de ténis
+- [x] Packs de cenários CC0 (5 da KayKit e 4 da Kenney, dos sites oficiais; 174 modelos, ~6 MB) — ver `docs/ASSETS.md`
+- [~] Tabuleiros com os modelos novos: ilha (palmeiras, barcos a balançar, cais, torre), cidade (prédios, carros, candeeiros), vulcão (montanhas, rochas, acampamento), castelo (castelo e torres ao fundo, cripta, cemitério), parque (bancas, entrada, mesas, moinhos) — faltam mais luzes e partículas
+- [~] Desportos: golfe (árvores, plantas, rochas), bowling (sala de espera mobilada), ténis e basebol (árvores e candeeiros à volta) — o ringue de boxe ficou como estava
 
 ### Fase 10 — Tabuleiros mais complexos (pedido 20)
 - [ ] Mais caminhos e cruzamentos por mapa (e caminhos de sentido único, atalhos pagos, caminhos que abrem/fecham)
@@ -309,3 +309,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-12 | Fase 7: sons e música gerados (Web Audio), volume nas definições | `fase7-polimento` | ✔ (falta testar com telemóveis reais) |
 | 2026-11-12 | Fase 8: comando único estilo Switch, menus no ecrã grande, menu principal com personagens, golfe por botões, gestos no fim do movimento, vibração; corrige a cabeça a abanar nas animações triste/tonto | `fase8-comando` | ✔ (testado com telemóvel simulado e teclado) |
 | 2026-11-12 | Narrador com corpo e voz; comandos nas pontas do telemóvel; câmara e cordas do boxe | `fase8-comando` | ✔ (voz não confirmada a ouvir) |
+| 2026-11-12 | Fase 9: cenários com modelos CC0 (KayKit e Kenney) nos 5 tabuleiros e em 4 desportos | `fase9-cenarios` | ✔ (primeira passagem) |

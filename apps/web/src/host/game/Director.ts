@@ -8,6 +8,7 @@
  */
 import { sound } from '../audio/Sound';
 import { narrator } from '../audio/Narrator';
+import { THEME_PROPS, loadProps } from '../three/props';
 import QRCode from 'qrcode';
 import * as THREE from 'three';
 import { BOARDS, CHARACTERS, RULES, createRng, getCharacter, seatCount, type MinigameMode, type Rng } from '@festa/game';
@@ -457,6 +458,7 @@ export class Director {
     await Promise.all([this.engine.wait(2.5), narrator.say(def.narration)]);
     this.hud.panel(null);
 
+    await loadProps(THEME_PROPS[def.id] ?? []);
     const run = def.create({
       engine: this.engine,
       hud: this.hud,
