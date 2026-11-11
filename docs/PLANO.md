@@ -259,6 +259,9 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [x] Depois: o VIP escolhe **Festa**, **Desportos** ou **Definições**; só na Festa aparecem mapa, rondas e bots
 - [x] A personagem fica para todos os jogos até sair da sala (dá para trocar no menu principal com B)
 
+- [x] **Narrador** («Zé Microfone»): personagem 3D com microfone que explica as regras da festa e do mapa, cada minijogo/duelo e cada desporto antes de começar; fala em voz alta (voz do browser em português de Portugal), gesticula e acena a cada palavra; «−» salta; música baixa enquanto fala; pode desligar-se nas definições
+- [x] Comando: cruz e botões encostados às pontas do ecrã; boxe com câmara de lado que só acompanha para os lados e cordas da frente quase transparentes quando os lutadores se aproximam
+
 ### Fase 9 — Cenários novos (pedido 19)
 - [ ] Packs de cenários CC0 (KayKit, Kenney, Quaternius — descarregados dos sites oficiais) para árvores, rochas, casas, mobiliário, adereços
 - [ ] Refazer cada tabuleiro com os modelos novos, iluminação e pormenores (água animada, luzes, partículas)
@@ -305,3 +308,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-12 | Fase 6: ténis (física com Magnus, voleis e smashes, topspin/slice pelo gesto, serviço com faltas, estádio) | `fase6-tenis` | ✔ (falta testar no telemóvel) |
 | 2026-11-12 | Fase 7: sons e música gerados (Web Audio), volume nas definições | `fase7-polimento` | ✔ (falta testar com telemóveis reais) |
 | 2026-11-12 | Fase 8: comando único estilo Switch, menus no ecrã grande, menu principal com personagens, golfe por botões, gestos no fim do movimento, vibração; corrige a cabeça a abanar nas animações triste/tonto | `fase8-comando` | ✔ (testado com telemóvel simulado e teclado) |
+| 2026-11-12 | Narrador com corpo e voz; comandos nas pontas do telemóvel; câmara e cordas do boxe | `fase8-comando` | ✔ (voz não confirmada a ouvir) |

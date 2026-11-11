@@ -7,6 +7,7 @@
  * escolhas aparecem no ecrã grande (ScreenMenus).
  */
 import { getCharacter } from '@festa/game';
+import { narrator } from '../audio/Narrator';
 import type { ButtonId, ControllerLayout, MotionAction, PadLayout, SwingInput } from '@festa/shared';
 import type { Engine } from '../three/Engine';
 import { emptyButtons, type HubPlayer, type PlayerHub } from '../PlayerHub';
@@ -170,7 +171,7 @@ export class SeatControl {
       }
       case 'gamepad': {
         const b = Object.fromEntries(l.buttons.map((x) => [x.id, x.label]));
-        return pad({ title: l.hint ?? 'Joga!', stick: l.stick ? 'stick' : 'none', buttons: { a: b.a, b: b.b, plus: 'Menu' } });
+        return pad({ title: l.hint ?? 'Joga!', stick: l.stick ? 'stick' : 'none', buttons: { a: b.a, b: b.b, plus: 'Menu', minus: narrator.speaking ? 'Saltar' : undefined } });
       }
       case 'motion': {
         const holdA = l.action === 'throw' || l.action === 'pitch';

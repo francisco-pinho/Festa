@@ -1084,7 +1084,7 @@ button:disabled {
 }
 .dpad {
   display: grid;
-  grid-template: 'a u b' 1fr 'l c r' 1fr 'd e f' 1fr / 1fr 1fr 1fr;
+  grid-template: '. up .' 1fr 'left . right' 1fr '. down .' 1fr / 1fr 1fr 1fr;
   width: min(100%, 46vh);
   aspect-ratio: 1;
   gap: 4px;
@@ -1097,10 +1097,10 @@ button:disabled {
   font-size: 22px;
   touch-action: none;
 }
-.db-up { grid-area: u; }
-.db-left { grid-area: l; }
-.db-right { grid-area: r; }
-.db-down { grid-area: d; }
+.db-up { grid-area: up; }
+.db-left { grid-area: left; }
+.db-right { grid-area: right; }
+.db-down { grid-area: down; }
 .db.down,
 .pb.down {
   transform: scale(0.92);
@@ -1230,4 +1230,60 @@ button:disabled {
     grid-column: 1 / -1;
     grid-row: 2;
   }
+}
+
+/* Controlos encostados às pontas (mais fáceis de alcançar com os polegares) */
+.pad {
+  padding-left: max(4px, env(safe-area-inset-left));
+  padding-right: max(4px, env(safe-area-inset-right));
+}
+.pad-main {
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+}
+.pad-left {
+  width: min(32vw, 58vh);
+  align-items: flex-start;
+  justify-self: start;
+}
+.pad-left .stick-zone {
+  width: 100%;
+}
+.pad-left .dpad {
+  width: min(100%, 52vh);
+}
+.pad-face {
+  width: min(32vw, 60vh);
+  justify-self: end;
+}
+.pad-face .pb {
+  width: min(100%, 19vh);
+}
+@media (orientation: portrait) {
+  .pad-main {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pad-left,
+  .pad-face {
+    width: auto;
+  }
+}
+.pad {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+}
+.pad-top,
+.pad-main {
+  align-self: stretch;
+  width: 100%;
+}
+/* O comando novo não usa o estilo antigo de ".pad" (zona tracejada dos desportos) */
+.pad {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  align-items: stretch;
+  justify-content: flex-start;
+  text-align: left;
 }

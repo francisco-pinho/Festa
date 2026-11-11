@@ -7,6 +7,7 @@
  *   → Desportos: escolher desporto → jogar → outra vez / outro / menu principal
  */
 import { sound } from '../audio/Sound';
+import { narrator } from '../audio/Narrator';
 import QRCode from 'qrcode';
 import * as THREE from 'three';
 import { BOARDS, CHARACTERS, RULES, createRng, getCharacter, seatCount, type MinigameMode, type Rng } from '@festa/game';
@@ -452,8 +453,8 @@ export class Director {
     this.hud.panel(`<h1>${def.emoji} ${esc(def.name)}</h1><h2>${esc(def.description)}</h2>
       <p><span class="controls">${esc(def.howTo)}</span></p>
       <div class="timerbar"><div style="animation-duration:6s"></div></div>`);
-    this.waitAll(`${def.emoji} ${def.name}! Olha para o ecrã 👀`);
-    await this.engine.wait(6);
+    for (const s of this.seats) this.seatsCtl.setLayout(s, { kind: 'pad', title: `${def.emoji} ${def.name}!`, sub: 'Ouve a explicação no ecrã grande', stick: 'none', buttons: { minus: 'Saltar' } });
+    await Promise.all([this.engine.wait(2.5), narrator.say(def.narration)]);
     this.hud.panel(null);
 
     const run = def.create({

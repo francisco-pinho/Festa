@@ -125,6 +125,7 @@ export class GameMenu {
         { label: `💡 Dicas no ecrã: ${s.hints ? 'Sim' : 'Não'}`, run: () => settings.set('hints', !s.hints) },
         { label: `🔊 Efeitos: ${volLabel(s.sfxVolume)}`, run: () => (settings.set('sfxVolume', nextVol(s.sfxVolume)), sound.play('coin')) },
         { label: `🎵 Música: ${volLabel(s.musicVolume)}`, run: () => settings.set('musicVolume', nextVol(s.musicVolume)) },
+        { label: `🎙️ Narrador: ${s.narrator ? 'Sim' : 'Não'}`, run: () => settings.set('narrator', !s.narrator) },
         { label: this.mode === 'lobby' ? '✔ Fechar' : '↩ Voltar', run: () => (this.mode === 'lobby' ? this.close() : this.goto('main')) },
       ];
     }

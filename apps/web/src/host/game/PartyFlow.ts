@@ -6,6 +6,7 @@
  * As regras vivem em @festa/game; aqui só se encena e se pergunta aos telemóveis.
  */
 import { sound } from '../audio/Sound';
+import { narrator } from '../audio/Narrator';
 import * as THREE from 'three';
 import {
   ITEMS,
@@ -170,8 +171,17 @@ export class PartyFlow {
     await this.arrangeAll(true);
     this.stage.overview();
     this.scoreboard();
-    this.waitAll('Olha para o ecrã 👀');
-    await this.hud.banner(board.name, { sub: board.description, hold: 3.2 });
+    for (const s of this.d.seats) this.ctl.setLayout(s, { kind: 'pad', title: 'Bem-vindos à festa!', sub: 'Ouve a explicação no ecrã grande', stick: 'none', buttons: { minus: 'Saltar' } });
+    void this.hud.banner(board.name, { sub: board.description, hold: 3.2 });
+    await narrator.say([
+      `Bem-vindos à festa no mapa ${board.name}!`,
+      `Em cada ronda, cada um lança os dados com o botão A, ou abanando o telemóvel, e anda pelo tabuleiro.`,
+      'As casas azuis dão moedas e as vermelhas tiram. Há casas de sorte, de azar, de itens e de eventos.',
+      `O objetivo é juntar estrelas: quando passares pela estrela com ${RULES.starCost} moedas, podes comprá-la. Ganha quem tiver mais estrelas no fim!`,
+      'Nas lojas compras itens, que usas antes de lançar os dados com o botão X. O botão menos mostra o mapa todo.',
+      'Se parares numa casa onde já está alguém, há duelo! E no fim de cada ronda há um minijogo que dá moedas.',
+      `Neste mapa: ${board.description}`,
+    ]);
 
     const start = getSpace(board, board.startId);
     this.stage.focusPoint(start.x, start.z, 1.1);
@@ -994,7 +1004,12 @@ export class PartyFlow {
           hint: teams.mode === 'ffa' ? def.name : `${def.name} · equipa ${teamOf(s.id) === 'blue' ? '🔵 azul' : '🔴 vermelha'}`,
         });
     }
-    await this.wait(INTRO);
+    const intro = [
+      `${title ? `${title.replace(/[^\p{L}\p{N}!?\s]/gu, '').trim()} ` : ''}${def.name}! ${players.length === 2 ? 'Um contra um.' : MODE_LABEL[teams.mode] + '.'}`,
+      def.description(teams.mode),
+      `Controlos: ${def.controls}.`,
+    ];
+    await Promise.all([this.wait(3), narrator.say(intro)]);
     this.hud.panel(null);
 
     const ctx: MinigameContext = {

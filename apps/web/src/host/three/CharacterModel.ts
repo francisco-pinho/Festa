@@ -49,7 +49,9 @@ export type CharacterAnim =
   | 'crouch'
   | 'catch'
   | 'backhand'
-  | 'serve';
+  | 'serve'
+  | 'talk'
+  | 'talk2';
 
 interface AnimSpec {
   clip: string;
@@ -94,6 +96,8 @@ const ANIMS: Record<CharacterAnim, AnimSpec> = {
   catch: { clip: 'Block', loop: false, speed: 1.6, thenIdle: true },
   backhand: { clip: '1H_Melee_Attack_Slice_Diagonal', loop: false, speed: 1.9, thenIdle: true },
   serve: { clip: '1H_Melee_Attack_Chop', loop: false, speed: 1.6, thenIdle: true },
+  talk: { clip: 'Interact', loop: false, speed: 0.9, thenIdle: true },
+  talk2: { clip: 'Spellcast_Long', loop: false, speed: 1.1, thenIdle: true },
 };
 
 /** Altura final das personagens no mundo (topo da cabeça). */

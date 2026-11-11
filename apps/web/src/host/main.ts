@@ -6,12 +6,14 @@ import { GameMenu } from './ui/GameMenu';
 import { ScreenMenus } from './ui/ScreenMenu';
 import { getAsset, loadCharacterAssets } from './three/characterAssets';
 import { sound } from './audio/Sound';
+import { narrator } from './audio/Narrator';
 
 const engine = new Engine(document.getElementById('game')!);
 const hud = new Hud(engine);
 const menu = new GameMenu(engine, hub);
 const menus = new ScreenMenus(engine, hub, () => menu.isOpen);
 menu.keyboardBusy = () => menus.keyboardOpen;
+narrator.init(hub);
 const director = new Director(engine, hud, hub, connection, menu, menus);
 
 // Som: os browsers só deixam tocar depois de um clique ou tecla no ecrã principal.

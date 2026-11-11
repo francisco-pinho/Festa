@@ -91,6 +91,7 @@ export class BoxingStage extends SportStage {
   private readonly floaters: { sprite: THREE.Sprite; life: number }[] = [];
   private shake = 0;
   private camSide = 1;
+  private readonly ropes: { mat: THREE.MeshToonMaterial; side: 'front' | 'back' | 'left' | 'right' }[] = [];
   private readonly camPerp = new THREE.Vector2(0, 1);
   private excitement = 0;
   private crowd!: { bodies: THREE.InstancedMesh; heads: THREE.InstancedMesh; base: THREE.Matrix4[]; phase: number[] };
@@ -604,24 +605,32 @@ export class BoxingStage extends SportStage {
     return [bot.strafe * 0.45, sy];
   }
 
+  /**
+   * Câmara de lado que só acompanha os lutadores para a esquerda e direita (não roda). As cordas entre a câmara e os
+   * lutadores ficam quase transparentes quando eles se aproximam delas.
+   */
   private updateCamera(a: Fighter, b: Fighter): void {
+    this.updateRopes(a, b);
     if (!this.fighting) return;
     const mid = a.pos.clone().add(b.pos).multiplyScalar(0.5);
-    const line = b.pos.clone().sub(a.pos);
-    const dist = line.length() || 1;
-    line.divideScalar(dist);
-    let perp = new THREE.Vector2(-line.y, line.x);
-    // Mantém o mesmo lado (a câmara não salta para o outro lado do ringue).
-    if (perp.y * this.camSide < 0) perp = perp.multiplyScalar(-1);
-    this.camSide = Math.sign(perp.y) || 1;
-    this.camPerp.copy(perp);
-    // O árbitro fica do outro lado, a ver o combate sem tapar a câmara.
-    const refX = THREE.MathUtils.clamp(mid.x - perp.x * 2.3, -RING + 0.6, RING - 0.6);
-    const refZ = THREE.MathUtils.clamp(mid.y - perp.y * 2.3, -RING + 0.6, RING - 0.6);
-    this.refTarget.set(refX, FLOOR, refZ);
-    const back = 5.6 + dist * 1.1;
-    this.cameraTo({ x: mid.x + perp.x * back, y: 3.1, z: mid.y + perp.y * back }, { x: mid.x, y: 1.35, z: mid.y }, { speed: 4 });
+    // O árbitro fica do lado de lá, sem tapar a câmara.
+    this.refTarget.set(THREE.MathUtils.clamp(mid.x * 0.8, -RING + 0.8, RING - 0.8), FLOOR, -RING + 0.9);
+    // Acompanha só para os lados (sem rodar nem trocar de lado).
+    const sx = THREE.MathUtils.clamp(mid.x, -RING + 1, RING - 1);
+    this.cameraTo({ x: sx * 0.7, y: 6.8, z: RING + 6.6 }, { x: sx * 0.85, y: 0.9, z: -0.3 }, { speed: 2 });
   }
+
+  /** Só as cordas da frente (entre a câmara e os lutadores) ficam quase transparentes. */
+  private updateRopes(a: Fighter, b: Fighter): void {
+    const near = Math.min(RING - a.pos.y, RING - b.pos.y);
+    const target = near < 2.2 ? 0.08 : near < 3.4 ? 0.3 : 0.6;
+    for (const r of this.ropes) {
+      if (r.side !== 'front') continue;
+      r.mat.opacity += (target - r.mat.opacity) * 0.15;
+      r.mat.depthWrite = false;
+    }
+  }
+
 
   override update(dt: number, time: number): void {
     super.update(dt, time);
@@ -834,10 +843,12 @@ export class BoxingStage extends SportStage {
         [RING, 0, RING * 2, Math.PI / 2],
         [-RING, 0, RING * 2, Math.PI / 2],
       ] as const) {
-        const rope = mesh(new THREE.CylinderGeometry(0.035, 0.035, len), toon(h === 1 ? '#ffffff' : '#ff3b5c'));
+        const mat = toonUnique(h === 1 ? '#ffffff' : '#ff3b5c', { transparent: true, opacity: 1 });
+        const rope = mesh(new THREE.CylinderGeometry(0.035, 0.035, len), mat);
         rope.rotation.set(0, rotY, Math.PI / 2);
         rope.position.set(ax, y, az);
         this.scene.add(rope);
+        this.ropes.push({ mat, side: az > 0 ? 'front' : az < 0 ? 'back' : ax > 0 ? 'right' : 'left' });
       }
     }
     const floor = mesh(new THREE.PlaneGeometry(90, 90), toon('#1e1438'), { cast: false, receive: true });

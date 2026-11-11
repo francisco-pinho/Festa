@@ -43,6 +43,8 @@ export interface SportDef {
   description: string;
   /** Como se joga com o telemóvel (aparece antes de começar). */
   howTo: string;
+  /** O que o narrador diz antes de começar (frase a frase). */
+  narration: string[];
   /** Quantos lugares no total (humanos + bots) para `humans` jogadores. */
   seatCount(humans: number): number;
   create(ctx: SportContext): SportRun;

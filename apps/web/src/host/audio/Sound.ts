@@ -113,10 +113,18 @@ class SoundEngine {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
   }
 
+  private ducked = false;
+
+  /** Baixa a música (narrador a falar). */
+  duck(on: boolean): void {
+    this.ducked = on;
+    this.applyVolumes();
+  }
+
   private applyVolumes(): void {
     if (!this.ctx) return;
     this.sfxBus.gain.value = settings.value.sfxVolume * 0.9;
-    this.musicBus.gain.value = settings.value.musicVolume * 0.32;
+    this.musicBus.gain.setTargetAtTime(settings.value.musicVolume * 0.32 * (this.ducked ? 0.3 : 1), this.ctx.currentTime, 0.15);
   }
 
   // ── Blocos de som ───────────────────────────────────────

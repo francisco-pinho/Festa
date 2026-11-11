@@ -27,12 +27,14 @@ export interface SettingsData {
   /** Volume dos efeitos e da música, 0–1. */
   sfxVolume: number;
   musicVolume: number;
+  /** Narrador que explica os jogos antes de começarem. */
+  narrator: boolean;
 }
 
 export const VOLUMES = [0, 0.25, 0.5, 0.75, 1];
 
 const KEY = 'festa.settings';
-const DEFAULTS: SettingsData = { botLevel: 'normal', animSpeed: 1, hints: true, sfxVolume: 0.75, musicVolume: 0.5 };
+const DEFAULTS: SettingsData = { botLevel: 'normal', animSpeed: 1, hints: true, sfxVolume: 0.75, musicVolume: 0.5, narrator: true };
 
 class Settings {
   readonly events = new Emitter<{ changed: SettingsData }>();

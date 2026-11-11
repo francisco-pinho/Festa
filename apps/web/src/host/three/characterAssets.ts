@@ -36,7 +36,11 @@ export const LOOKS: Record<string, CharacterLook> = {
   ameixa: { base: 'Knight', hat: false, accessory: true },
   brasa: { base: 'Rogue', hat: false, accessory: true },
   gelado: { base: 'Rogue_Hooded', hat: false, accessory: false },
+  narrador: { base: 'Rogue', hat: false, accessory: false },
 };
+
+/** O narrador (apresentador): não é jogável; fato roxo e laço dourado. */
+export const NARRATOR: CharacterDef = { id: 'narrador', name: 'Zé Microfone', color: '#6a3fb5', accent: '#ffd23f', accessory: 'crown', body: 'round' };
 
 export interface BaseAsset {
   scene: THREE.Group;
@@ -80,7 +84,7 @@ export function loadCharacterAssets(onProgress?: (done: number, total: number) =
       }),
     );
     // Texturas recoloridas, uma por personagem.
-    for (const def of CHARACTERS) textures.set(def.id, recolorTexture(getAsset(LOOKS[def.id]!.base).image, def));
+    for (const def of [...CHARACTERS, NARRATOR]) textures.set(def.id, recolorTexture(getAsset(LOOKS[def.id]!.base).image, def));
   })();
   return loading;
 }
