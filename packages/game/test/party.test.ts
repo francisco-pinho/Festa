@@ -43,7 +43,7 @@ describe('tabuleiro', () => {
   });
 
   it('tem cruzamentos, várias casas candidatas a estrela e casas não sobrepostas', () => {
-    expect(board.spaces.filter((s) => s.next.length > 1)).toHaveLength(2);
+    expect(board.spaces.filter((s) => s.next.length > 1).length).toBeGreaterThanOrEqual(3);
     expect(board.spaces.filter((s) => s.starCandidate).length).toBeGreaterThanOrEqual(5);
     for (const a of board.spaces)
       for (const b of board.spaces) if (a !== b) expect(Math.hypot(a.x - b.x, a.z - b.z)).toBeGreaterThan(2.4);
