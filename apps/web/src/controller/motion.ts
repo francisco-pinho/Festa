@@ -8,6 +8,7 @@
  */
 import type { ControllerInput, ControllerLayout, SwingInput } from '@festa/shared';
 import { createJoystick } from './joystick';
+import { sensors, type MotionSample } from './sensors';
 
 type MotionLayout = Extract<ControllerLayout, { kind: 'motion' }>;
 type Send = (input: ControllerInput, volatile?: boolean) => void;
@@ -25,27 +26,10 @@ const ACTION_TEXT: Record<MotionLayout['action'], { touch: string; motion: strin
 const clamp = (v: number, a = -1, b = 1) => Math.max(a, Math.min(b, v));
 const MOTION_KEY = 'festa.motion';
 
-export function sensorsAvailable(): boolean {
-  return typeof window.DeviceMotionEvent !== 'undefined' && window.isSecureContext;
-}
-
-/** Já chegaram dados reais dos sensores? (Alguns browsers de PC dizem ter sensores mas não enviam nada.) */
-let sensorsSeen = false;
-if (sensorsAvailable()) {
-  const probe = (e: DeviceMotionEvent) => {
-    const a = e.accelerationIncludingGravity;
-    if (a && (a.x || a.y || a.z)) {
-      sensorsSeen = true;
-      window.removeEventListener('devicemotion', probe);
-    }
-  };
-  window.addEventListener('devicemotion', probe);
-}
-
 export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): () => void {
   const text = ACTION_TEXT[l.action];
-  const canMotion = sensorsAvailable();
-  let useMotion = canMotion && sensorsSeen && localStorage.getItem(MOTION_KEY) !== 'off';
+  const canMotion = sensors.supported;
+  let useMotion = canMotion && sensors.active && localStorage.getItem(MOTION_KEY) !== 'off';
   const cleanups: (() => void)[] = [];
 
   view.innerHTML = `
@@ -72,7 +56,10 @@ export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): ()
   };
   refreshLabels();
   toggle?.addEventListener('click', async () => {
-    if (!useMotion && !(await askMotionPermission())) return;
+    if (!useMotion && !(await sensors.enable())) {
+      toggle.textContent = '📵 O telemóvel não está a enviar dados dos sensores';
+      return;
+    }
     useMotion = !useMotion;
     localStorage.setItem(MOTION_KEY, useMotion ? 'on' : 'off');
     refreshLabels();
@@ -210,11 +197,10 @@ class MotionTracker {
   private peak = 0;
   private lateral = 0;
   private twist = 0;
-  private lastT = 0;
   private armed = true;
   /** Quantas leituras dos sensores chegaram. */
   samples = 0;
-  private readonly onMotion = (e: DeviceMotionEvent) => this.sample(e);
+  private off: (() => void) | null = null;
 
   constructor(
     /** Socos: cada pico é um gesto, sem largar a zona. */
@@ -223,11 +209,12 @@ class MotionTracker {
   ) {}
 
   start(): void {
-    window.addEventListener('devicemotion', this.onMotion);
+    this.off = sensors.onSample((s) => this.sample(s));
   }
 
   stop(): Omit<SwingInput, 't' | 'hand'> | null {
-    window.removeEventListener('devicemotion', this.onMotion);
+    this.off?.();
+    this.off = null;
     if (this.repeat || this.peak < 6) return null;
     return this.result();
   }
@@ -241,20 +228,11 @@ class MotionTracker {
     };
   }
 
-  private sample(e: DeviceMotionEvent): void {
-    const a = e.acceleration;
-    const g = e.accelerationIncludingGravity;
-    let ax = 0, ay = 0, az = 0;
-    if (a && a.x !== null && a.y !== null && a.z !== null) [ax, ay, az] = [a.x, a.y, a.z];
-    else if (g && g.x !== null && g.y !== null && g.z !== null) [ax, ay, az] = [g.x, g.y, g.z - 9.8];
-    else return; // evento vazio (sem sensor real)
+  private sample(s: MotionSample): void {
     this.samples++;
-    const mag = Math.hypot(ax, ay, az);
-    const now = performance.now();
-    const dt = this.lastT ? (now - this.lastT) / 1000 : 0;
-    this.lastT = now;
+    const { x: ax, mag } = s;
     // Rotação do pulso (graus) para o efeito.
-    if (e.rotationRate?.gamma != null) this.twist += e.rotationRate.gamma * dt;
+    this.twist += s.gamma * s.dt;
 
     if (mag > this.peak) {
       this.peak = mag;
@@ -270,16 +248,6 @@ class MotionTracker {
         this.twist = 0;
       }
     }
-  }
-}
-
-async function askMotionPermission(): Promise<boolean> {
-  const DME = window.DeviceMotionEvent as unknown as { requestPermission?: () => Promise<string> };
-  if (typeof DME?.requestPermission !== 'function') return true;
-  try {
-    return (await DME.requestPermission()) === 'granted';
-  } catch {
-    return false;
   }
 }
 

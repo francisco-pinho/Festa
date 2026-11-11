@@ -275,12 +275,6 @@ button:disabled {
   box-shadow: 0 2px 0 #0006;
 }
 
-/* Em retrato, o joystick fica em cima e os botões em baixo. */
-@media (orientation: portrait) {
-  .gamepad {
-    flex-direction: column;
-  }
-}
 
 /* ── Avisos ───────────────────────────────────────── */
 #overlay {
@@ -529,4 +523,248 @@ button:disabled {
   text-decoration: underline;
   font-weight: normal;
   font-size: 14px;
+}
+
+/* ── Barra: botões de sensores e menu ── */
+.bar-btn {
+  background: var(--panel-light);
+  border-radius: 10px;
+  padding: 4px 10px;
+  font-size: 18px;
+  line-height: 1.2;
+  opacity: 0.6;
+}
+.bar-btn.on {
+  opacity: 1;
+  box-shadow: 0 0 0 2px #4cd964;
+}
+#menu {
+  opacity: 1;
+}
+
+/* ── Aviso "roda o telemóvel" (só durante o jogo e ao alto) ── */
+#rotate {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--bg);
+  text-align: center;
+  padding: 24px;
+  font-size: 22px;
+  font-weight: bold;
+}
+#rotate small {
+  color: var(--dim);
+  font-weight: normal;
+  font-size: 15px;
+}
+.rotate-icon {
+  font-size: 80px;
+  animation: rotate-hint 1.8s ease-in-out infinite;
+}
+@keyframes rotate-hint {
+  0%,
+  30% {
+    transform: rotate(0deg);
+  }
+  60%,
+  100% {
+    transform: rotate(-90deg);
+  }
+}
+@media (orientation: portrait) {
+  body.in-game #rotate {
+    display: flex;
+  }
+}
+
+/* ── Painel dos sensores ── */
+#sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  background: #0009;
+}
+#sheet[hidden] {
+  display: none;
+}
+.sheet-card h2 {
+  margin: 0;
+  color: var(--accent);
+  text-align: center;
+}
+.sheet-status {
+  margin: 0;
+  text-align: center;
+  line-height: 1.4;
+}
+.sheet-meter {
+  height: 14px;
+  margin: 0;
+  border-radius: 99px;
+  background: var(--bg);
+  overflow: hidden;
+}
+.sheet-meter span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.05s;
+}
+#s-close {
+  background: var(--panel-light);
+  padding: 12px;
+  border-radius: 12px;
+}
+
+/* ── Horizontal (o comando joga-se sempre deitado) ── */
+@media (orientation: landscape) {
+  #bar {
+    padding: 4px 12px;
+    font-size: 15px;
+    border-bottom-width: 3px;
+  }
+  #dot {
+    width: 16px;
+    height: 16px;
+  }
+  .wait {
+    font-size: 20px;
+  }
+  .pulse {
+    width: 60px;
+    height: 60px;
+    margin-bottom: 10px;
+  }
+
+  /* Escolhas: duas colunas para caberem sem deslizar */
+  .choices {
+    width: min(900px, calc(100% - 24px));
+  }
+  .choices .options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .choices.grid .options {
+    grid-template-columns: repeat(calc(var(--cols) + 2), 1fr);
+  }
+  .choice {
+    font-size: 20px;
+    padding: 14px;
+  }
+  .choices:has(.choice:only-child) .options {
+    grid-template-columns: 1fr;
+  }
+
+  /* Dados: texto à esquerda, botão à direita */
+  .dice {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 24px;
+  }
+  .dice .prompt {
+    max-width: 40%;
+  }
+  .roll {
+    width: min(58vh, 280px);
+  }
+  .shake-hint,
+  .shake-enable {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Gamepad: joystick à esquerda, botões à direita (como um comando) */
+  .gamepad {
+    flex-direction: row;
+  }
+  .pad-btn {
+    width: min(30vh, 130px);
+    height: min(30vh, 130px);
+  }
+
+  /* Desportos: apontar à esquerda, zona do gesto à direita */
+  .motion {
+    display: grid;
+    grid-template-columns: minmax(180px, 34%) 1fr;
+    grid-template-rows: auto 1fr auto auto;
+    gap: 8px 12px;
+    padding: 6px 12px 8px;
+  }
+  .motion .prompt,
+  .motion .hint,
+  .motion .mode-row {
+    grid-column: 1 / -1;
+  }
+  .motion .prompt {
+    font-size: 17px;
+  }
+  .motion .aim-zone {
+    grid-column: 1;
+    grid-row: 2 / 4;
+    height: auto;
+    min-height: 0;
+  }
+  .motion .pads {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .motion:not(:has(.aim-zone)) .pads,
+  .motion:not(:has(.aim-zone)) .guard {
+    grid-column: 1 / -1;
+  }
+  .motion .guard {
+    grid-column: 2;
+    grid-row: 3;
+    padding: 10px;
+  }
+  .pad .icon {
+    font-size: 44px;
+  }
+}
+
+/* Formulário de entrada também cabe deitado */
+#view {
+  overflow-y: auto;
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .card {
+    padding: 14px 18px;
+    gap: 8px;
+    width: min(560px, calc(100% - 24px));
+  }
+  #join {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 14px;
+  }
+  #join h1,
+  #join .error,
+  #join button {
+    grid-column: 1 / -1;
+  }
+  h1 {
+    font-size: 28px;
+    margin: 0;
+  }
+  input {
+    font-size: 20px;
+    padding: 8px 12px;
+  }
+  #code {
+    font-size: 26px;
+  }
+  button.primary {
+    padding: 10px;
+    font-size: 20px;
+  }
 }

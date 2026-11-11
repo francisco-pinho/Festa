@@ -16,9 +16,11 @@ import type {
 import { ACK_TIMEOUT_MS, connectSocket } from '../common/socket';
 import { capture, createJoystick } from './joystick';
 import { renderMotion } from './motion';
+import { sensors } from './sensors';
 
 const SESSION_KEY = 'festa.session';
 const NAME_KEY = 'festa.name';
+const SENSOR_ASKED_KEY = 'festa.sensorAsked';
 const STICK_INTERVAL_MS = 33; // ~30 envios/s
 
 interface Session {
@@ -60,13 +62,26 @@ if (session && urlRoom && urlRoom !== session.roomCode) session = null;
 // ── DOM base ──────────────────────────────────────────────
 const app = document.getElementById('app')!;
 app.innerHTML = `
-  <header id="bar" hidden><span id="dot"></span><span id="me"></span><span id="room"></span></header>
+  <header id="bar" hidden>
+    <span id="dot"></span><span id="me"></span><span id="room"></span>
+    <button id="sensor" class="bar-btn" aria-label="Sensores">📵</button>
+    <button id="menu" class="bar-btn" aria-label="Menu" hidden>☰</button>
+  </header>
   <main id="view"></main>
   <div id="overlay" hidden></div>
+  <div id="sheet" hidden></div>
+  <div id="rotate"><div class="rotate-icon">📱</div><p>Roda o telemóvel para a horizontal</p><small>Toca aqui para ecrã inteiro</small></div>
   <div id="toast" hidden></div>
 `;
 const $ = <T extends HTMLElement>(sel: string) => app.querySelector<T>(sel)!;
 const view = $('#view');
+$('#sensor').addEventListener('click', openSensorSheet);
+$('#menu').addEventListener('click', () => send({ t: 'choice', id: 'menu' }));
+$('#rotate').addEventListener('click', goLandscape);
+// Qualquer toque durante o jogo tenta voltar a ecrã inteiro/horizontal (após recarregar a página).
+document.addEventListener('pointerdown', () => {
+  if (document.body.classList.contains('in-game') && !document.fullscreenElement) goLandscape();
+});
 
 // ── Socket ────────────────────────────────────────────────
 socket.on('connect', () => {
@@ -123,9 +138,11 @@ async function join(roomCode: string, name: string, sessionToken?: string): Prom
     me = res.player;
     hostConnected = true;
     renderBar();
+    setInGame(true);
     if (shownLayout === undefined || shownLayout !== layout) renderLayout();
     updateOverlay();
     keepAwake();
+    maybeOfferSensors();
     return null;
   } catch {
     return 'Sem resposta do servidor. Tenta outra vez.';
@@ -176,6 +193,7 @@ function setView(html: string): void {
 function renderJoin(error = ''): void {
   me = null;
   layout = null;
+  setInGame(false);
   $('#bar').hidden = true;
   setView(`
     <form id="join" class="card" autocomplete="off">
@@ -201,7 +219,7 @@ function renderJoin(error = ''): void {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    goFullscreen();
+    goLandscape();
     const button = form.querySelector('button')!;
     button.disabled = true;
     localStorage.setItem(NAME_KEY, name.value.trim());
@@ -214,6 +232,7 @@ function renderJoin(error = ''): void {
 function renderClosed(message: string): void {
   me = null;
   layout = null;
+  setInGame(false);
   $('#bar').hidden = true;
   setView(`
     <div class="card center">
@@ -231,6 +250,8 @@ function renderBar(): void {
   $('#dot').style.background = me.color;
   $('#me').textContent = `${me.isVip ? '⭐ ' : ''}${me.name}`;
   $('#room').textContent = session.roomCode;
+  $('#menu').hidden = !me.isVip;
+  renderSensorBadge();
   document.documentElement.style.setProperty('--player', me.color);
 }
 
@@ -291,15 +312,19 @@ function renderDice(l: Extract<ControllerLayout, { kind: 'dice' }>): void {
     <div class="dice">
       <p class="prompt">${escapeHtml(l.prompt)}</p>
       <button class="roll"><span class="die">🎲</span>${escapeHtml(l.label)}</button>
-      <p class="shake-hint" hidden>…ou abana o telemóvel!</p>
-      <button class="shake-enable" hidden>Ativar abanar 📳</button>
+      <p class="shake-hint" hidden>📳 …ou abana o telemóvel!</p>
+      <button class="shake-enable" hidden>📳 Ativar abanar</button>
     </div>
   `);
   const button = view.querySelector<HTMLButtonElement>('.roll')!;
+  const hint = view.querySelector<HTMLElement>('.shake-hint')!;
+  const enable = view.querySelector<HTMLButtonElement>('.shake-enable')!;
   let rolled = false;
+  let offShake: (() => void) | null = null;
   const roll = () => {
     if (rolled) return;
     rolled = true;
+    offShake?.();
     navigator.vibrate?.([30, 30, 60]);
     send({ t: 'choice', id: 'roll' });
     button.disabled = true;
@@ -307,39 +332,27 @@ function renderDice(l: Extract<ControllerLayout, { kind: 'dice' }>): void {
   };
   button.addEventListener('click', roll);
 
-  // Abanar: precisa de sensor de movimento (em iPhone só funciona com HTTPS e autorização).
-  let last = 0;
-  const onMotion = (e: DeviceMotionEvent) => {
-    const a = e.acceleration ?? e.accelerationIncludingGravity;
-    if (!a || a.x === null || a.y === null || a.z === null) return;
-    const g = e.acceleration ? 0 : 9.8;
-    const mag = Math.abs(Math.hypot(a.x, a.y, a.z) - g);
-    const now = performance.now();
-    if (mag > 16 && now - last > 300) {
-      last = now;
-      roll();
-    }
+  const startShake = () => {
+    hint.hidden = false;
+    enable.hidden = true;
+    offShake = sensors.onShake(roll);
   };
-  const listen = () => {
-    window.addEventListener('devicemotion', onMotion);
-    view.querySelector<HTMLElement>('.shake-hint')!.hidden = false;
-  };
-  const DME = window.DeviceMotionEvent as unknown as { requestPermission?: () => Promise<string> } | undefined;
-  if (DME && typeof DME.requestPermission === 'function') {
-    const enable = view.querySelector<HTMLButtonElement>('.shake-enable')!;
+  if (sensors.active) startShake();
+  else if (sensors.supported) {
+    // Pode ainda não ter chegado nenhuma leitura (Android) ou precisar de autorização (iPhone).
+    const offChange = sensors.onChange(() => sensors.active && !offShake && startShake());
     enable.hidden = false;
-    enable.addEventListener('click', () => {
-      DME.requestPermission!()
-        .then((state) => {
-          if (state === 'granted') listen();
-          enable.hidden = true;
-        })
-        .catch(() => (enable.hidden = true));
+    enable.addEventListener('click', async () => {
+      if (await sensors.enable()) startShake();
+      else enable.textContent = '📵 Sensor indisponível — usa o botão';
     });
-  } else if (DME && window.isSecureContext) {
-    listen();
+    cleanupView = () => {
+      offChange();
+      offShake?.();
+    };
+    return;
   }
-  cleanupView = () => window.removeEventListener('devicemotion', onMotion);
+  cleanupView = () => offShake?.();
 }
 
 function renderGamepad(l: Extract<ControllerLayout, { kind: 'gamepad' }>): void {
@@ -397,6 +410,90 @@ function showToast(text: string): void {
   toastTimer = setTimeout(() => (toast.hidden = true), 2_500);
 }
 
+// ── Sensores (painel 📳) ──────────────────────────────────
+function renderSensorBadge(): void {
+  const badge = $('#sensor');
+  badge.textContent = sensors.active ? '📳' : '📵';
+  badge.classList.toggle('on', sensors.active);
+  badge.title = sensors.active ? 'Sensores ativos' : 'Sensores desligados';
+}
+sensors.onChange(renderSensorBadge);
+
+function openSensorSheet(): void {
+  const sheet = $('#sheet');
+  const status = () =>
+    !sensors.supported
+      ? 'Este telemóvel/browser não dá acesso aos sensores aqui (é preciso abrir o jogo por <b>https://</b>). Podes jogar com toques e gestos no ecrã.'
+      : sensors.active
+        ? `✅ Sensores ativos. Sensibilidade do abanão: <b>${sensors.threshold.toFixed(1)}</b>`
+        : sensors.denied
+          ? '🚫 Autorização recusada. No iPhone: Definições → Safari → Movimento e orientação.'
+          : 'Os sensores ainda não estão ativos.';
+  const render = () => {
+    sheet.innerHTML = `
+      <div class="card sheet-card">
+        <h2>📳 Sensores de movimento</h2>
+        <p class="sheet-status">${status()}</p>
+        ${sensors.supported && !sensors.active ? '<button class="primary" id="s-enable">Ativar sensores</button>' : ''}
+        ${sensors.active ? '<button class="primary" id="s-cal">Calibrar abanão (3 s)</button>' : ''}
+        <p class="sheet-meter" ${sensors.active ? '' : 'hidden'}><span id="s-bar"></span></p>
+        <button id="s-close">Fechar</button>
+      </div>`;
+    sheet.querySelector('#s-enable')?.addEventListener('click', async () => {
+      await sensors.enable();
+      render();
+    });
+    sheet.querySelector('#s-cal')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      btn.disabled = true;
+      btn.textContent = '📳 Abana o telemóvel agora!';
+      await sensors.calibrate(3);
+      navigator.vibrate?.(80);
+      render();
+    });
+    sheet.querySelector('#s-close')?.addEventListener('click', closeSheet);
+  };
+  // Medidor ao vivo do movimento
+  const offMeter = sensors.onSample((s) => {
+    const bar = sheet.querySelector<HTMLElement>('#s-bar');
+    if (bar) bar.style.width = `${Math.min(100, (s.mag / (sensors.threshold * 1.5)) * 100)}%`;
+  });
+  const closeSheet = () => {
+    offMeter();
+    sheet.hidden = true;
+    sheet.innerHTML = '';
+  };
+  sheet.hidden = false;
+  render();
+}
+
+/** Na primeira vez que entra numa sala, oferece-se para ativar os sensores. */
+function maybeOfferSensors(): void {
+  if (!sensors.supported || localStorage.getItem(SENSOR_ASKED_KEY)) return;
+  localStorage.setItem(SENSOR_ASKED_KEY, '1');
+  // No Android começam sozinhos; só mostramos o painel se ao fim de 2 s ainda não houver dados.
+  setTimeout(() => {
+    if (!sensors.active) openSensorSheet();
+  }, 2000);
+}
+
+// ── Horizontal ────────────────────────────────────────────
+/** Ecrã inteiro + bloquear em paisagem (Android). No iPhone mostra-se o aviso para rodar. */
+function goLandscape(): void {
+  if (!matchMedia('(pointer: coarse)').matches) return;
+  const el = document.documentElement;
+  const lock = () => {
+    const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+    o?.lock?.('landscape').catch(() => {});
+  };
+  if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen({ navigationUI: 'hide' }).then(lock, () => {});
+  else lock();
+}
+
+function setInGame(inGame: boolean): void {
+  document.body.classList.toggle('in-game', inGame);
+}
+
 // ── Utilidades ────────────────────────────────────────────
 function loadSession(): Session | null {
   try {
@@ -412,10 +509,6 @@ function clearSession(): void {
   localStorage.removeItem(SESSION_KEY);
 }
 
-function goFullscreen(): void {
-  if (!matchMedia('(pointer: coarse)').matches) return;
-  document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {});
-}
 
 let wakeLock: WakeLockSentinel | null = null;
 function keepAwake(): void {
