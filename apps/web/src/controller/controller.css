@@ -861,3 +861,159 @@ button:disabled {
   border-color: #ffd23f;
   background: #3a3260;
 }
+
+/* ── Golfe ─────────────────────────────────────────────── */
+.golf {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  padding: 8px 12px;
+  box-sizing: border-box;
+}
+.golf .prompt,
+.golf .hint {
+  margin: 0;
+  text-align: center;
+}
+.golf .hint {
+  color: var(--dim);
+  font-size: 14px;
+}
+.golf .clubs {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+}
+.golf .club {
+  flex: 1 0 auto;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 7px 8px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  font-size: 13px;
+}
+.golf .club.on {
+  border-color: #ffd23f;
+  background: #3a3260;
+}
+.golf-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  min-height: 0;
+}
+.golf .aim-zone {
+  height: auto;
+  min-height: 120px;
+}
+.golf .shape {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 64px;
+  height: 64px;
+  border: 2px dashed #ffffff55;
+  border-radius: 50%;
+}
+.golf .shape .dot {
+  position: absolute;
+  left: 26px;
+  top: 26px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #7dff9b;
+}
+.meter-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.meter {
+  position: relative;
+  flex: 1;
+  width: 34px;
+  min-height: 120px;
+  border-radius: 12px;
+  background: #0006;
+  border: 3px solid #fff;
+  overflow: hidden;
+}
+.meter .red {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #ff3b5c55;
+}
+.meter .mark {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #fff;
+}
+.meter .fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 0;
+  background: #7dff9b;
+}
+.meter .fill.over {
+  background: #ff3b5c;
+}
+.meter-val {
+  font-weight: 800;
+}
+.golf .buttons {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+.golf .go,
+.golf .stop,
+.golf .swing-pad {
+  border: 0;
+  border-radius: 16px;
+  padding: 14px 10px;
+  background: var(--panel-light);
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  font-size: 18px;
+  text-align: center;
+  touch-action: none;
+}
+.golf .go,
+.golf .stop.main {
+  background: #ffd23f;
+  color: #1d1433;
+  font-size: 22px;
+}
+.golf .stops {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.golf .swing-pad {
+  min-height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.golf .swing-pad.held {
+  background: #3fd0ff;
+  color: #10223a;
+}
+.golf .mode-toggle {
+  width: 100%;
+}

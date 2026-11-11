@@ -268,7 +268,7 @@ export function touchPunch(points: { x: number; y: number; t: number }[]): Omit<
 }
 
 /** Lê os sensores enquanto a zona está segura; deteta o pico do gesto. */
-class MotionTracker {
+export class MotionTracker {
   private peak = 0;
   private lateral = 0;
   private twist = 0;

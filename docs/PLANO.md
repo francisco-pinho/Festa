@@ -197,12 +197,12 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [x] Repetição dos home runs em câmara lenta, fogo de artifício, público a saltar, animações de lançador, batedor, apanhador e defesas
 
 ### Fase 5 — Golfe (refazer o controlo)
-- [ ] **Medidor de força** no telemóvel: toca para começar, toca para parar; zona vermelha arriscada
-- [ ] **Efeito**: topspin / backspin ao parar o medidor
-- [ ] **Curva/altura**: inclinar o telemóvel (ou joystick) depois de definir a força
-- [ ] **Tacos**: Driver, Madeira 3, Ferros (5, 7, 9), Wedge, Putter. Mudar no telemóvel, com a área onde cai cada um desenhada no mapa
-- [ ] Modo com movimento: balançar o telemóvel como um taco (força pelo balanço)
-- [ ] Terreno com relevo (subidas/descidas no green), mais buracos, caddie que dá dicas
+- [x] **Medidor de força** no telemóvel: toca para começar, toca para parar; zona vermelha (até 110 %) dá mais distância mas desvia
+- [x] **Efeito**: topspin / backspin ao parar o medidor (botões ⬆️/⬇️); no green o backspin faz a bola recuar
+- [x] **Curva/altura**: joystick enquanto o medidor anda (lados = curva, cima/baixo = altura)
+- [x] **Tacos**: Driver, Madeira 3, Ferros (5, 7, 9), Wedge, Putter. Mudar no telemóvel; a trajetória e a área onde cai aparecem no campo
+- [x] Modo com movimento: balançar o telemóvel como um taco (força pelo balanço) — *por afinar no telemóvel*
+- [x] Terreno com relevo (colinas, green inclinado com setas), 5 buracos (3 com mais de 3 jogadores), caddie com dicas (taco, vento, inclinação, água). Física em `simulateShot` (bots usam `planShot`)
 
 ### Fase 6 — Ténis (física e campo)
 - [ ] Corrigir P4: os da rede também jogam (voleis); escolher quem bate pelo **primeiro** ponto onde se pode bater, não pelo depois do ressalto
@@ -244,3 +244,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-11 | Fase 2: bowling novo (salão, placar suspenso, física Rapier, pêndulo + inclinação, câmara lenta e repetição) | `fase2-bowling` | ✔ (falta testar no telemóvel) |
 | 2026-11-11 | Fase 3: boxe refeito (luvas nas mãos, mover, 4 socos com alcance, energia, esquiva + contra-ataque, dano visível, árbitro, público, placar) | `fase3-boxe` | ✔ (falta testar no telemóvel) |
 | 2026-11-12 | Fase 4: basebol refeito (estádio, 4 lançamentos, altura do bastão, física da bola, 9 defesas, corredores, placar eletrónico, repetição de home runs) | `fase4-basebol` | ✔ (falta testar no telemóvel) |
+| 2026-11-12 | Fase 5: golfe novo (7 tacos, medidor com zona vermelha, efeito, curva/altura, balançar, relevo, 5 buracos, caddie) | `fase5-golfe` | ✔ (falta testar no telemóvel) |

@@ -42,8 +42,8 @@ export const controllerInputSchema = z.discriminatedUnion('t', [
    */
   z.object({
     t: z.literal('swing'),
-    /** Força do gesto, 0–1. */
-    power: z.number().min(0).max(1),
+    /** Força do gesto, 0–1 (até 1.1 na zona vermelha do golfe). */
+    power: z.number().min(0).max(1.1),
     /** Direção: -1 esquerda, 0 em frente, 1 direita. */
     dir: z.number().min(-1).max(1),
     /** Efeito/rotação do pulso: -1 a 1. */
@@ -52,6 +52,8 @@ export const controllerInputSchema = z.discriminatedUnion('t', [
     source: z.enum(['motion', 'touch', 'key']).optional(),
     /** Tipo de soco pelo gesto (boxe). */
     kind: z.enum(['straight', 'hook', 'uppercut']).optional(),
+    /** Altura da tacada (golfe): -1 rasteira … 1 alta. */
+    loft: z.number().min(-1).max(1).optional(),
   }),
   /** Ângulo de pontaria pela inclinação do telemóvel: -1 esquerda … 1 direita. */
   z.object({
@@ -122,6 +124,20 @@ export const controllerLayoutSchema = z.discriminatedUnion('kind', [
     picked: z.string().max(32).optional(),
     /** Texto do joystick (por omissão "Posição"). */
     aimLabel: z.string().max(40).optional(),
+    hint: z.string().max(200).optional(),
+  }),
+  /**
+   * Golfe: escolha do taco (envia `choice` "club:<id>"), joystick para apontar, medidor de força
+   * (toca para começar, toca para parar; parar com ⬆️/⬇️ dá topspin/backspin) e, com o medidor a andar,
+   * joystick para curva/altura. Também dá para balançar o telemóvel como um taco.
+   * Ao começar o medidor envia o botão A; no fim envia `swing` (power até 1.1, dir = curva, loft, spin).
+   */
+  z.object({
+    kind: z.literal('golf'),
+    prompt: z.string().max(200),
+    clubs: z.array(z.object({ id: z.string().min(1).max(16), label: z.string().max(40) })).max(8),
+    club: z.string().max(16),
+    putter: z.boolean(),
     hint: z.string().max(200).optional(),
   }),
   /** Lançar dados: botão grande e, se o telemóvel deixar, abanar. Envia a escolha `roll`. */

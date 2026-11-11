@@ -1,35 +1,46 @@
 /**
- * Golfe 3D: 3 buracos com fairway, green, lagos, bunkers e vento.
- * Aponta-se com o joystick e a força vem do gesto; o taco é escolhido sozinho.
- * Joga primeiro quem está mais longe do buraco (como no golfe a sério).
+ * Golfe 3D: buracos com relevo, fairway, green inclinado, lagos, bunkers e vento.
+ *
+ *  - O telemóvel escolhe o taco (Driver … Putter); a área onde a bola cai e a trajetória
+ *    aparecem no campo. Aponta-se com o joystick.
+ *  - Medidor de força (zona vermelha = mais longe mas menos preciso), topspin/backspin ao parar,
+ *    curva e altura com o joystick; ou balançar o telemóvel como um taco.
+ *  - A bola segue a simulação de @festa/game (voo, ressaltos, efeito, rolar com inclinação).
+ *  - Caddie com dicas (taco, vento, inclinação do green, perigos). Joga primeiro quem está mais longe.
  */
 import * as THREE from 'three';
-import { createRng, getCharacter } from '@festa/game';
+import { CHARACTERS, createRng, getCharacter } from '@festa/game';
 import {
   CLUBS,
+  CLUB_ORDER,
   COURSE,
+  LIE_POWER,
   MAX_STROKES,
+  gradientAt,
+  heightAt,
   holeResultName,
   lieAt,
   pickClub,
+  planShot,
+  redZoneError,
   relativeToPar,
+  simulateShot,
   type Club,
   type GolfHole,
   type Lie,
+  type Shot,
+  type ShotResult,
 } from '@festa/game/sports/golf';
-import type { SwingInput } from '@festa/shared';
-import { disposeObject, mesh, toon, toonUnique } from '../../three/materials';
-import { ease } from '../../three/tweens';
+import { CharacterModel } from '../../three/CharacterModel';
+import { disposeObject, mesh, textSprite, toon, toonUnique } from '../../three/materials';
 import { bush, palmTree } from '../../stages/environment';
 import { SportStage } from '../SportStage';
 import { rankBy, type SportContext, type SportStanding } from '../types';
 import type { Seat } from '../../game/Seats';
 
 const BALL_R = 0.12;
-/** Desaceleração ao rolar (m/s²) em cada superfície. */
-const DECEL: Record<Lie, number> = { green: 3, fairway: 6, rough: 14, bunker: 30, water: 30, out: 30 };
-const LIE_POWER: Record<Lie, number> = { green: 1, fairway: 1, rough: 0.8, bunker: 0.6, water: 1, out: 1 };
 const LIE_NAME: Record<Lie, string> = { green: 'green', fairway: 'fairway', rough: 'relva alta', bunker: 'bunker', water: 'água', out: 'fora' };
+const ARROWS = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
 
 interface GolferState {
   seat: Seat;
@@ -44,29 +55,60 @@ interface GolferState {
 export class GolfStage extends SportStage {
   private readonly golfers: GolferState[] = [];
   private readonly holeGroup = new THREE.Group();
-  private readonly aimArrow: THREE.Group;
-  private readonly aimRing: THREE.Mesh;
+  private readonly dots: THREE.Mesh[] = [];
+  private readonly landRing: THREE.Mesh;
+  private landLabel: THREE.Sprite | null = null;
+  private readonly club3d: THREE.Group;
+  private readonly caddie: CharacterModel;
+  private caddieBubble: THREE.Sprite | null = null;
+  private readonly course: GolfHole[];
   private hole: GolfHole = COURSE[0]!;
   private wind = new THREE.Vector2();
   private aimAngle = 0;
   private aiming: GolferState | null = null;
-  private aimDist = 10;
+  private aimLocked = false;
+  private club: Club = 'driver';
+  private botAim: number | null = null;
+  private previewAt = 0;
   private path: THREE.Vector2[] = [];
+  private offChoice: (() => void) | null = null;
 
   constructor(ctx: SportContext) {
     super(ctx);
+    this.course = ctx.players.length <= 3 ? COURSE : COURSE.slice(0, 3);
     this.scene.add(this.holeGroup);
-    this.aimArrow = new THREE.Group();
-    const shaft = mesh(new THREE.BoxGeometry(0.12, 0.04, 1), new THREE.MeshBasicMaterial({ color: '#ffd23f' }), { cast: false });
-    shaft.position.z = -0.5;
-    this.aimArrow.add(shaft);
-    this.aimRing = new THREE.Mesh(
-      new THREE.RingGeometry(0.8, 1.1, 32),
-      new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, opacity: 0.8, side: THREE.DoubleSide }),
+    const dotMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.85 });
+    for (let i = 0; i < 18; i++) {
+      const d = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), dotMat);
+      d.visible = false;
+      this.scene.add(d);
+      this.dots.push(d);
+    }
+    this.landRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.85, 1, 40),
+      new THREE.MeshBasicMaterial({ color: '#ffd23f', transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }),
     );
-    this.aimRing.rotation.x = -Math.PI / 2;
-    this.scene.add(this.aimArrow, this.aimRing);
-    this.showAim(false);
+    this.landRing.rotation.x = -Math.PI / 2;
+    this.landRing.visible = false;
+    this.scene.add(this.landRing);
+
+    // Taco de golfe (vai para a mão de quem joga).
+    this.club3d = new THREE.Group();
+    const shaft = mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.1, 8), toon('#c0c6d0'));
+    shaft.position.y = -0.45;
+    const head = mesh(new THREE.BoxGeometry(0.1, 0.08, 0.2), toon('#4a4f58'));
+    head.position.set(0, -1.0, 0.06);
+    this.club3d.add(shaft, head);
+
+    // Caddie
+    const used = new Set(ctx.players.map((p) => p.characterId));
+    this.caddie = new CharacterModel(CHARACTERS.find((c) => !used.has(c.id)) ?? CHARACTERS[0]!);
+    this.caddie.root.scale.setScalar(0.85);
+    const bag = mesh(new THREE.CylinderGeometry(0.2, 0.18, 0.9, 12), toonUnique('#d9434a'));
+    bag.position.set(-0.35, 0.55, -0.25);
+    bag.rotation.z = 0.25;
+    this.caddie.root.add(bag);
+    this.scene.add(this.caddie.root);
 
     for (const seat of ctx.players) {
       const ball = new THREE.Mesh(
@@ -80,9 +122,16 @@ export class GolfStage extends SportStage {
   }
 
   async play(): Promise<SportStanding[]> {
-    for (let h = 0; h < COURSE.length; h++) {
-      await this.playHole(COURSE[h]!, h);
-    }
+    this.offChoice = this.ctx.hub.events.on('choice', ({ player, id }) => {
+      if (!this.aiming || this.aimLocked || player.id !== this.aiming.seat.id || !id.startsWith('club:')) return;
+      const c = id.slice(5) as Club;
+      if (CLUB_ORDER.includes(c)) {
+        this.club = c;
+        this.previewAt = 0;
+        this.say(CLUBS[c].name);
+      }
+    });
+    for (let h = 0; h < this.course.length; h++) await this.playHole(this.course[h]!, h);
     this.ctx.hud.setRound(null);
     const ranked = rankBy(this.golfers, (g) => g.total, false);
     return ranked.map((g) => ({ id: g.seat.id, rank: g.rank, score: `${g.total} pancadas (${relativeToPar(g.total, g.par)})` }));
@@ -105,79 +154,127 @@ export class GolfStage extends SportStage {
       g.ball.visible = true;
       this.placeBall(g);
     }
-    // Vista do buraco inteiro
+    // Voo sobre o buraco, do green até ao tee.
     const mid = { x: hole.hole.x / 2, z: hole.hole.z / 2 };
-    this.cameraTo({ x: mid.x + 30, y: 70, z: mid.z + 50 }, { x: mid.x, y: 0, z: mid.z }, { instant: true });
+    this.cameraTo({ x: hole.hole.x + 20, y: 45, z: hole.hole.z - 25 }, { x: hole.hole.x, y: 0, z: hole.hole.z }, { instant: true });
+    this.cameraTo({ x: mid.x + 35, y: 70, z: mid.z + 55 }, { x: mid.x, y: 0, z: mid.z }, { speed: 0.6 });
     this.updateHud();
-    await this.ctx.hud.banner(hole.name, { sub: `Par ${hole.par} · ${Math.round(Math.hypot(hole.hole.x, hole.hole.z))} m · vento ${windSpeed}`, hold: 2.5 });
+    await this.ctx.hud.banner(hole.name, { sub: `Par ${hole.par} · ${Math.round(Math.hypot(hole.hole.x, hole.hole.z))} m · vento ${windSpeed}`, hold: 2.8 });
 
     for (;;) {
-      const next = this.golfers
-        .filter((g) => !g.done)
-        .sort((a, b) => this.distToHole(b) - this.distToHole(a))[0];
+      const next = this.golfers.filter((g) => !g.done).sort((a, b) => this.distToHole(b) - this.distToHole(a))[0];
       if (!next) break;
       await this.shot(next);
     }
     this.updateHud();
-    await this.ctx.hud.banner(`Fim do ${hole.name.split(' · ')[0]}`, {
-      sub: this.golfers.map((g) => `${g.seat.name}: ${g.strokes}`).join(' · '),
-      hold: 2.6,
-    });
+    await this.ctx.hud.banner(`Fim do ${hole.name.split(' · ')[0]}`, { sub: this.golfers.map((g) => `${g.seat.name}: ${g.strokes}`).join(' · '), hold: 2.6 });
   }
 
   private distToHole(g: GolferState): number {
     return Math.hypot(g.pos.x - this.hole.hole.x, g.pos.y - this.hole.hole.z);
   }
 
+  /** Para onde apontar: o buraco, ou o ponto do fairway mais avançado ao alcance. */
+  private targetFor(g: GolferState, reach: number): THREE.Vector2 {
+    const holePos = new THREE.Vector2(this.hole.hole.x, this.hole.hole.z);
+    if (g.pos.distanceTo(holePos) <= reach * 1.02) return holePos;
+    const nearest = this.path.reduce((bi, p, i) => (p.distanceTo(g.pos) < this.path[bi]!.distanceTo(g.pos) ? i : bi), 0);
+    let target = this.path[Math.min(this.path.length - 1, nearest + 1)]!;
+    for (let i = nearest; i < this.path.length; i++) if (this.path[i]!.distanceTo(g.pos) <= reach * 0.9) target = this.path[i]!;
+    return target;
+  }
+
   private async shot(g: GolferState): Promise<void> {
     const lie = lieAt(this.hole, g.pos.x, g.pos.y);
     const dist = this.distToHole(g);
-    const club: Club = pickClub(dist, lie === 'green');
-    const clubInfo = CLUBS[club];
-    // Aponta para o buraco por omissão
-    this.aimAngle = Math.atan2(this.hole.hole.x - g.pos.x, this.hole.hole.z - g.pos.y);
-    this.aimDist = Math.min(dist, clubInfo.maxDist * LIE_POWER[lie]);
+    const onGreen = lie === 'green';
+    const longest = CLUBS.driver.carry * LIE_POWER[lie];
+    const target = this.targetFor(g, longest);
+    this.club = pickClub(g.pos.distanceTo(target), onGreen, lie);
+    this.aimAngle = Math.atan2(target.x - g.pos.x, target.y - g.pos.y);
 
     const m = this.model(g.seat.id);
     for (const other of this.models.values()) other.root.visible = other === m;
+    this.club3d.removeFromParent();
+    this.club3d.scale.setScalar(1);
+    this.club3d.position.set(0, 0, 0);
+    m.attach(this.club3d, 'right');
+    m.setAnim('idle');
     this.aiming = g;
-    this.showAim(true);
+    this.aimLocked = false;
+    this.previewAt = 0;
     this.updateHud(g.seat.id);
     this.waitAll(`Vez de ${g.seat.name} ⛳`, g.seat.id);
-    this.ctx.hud.hint(`${g.seat.name} · ${clubInfo.name} · ${Math.round(dist)} m · ${LIE_NAME[lie]}`, true);
+    const tip = this.caddieTip(g, lie, dist);
+    this.ctx.hud.hint(`🧢 ${tip}`, true);
+    this.say(CLUBS[this.club].name);
 
+    // Bots: escolhem o taco e calculam a tacada; o ecrã mostra-os a apontar.
+    const auto = this.ctx.seats.isAuto(g.seat);
+    let botShot: Shot | null = null;
+    if (auto) {
+      const t = this.targetFor(g, CLUBS[this.club].carry * LIE_POWER[lie]);
+      const aimAt = onGreen || t.distanceTo(new THREE.Vector2(this.hole.hole.x, this.hole.hole.z)) < 0.5 ? { x: this.hole.hole.x, z: this.hole.hole.z } : { x: t.x, z: t.y };
+      botShot = planShot(this.hole, { x: g.pos.x, z: g.pos.y }, aimAt, this.club, { x: this.wind.x, z: this.wind.y });
+      const skill = this.ctx.botSkill;
+      const rng = this.ctx.rng;
+      const gauss = () => rng.next() + rng.next() + rng.next() - 1.5;
+      botShot.angle += gauss() * (1 - skill) * (onGreen ? 0.1 : 0.15);
+      botShot.power = Math.max(0.05, Math.min(1, botShot.power * (1 + gauss() * (1 - skill) * (onGreen ? 0.32 : 0.18))));
+      this.botAim = botShot.angle;
+    }
+    const clubs = (onGreen ? (['putter', 'wedge'] as Club[]) : dist < 18 ? CLUB_ORDER : CLUB_ORDER.filter((c) => c !== 'putter')).map((id) => ({ id, label: CLUBS[id].name }));
     const swing = await this.ctx.seats.awaitSwing(g.seat, {
       layout: {
-        kind: 'motion',
-        action: 'putt',
-        aim: true,
-        prompt: `${clubInfo.name} · ${Math.round(dist)} m até ao buraco`,
-        hint: club === 'putter' ? 'No green: gesto suave! Devagar = fraco' : 'Joystick para apontar · mais força = mais longe',
+        kind: 'golf',
+        prompt: `${Math.round(dist)} m até ao buraco · ${LIE_NAME[lie]}`,
+        clubs,
+        club: this.club,
+        putter: this.club === 'putter',
+        hint: tip,
       },
-      bot: () => this.botShot(g, club, lie),
-      botDelay: 1.3,
+      bot: () => ({ t: 'swing', power: botShot!.power, dir: 0, spin: 0, loft: 0, source: 'key' }),
+      botDelay: 2,
     });
-    this.showAim(false);
+    this.botAim = null;
+    if (botShot) this.aimAngle = botShot.angle;
     this.aiming = null;
-    this.ctx.hud.hint(null);
+    this.showPreview(false);
+    this.ctx.hud.hint(null, true);
     this.setLayout(g.seat, { kind: 'wait', message: 'Boa tacada? 🤞' });
 
-    m.setAnim('hit');
-    await this.wait(0.25);
-    m.setAnim('idle');
+    const rng = this.ctx.rng;
+    const err = redZoneError(swing.power, rng.next(), rng.next());
+    const shot: Shot = {
+      club: this.club,
+      angle: this.aimAngle + err.angle,
+      power: swing.power,
+      curve: Math.max(-1, Math.min(1, swing.dir + err.curve)),
+      loft: swing.loft ?? 0,
+      spin: Math.sign(swing.spin),
+    };
+    if (swing.power > 1) this.say('Força máxima!');
+    m.setAnim('batSwing');
+    await this.wait(0.35);
     g.strokes++;
     const prev = g.pos.clone();
-    const result = await this.flyBall(g, swing, club, lie);
-    if (result === 'in') {
+    const result = simulateShot(this.hole, { x: g.pos.x, z: g.pos.y }, shot, { x: this.wind.x, z: this.wind.y });
+    await this.animateShot(g, result, shot);
+    m.setAnim('idle');
+    this.club3d.removeFromParent();
+
+    if (result.holed) {
       g.done = true;
       g.total += g.strokes;
       g.ball.visible = false;
       m.setAnim('cheer');
+      this.caddie.setAnim('cheer');
       this.ctx.seats.vibrate(g.seat, [80, 40, 80, 40, 250]);
       await this.ctx.hud.banner(holeResultName(g.strokes, this.hole.par), { sub: g.seat.name, hold: 2, color: '#ffd23f' });
       m.setAnim('idle');
+      this.caddie.setAnim('idle');
     } else {
-      const newLie = lieAt(this.hole, g.pos.x, g.pos.y);
+      const newLie = result.lie;
       if (newLie === 'water' || newLie === 'out') {
         g.strokes++;
         m.setAnim('sad');
@@ -186,7 +283,9 @@ export class GolfStage extends SportStage {
         g.pos.copy(prev);
         this.placeBall(g);
       } else if (newLie === 'green' && lie !== 'green') {
-        await this.ctx.hud.banner('No green!', { hold: 1 });
+        await this.ctx.hud.banner('No green!', { sub: `A ${Math.round(this.distToHole(g))} m do buraco`, hold: 1.1 });
+      } else if (newLie === 'bunker') {
+        await this.ctx.hud.banner('Bunker!', { hold: 1 });
       }
       if (g.strokes >= MAX_STROKES && !g.done) {
         g.done = true;
@@ -198,123 +297,191 @@ export class GolfStage extends SportStage {
     this.updateHud();
   }
 
-  /** Voo + rolamento. Devolve 'in' se entrou no buraco. */
-  private async flyBall(g: GolferState, s: SwingInput, club: Club, lie: Lie): Promise<'in' | 'stop'> {
-    const clubInfo = CLUBS[club];
-    const power = club === 'putter' ? s.power ** 1.3 : s.power;
-    const dist = Math.max(0.5, clubInfo.maxDist * power * LIE_POWER[lie]);
-    const angle = this.aimAngle + s.dir * (club === 'putter' ? 0.05 : 0.14);
-    const dir = new THREE.Vector2(Math.sin(angle), Math.cos(angle));
-    const holePos = new THREE.Vector2(this.hole.hole.x, this.hole.hole.z);
-
-    if (club !== 'putter') {
-      const T = 1 + dist / 45;
-      const apex = Math.min(16, dist * 0.22);
-      const from = g.pos.clone();
-      const to = from.clone().addScaledVector(dir, dist).addScaledVector(this.wind, T * 0.9);
-      this.cameraTo({ x: from.x - dir.x * 8, y: 6, z: from.y - dir.y * 8 }, { x: to.x, y: 0, z: to.y }, { speed: 2 });
-      await this.tween(T, (t) => {
-        g.pos.lerpVectors(from, to, t);
-        g.ball.position.set(g.pos.x, BALL_R + Math.sin(t * Math.PI) * apex, g.pos.y);
-      }, ease.linear);
-      if (g.pos.distanceTo(holePos) < 0.6) return this.dropIn(g);
-      const landLie = lieAt(this.hole, g.pos.x, g.pos.y);
-      if (landLie === 'water' || landLie === 'out' || landLie === 'bunker') return 'stop';
-      // Rola um pouco
-      const roll = dist * (landLie === 'green' ? 0.08 : landLie === 'fairway' ? 0.12 : 0.04);
-      return this.roll(g, dir, Math.sqrt(2 * DECEL[landLie] * roll), holePos);
-    }
-    this.cameraTo({ x: g.pos.x - dir.x * 5, y: 3, z: g.pos.y - dir.y * 5 }, { x: g.pos.x + dir.x * 6, y: 0, z: g.pos.y + dir.y * 6 }, { speed: 2.5 });
-    return this.roll(g, dir, Math.sqrt(2 * DECEL[lie] * dist), holePos);
+  /** Mostra a bola a seguir a simulação, com a câmara a acompanhar. */
+  private async animateShot(g: GolferState, r: ShotResult, shot: Shot): Promise<void> {
+    const s = r.samples;
+    const end = s[s.length - 1]!.t;
+    const putt = shot.club === 'putter';
+    const dir = new THREE.Vector2(Math.sin(shot.angle), Math.cos(shot.angle));
+    const start = g.pos.clone();
+    let idx = 0;
+    await this.tween(end, (k) => {
+      const t = k * end;
+      while (idx < s.length - 1 && s[idx + 1]!.t < t) idx++;
+      const a = s[idx]!;
+      const b = s[Math.min(s.length - 1, idx + 1)]!;
+      const q = b.t > a.t ? (t - a.t) / (b.t - a.t) : 0;
+      const x = a.x + (b.x - a.x) * q;
+      const y = a.y + (b.y - a.y) * q;
+      const z = a.z + (b.z - a.z) * q;
+      g.pos.set(x, z);
+      g.ball.position.set(x, y + BALL_R, z);
+      if (putt) {
+        this.cameraTo({ x: start.x - dir.x * 4, y: heightAt(this.hole, start.x, start.y) + 2.4, z: start.y - dir.y * 4 }, { x, y, z }, { speed: 3 });
+      } else if (t < r.landT) {
+        this.cameraTo({ x: x - dir.x * 14, y: y + 7, z: z - dir.y * 14 }, { x: x + dir.x * 6, y: y * 0.5, z: z + dir.y * 6 }, { speed: 2.5 });
+      } else {
+        this.cameraTo({ x: x - dir.x * 9 + 3, y: y + 5, z: z - dir.y * 9 }, { x, y, z }, { speed: 2 });
+      }
+    });
+    const last = s[s.length - 1]!;
+    g.pos.set(last.x, last.z);
+    if (r.holed) {
+      await this.tween(0.25, (k) => g.ball.position.set(last.x, last.y + BALL_R - k * 0.4, last.z));
+    } else this.placeBall(g);
   }
 
-  /** Rola com atrito; pode cair no buraco se passar perto e devagar. */
-  private async roll(g: GolferState, dir: THREE.Vector2, speed: number, holePos: THREE.Vector2): Promise<'in' | 'stop'> {
-    let v = speed;
-    while (v > 0.05) {
-      await this.wait(1 / 60);
-      const lie = lieAt(this.hole, g.pos.x, g.pos.y);
-      g.pos.addScaledVector(dir, v / 60);
-      v -= DECEL[lie] / 60;
-      this.placeBall(g);
-      // Cai se passar mesmo por cima do buraco e não vier demasiado depressa.
-      if (g.pos.distanceTo(holePos) < 0.28 && v < 4.5) return this.dropIn(g);
-      if (lie === 'water' || lie === 'out' || lie === 'bunker') break;
+  /** Dica do caddie: taco, vento, sítio da bola, inclinação do green e perigos. */
+  private caddieTip(g: GolferState, lie: Lie, dist: number): string {
+    const parts: string[] = [];
+    const spec = CLUBS[this.club];
+    if (lie === 'green') {
+      const hx = this.hole.hole.x;
+      const hz = this.hole.hole.z;
+      const mx = (g.pos.x + hx) / 2;
+      const mz = (g.pos.y + hz) / 2;
+      const grad = gradientAt(this.hole, mx, mz);
+      const dx = hx - g.pos.x;
+      const dz = hz - g.pos.y;
+      const len = Math.hypot(dx, dz) || 1;
+      const along = (grad.x * dx + grad.z * dz) / len; // > 0: a subir
+      const right = (grad.x * dz - grad.z * dx) / len; // > 0: sobe para a direita → cai para a esquerda
+      parts.push(`${Math.round(dist * 10) / 10} m.`);
+      if (Math.abs(right) > 0.008) parts.push(`O green cai para a ${right > 0 ? 'esquerda' : 'direita'}: aponta um pouco para a ${right > 0 ? 'direita' : 'esquerda'}.`);
+      if (Math.abs(along) > 0.008) parts.push(along > 0 ? 'Está a subir: dá mais força.' : 'Está a descer: devagarinho!');
+    } else {
+      parts.push(`${spec.name} chega a ~${Math.round(spec.carry * LIE_POWER[lie])} m (faltam ${Math.round(dist)} m).`);
+      if (lie === 'rough') parts.push('Relva alta: perdes força.');
+      if (lie === 'bunker') parts.push('Bunker: wedge e com força!');
+      const w = this.wind.length();
+      if (w >= 1) {
+        const dir = new THREE.Vector2(Math.sin(this.aimAngle), Math.cos(this.aimAngle));
+        const side = this.wind.x * dir.y - this.wind.y * dir.x; // > 0: empurra para a direita
+        const head = this.wind.dot(dir);
+        if (Math.abs(side) > 0.6) parts.push(`Vento empurra para a ${side > 0 ? 'direita' : 'esquerda'}.`);
+        else if (head < -0.6) parts.push('Vento contra: leva mais taco.');
+        else if (head > 0.6) parts.push('Vento a favor!');
+      }
+      // Água na linha de tiro?
+      for (const wtr of this.hole.water) {
+        const vx = wtr.x - g.pos.x;
+        const vz = wtr.z - g.pos.y;
+        const dir = new THREE.Vector2(Math.sin(this.aimAngle), Math.cos(this.aimAngle));
+        const along = vx * dir.x + vz * dir.y;
+        const off = Math.abs(vx * dir.y - vz * dir.x);
+        if (along > 0 && along < spec.carry * 1.1 && off < wtr.r + 3) {
+          parts.push('Cuidado com a água!');
+          break;
+        }
+      }
     }
-    return 'stop';
-  }
-
-  private async dropIn(g: GolferState): Promise<'in'> {
-    const y = g.ball.position.y;
-    g.pos.set(this.hole.hole.x, this.hole.hole.z);
-    await this.tween(0.25, (t) => g.ball.position.set(g.pos.x, y - t * 0.4, g.pos.y));
-    return 'in';
-  }
-
-  private botShot(g: GolferState, club: Club, lie: Lie): SwingInput {
-    const rng = this.ctx.rng;
-    const max = CLUBS[club].maxDist * LIE_POWER[lie];
-    const holePos = new THREE.Vector2(this.hole.hole.x, this.hole.hole.z);
-    let target = holePos;
-    if (club !== 'putter' && g.pos.distanceTo(holePos) > max * 0.95) {
-      // Segue o fairway: o ponto mais avançado ao alcance.
-      const nearest = this.path.reduce((bi, p, i) => (p.distanceTo(g.pos) < this.path[bi]!.distanceTo(g.pos) ? i : bi), 0);
-      for (let i = nearest; i < this.path.length; i++) if (this.path[i]!.distanceTo(g.pos) <= max * 0.85) target = this.path[i]!;
-    }
-    const sloppy = 1.6 - this.ctx.botSkill * 1.2; // 0,44 (mestre) … 1,18 (fácil)
-    this.aimAngle = Math.atan2(target.x - g.pos.x, target.y - g.pos.y) + (rng.next() - 0.5) * 0.08 * sloppy;
-    const want = g.pos.distanceTo(target);
-    let power = want / max;
-    if (club === 'putter') power = Math.pow(Math.min(1, (want * 1.05) / max), 1 / 1.3);
-    power = Math.max(0.05, Math.min(1, power * (1 + (rng.next() - 0.5) * 0.18 * sloppy)));
-    return { t: 'swing', power, dir: (rng.next() - 0.5) * 0.4, spin: 0, source: 'key' };
+    return `Caddie: ${parts.join(' ')}`;
   }
 
   // ── Por frame ───────────────────────────────────────────
 
   protected override tick(dt: number, time: number): void {
+    this.caddie.update(dt);
     const g = this.aiming;
     if (!g) return;
     const pad = this.ctx.seats.pad(g.seat);
-    this.aimAngle -= pad.stick.x * dt * 1.1;
+    if (pad.consumePress('a')) this.aimLocked = true;
+    if (this.botAim !== null) this.aimAngle += (this.botAim - this.aimAngle) * Math.min(1, dt * 2);
+    else if (!this.aimLocked) this.aimAngle -= pad.stick.x * dt * (this.club === 'putter' ? 0.5 : 0.9);
     const dir = new THREE.Vector2(Math.sin(this.aimAngle), Math.cos(this.aimAngle));
-    const back = g.pos.clone().addScaledVector(dir, -1);
-    const lie = lieAt(this.hole, g.pos.x, g.pos.y);
-    const putting = lie === 'green';
+    const putting = this.club === 'putter';
+    const gy = heightAt(this.hole, g.pos.x, g.pos.y);
+    const look = putting ? Math.min(8, this.distToHole(g) + 1) : Math.min(CLUBS[this.club].carry * 0.35, 18);
     this.cameraTo(
-      { x: g.pos.x - dir.x * (putting ? 5.5 : 10), y: putting ? 3 : 6, z: g.pos.y - dir.y * (putting ? 5.5 : 10) },
-      { x: g.pos.x + dir.x * (putting ? 5 : 16), y: 0, z: g.pos.y + dir.y * (putting ? 5 : 16) },
-      { speed: 6 },
+      { x: g.pos.x - dir.x * (putting ? 5.5 : 7.5) - dir.y * 1.2, y: gy + (putting ? 3 : 3.2), z: g.pos.y - dir.y * (putting ? 5.5 : 7.5) + dir.x * 1.2 },
+      { x: g.pos.x + dir.x * look, y: gy, z: g.pos.y + dir.y * look },
+      { speed: 5 },
     );
+    // Golfista ao lado da bola, de frente para ela; caddie atrás.
     const m = this.model(g.seat.id);
-    m.root.position.set(back.x + dir.y * 1.1, 0, back.y - dir.x * 1.1);
-    m.faceYaw(this.aimAngle - Math.PI / 2);
-    this.aimArrow.position.set(g.pos.x, 0.08, g.pos.y);
-    this.aimArrow.rotation.y = this.aimAngle + Math.PI;
-    this.aimArrow.scale.set(1, 1, this.aimDist);
-    this.aimRing.position.set(g.pos.x + dir.x * this.aimDist, 0.1, g.pos.y + dir.y * this.aimDist);
-    (this.aimRing.material as THREE.MeshBasicMaterial).opacity = 0.5 + Math.sin(time * 5) * 0.3;
+    const side = new THREE.Vector2(dir.y, -dir.x);
+    const mx = g.pos.x - side.x * 0.9 - dir.x * 0.2;
+    const mz = g.pos.y - side.y * 0.9 - dir.y * 0.2;
+    m.root.position.set(mx, heightAt(this.hole, mx, mz), mz);
+    m.faceYaw(Math.atan2(side.x, side.y));
+    const cx = g.pos.x + dir.x * 0.6 + side.x * 2.4;
+    const cz = g.pos.y + dir.y * 0.6 + side.y * 2.4;
+    this.caddie.root.position.set(cx, heightAt(this.hole, cx, cz), cz);
+    this.caddie.faceYaw(Math.atan2(-side.x, -side.y));
+    if (this.caddieBubble) this.caddieBubble.position.set(cx, this.caddie.root.position.y + 2.6, cz);
+
+    if (time - this.previewAt > 0.12) {
+      this.previewAt = time;
+      this.updatePreview(g);
+    }
+    (this.landRing.material as THREE.MeshBasicMaterial).opacity = 0.55 + Math.sin(time * 5) * 0.25;
   }
 
-  private showAim(v: boolean): void {
-    this.aimArrow.visible = v;
-    this.aimRing.visible = v;
+  /** Trajetória e área de queda do taco escolhido (força 100 %, sem vento nem curva). */
+  private updatePreview(g: GolferState): void {
+    const putt = this.club === 'putter';
+    let power = 1;
+    if (putt) power = Math.min(1, Math.pow(this.distToHole(g) / CLUBS.putter.carry, 1 / 1.3));
+    const r = simulateShot(this.hole, { x: g.pos.x, z: g.pos.y }, { club: this.club, angle: this.aimAngle, power, curve: 0, loft: 0, spin: 0 }, { x: 0, z: 0 });
+    const s = r.samples;
+    const upto = putt ? Math.max(2, Math.floor(s.length * 0.45)) : Math.max(2, s.findIndex((p) => p.t >= r.landT));
+    this.dots.forEach((d, i) => {
+      const p = s[Math.min(upto, Math.floor(((i + 1) / this.dots.length) * upto))]!;
+      d.visible = true;
+      d.position.set(p.x, p.y + (putt ? 0.08 : BALL_R), p.z);
+      d.scale.setScalar(putt ? 0.5 : 1);
+    });
+    const land = s[upto]!;
+    this.landRing.visible = !putt;
+    const rad = Math.max(1.2, CLUBS[this.club].carry * 0.07);
+    this.landRing.scale.setScalar(rad);
+    this.landRing.position.set(land.x, land.y + 0.12, land.z);
+    if (this.landLabel) {
+      this.scene.remove(this.landLabel);
+      disposeObject(this.landLabel);
+      this.landLabel = null;
+    }
+    if (!putt) {
+      this.landLabel = textSprite(`${CLUBS[this.club].name} · ${Math.round(Math.hypot(land.x - g.pos.x, land.z - g.pos.y))} m`, { height: Math.max(1, rad * 0.6), color: '#ffd23f', stroke: '#1d1433' });
+      this.landLabel.position.set(land.x, land.y + rad * 0.9 + 1, land.z);
+      this.scene.add(this.landLabel);
+    }
+  }
+
+  private showPreview(v: boolean): void {
+    for (const d of this.dots) d.visible = v;
+    this.landRing.visible = v;
+    if (!v && this.landLabel) {
+      this.scene.remove(this.landLabel);
+      disposeObject(this.landLabel);
+      this.landLabel = null;
+    }
+  }
+
+  /** Balão do caddie. */
+  private say(text: string): void {
+    if (this.caddieBubble) {
+      this.scene.remove(this.caddieBubble);
+      disposeObject(this.caddieBubble);
+    }
+    this.caddieBubble = textSprite(`💬 ${text}`, { height: 0.32, color: '#ffffff', stroke: '#1d1433' });
+    const p = this.caddie.root.position;
+    this.caddieBubble.position.set(p.x, p.y + 2.6, p.z);
+    this.scene.add(this.caddieBubble);
   }
 
   private placeBall(g: GolferState): void {
-    g.ball.position.set(g.pos.x, BALL_R + 0.05, g.pos.y);
+    g.ball.position.set(g.pos.x, heightAt(this.hole, g.pos.x, g.pos.y) + BALL_R + 0.03, g.pos.y);
   }
 
   private updateHud(activeId?: string): void {
     const windDir = Math.round(((Math.atan2(this.wind.x, -this.wind.y) * 180) / Math.PI + 360) % 360);
-    const arrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
     this.ctx.hud.setRound(
-      `${this.hole.name.split(' · ')[0]} · Par ${this.hole.par} · Vento ${this.wind.length() < 0.5 ? '—' : `${arrows[Math.round(windDir / 45) % 8]} ${Math.round(this.wind.length())}`}`,
+      `${this.hole.name.split(' · ')[0]} · Par ${this.hole.par} · Vento ${this.wind.length() < 0.5 ? '—' : `${ARROWS[Math.round(windDir / 45) % 8]} ${Math.round(this.wind.length())}`}`,
     );
     this.scoreboard(
       this.golfers.map((g) => ({
         id: g.seat.id,
-        // Total face ao par só conta buracos acabados; o número é das pancadas neste buraco.
         text: `${g.done ? '✔' : `🏌 ${g.strokes}`} · ${relativeToPar(g.total, g.par - (g.done ? 0 : this.hole.par))}`,
         active: g.seat.id === activeId,
       })),
@@ -323,80 +490,113 @@ export class GolfStage extends SportStage {
 
   // ── Cenário ─────────────────────────────────────────────
 
+  /** Assenta uma geometria (já em coordenadas do mundo, deitada) no relevo. */
+  private drape(geo: THREE.BufferGeometry, lift: number): THREE.BufferGeometry {
+    const pos = geo.attributes.position!;
+    for (let i = 0; i < pos.count; i++) pos.setY(i, heightAt(this.hole, pos.getX(i), pos.getZ(i)) + lift);
+    geo.computeVertexNormals();
+    return geo;
+  }
+
+  private flatPiece(geo: THREE.BufferGeometry, x: number, z: number, rotY: number, color: string, lift: number, extra: THREE.MeshToonMaterialParameters = {}): THREE.Mesh {
+    geo.rotateX(-Math.PI / 2);
+    geo.rotateY(rotY);
+    geo.translate(x, 0, z);
+    const m = mesh(this.drape(geo, lift), toonUnique(color, extra), { cast: false, receive: true });
+    this.holeGroup.add(m);
+    return m;
+  }
+
   private buildHole(hole: GolfHole, index: number): void {
     for (const c of [...this.holeGroup.children]) {
       this.holeGroup.remove(c);
       disposeObject(c);
     }
     const g = this.holeGroup;
-    const flat = (geo: THREE.BufferGeometry, color: string, y: number, extra: THREE.MeshToonMaterialParameters = {}) => {
-      const m = mesh(geo, toonUnique(color, extra), { cast: false, receive: true });
-      m.rotation.x = -Math.PI / 2;
-      m.position.y = y;
-      g.add(m);
-      return m;
-    };
-    const ground = flat(new THREE.PlaneGeometry(400, 400), '#4f9a45', 0);
-    ground.position.set(0, 0, -100);
+    this.flatPiece(new THREE.PlaneGeometry(260, 300, 130, 150), 0, -95, 0, '#4f9a45', 0);
 
-    // Fairway: segmentos + círculos nas juntas
+    // Fairway: segmentos + círculos nas juntas.
     this.path = [];
     for (let i = 0; i < hole.fairway.length - 1; i++) {
       const a = hole.fairway[i]!;
       const b = hole.fairway[i + 1]!;
       const len = Math.hypot(b.x - a.x, b.z - a.z);
-      const seg = flat(new THREE.PlaneGeometry(hole.fairwayWidth, len), '#78c95e', 0.02);
-      seg.position.x = (a.x + b.x) / 2;
-      seg.position.z = (a.z + b.z) / 2;
-      seg.rotation.z = Math.atan2(b.x - a.x, b.z - a.z);
-      const joint = flat(new THREE.CircleGeometry(hole.fairwayWidth / 2, 24), '#78c95e', 0.02);
-      joint.position.set(a.x, 0.02, a.z);
-      for (let d = 0; d < len; d += 2) {
-        this.path.push(new THREE.Vector2(a.x + ((b.x - a.x) * d) / len, a.z + ((b.z - a.z) * d) / len));
-      }
+      this.flatPiece(new THREE.PlaneGeometry(hole.fairwayWidth, len, 6, Math.ceil(len / 2)), (a.x + b.x) / 2, (a.z + b.z) / 2, Math.atan2(b.x - a.x, b.z - a.z), '#78c95e', 0.03);
+      this.flatPiece(new THREE.CircleGeometry(hole.fairwayWidth / 2, 24), a.x, a.z, 0, '#78c95e', 0.03);
+      for (let d = 0; d < len; d += 2) this.path.push(new THREE.Vector2(a.x + ((b.x - a.x) * d) / len, a.z + ((b.z - a.z) * d) / len));
     }
     this.path.push(new THREE.Vector2(hole.hole.x, hole.hole.z));
-    const green = flat(new THREE.CircleGeometry(hole.greenRadius, 40), '#93e070', 0.04);
-    green.position.set(hole.hole.x, 0.04, hole.hole.z);
-    for (const b of hole.bunkers) {
-      const s = flat(new THREE.CircleGeometry(b.r, 28), '#f2d58b', 0.05);
-      s.position.set(b.x, 0.05, b.z);
-    }
+    this.flatPiece(new THREE.CircleGeometry(hole.greenRadius + 1.4, 48, 0), hole.hole.x, hole.hole.z, 0, '#86d468', 0.05);
+    this.flatPiece(new THREE.CircleGeometry(hole.greenRadius, 48), hole.hole.x, hole.hole.z, 0, '#a2ea7c', 0.07);
+    for (const b of hole.bunkers) this.flatPiece(new THREE.CircleGeometry(b.r, 28), b.x, b.z, 0, '#f2d58b', 0.06);
     for (const w of hole.water) {
-      const water = flat(new THREE.CircleGeometry(w.r, 36), '#2fa8e0', 0.06, { transparent: true, opacity: 0.9 });
-      water.position.set(w.x, 0.06, w.z);
+      const water = mesh(new THREE.CircleGeometry(w.r, 40), toonUnique('#2fa8e0', { transparent: true, opacity: 0.88 }), { cast: false, receive: true });
+      water.rotation.x = -Math.PI / 2;
+      water.position.set(w.x, heightAt(hole, w.x, w.z) + 0.3, w.z);
+      g.add(water);
+    }
+    // Setas da inclinação do green (para baixo).
+    for (let x = -hole.greenRadius; x <= hole.greenRadius; x += 2.2) {
+      for (let z = -hole.greenRadius; z <= hole.greenRadius; z += 2.2) {
+        if (Math.hypot(x, z) > hole.greenRadius - 1 || Math.hypot(x, z) < 1) continue;
+        const px = hole.hole.x + x;
+        const pz = hole.hole.z + z;
+        const grad = gradientAt(hole, px, pz);
+        const k = Math.hypot(grad.x, grad.z);
+        if (k < 0.005) continue;
+        const arrow = mesh(new THREE.ConeGeometry(0.12, 0.45, 3), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: Math.min(0.6, 0.2 + k * 8) }), { cast: false });
+        arrow.rotation.x = Math.PI / 2;
+        const holder = new THREE.Group();
+        holder.add(arrow);
+        holder.position.set(px, heightAt(hole, px, pz) + 0.1, pz);
+        holder.rotation.y = Math.atan2(-grad.x, -grad.z);
+        g.add(holder);
+      }
     }
     // Tee
-    const tee = mesh(new THREE.BoxGeometry(4, 0.1, 4), toon('#6fbf55'), { cast: false, receive: true });
-    tee.position.set(0, 0.03, 0);
+    const tee = mesh(new THREE.BoxGeometry(4, 0.12, 4), toon('#6fbf55'), { cast: false, receive: true });
+    tee.position.set(0, heightAt(hole, 0, 0) + 0.04, 0);
     g.add(tee);
+    for (const sx of [-1.4, 1.4]) {
+      const marker = mesh(new THREE.SphereGeometry(0.15, 10, 8), toon('#ff3b5c'));
+      marker.position.set(sx, heightAt(hole, sx, 0) + 0.2, 0.6);
+      g.add(marker);
+    }
     // Buraco e bandeira
-    const cup = flat(new THREE.CircleGeometry(0.22, 20), '#1b1033', 0.045);
-    cup.position.set(hole.hole.x, 0.045, hole.hole.z);
+    const hy = heightAt(hole, hole.hole.x, hole.hole.z);
+    const cup = mesh(new THREE.CircleGeometry(0.24, 20), toon('#1b1033'), { cast: false });
+    cup.rotation.x = -Math.PI / 2;
+    cup.position.set(hole.hole.x, hy + 0.08, hole.hole.z);
     const pole = mesh(new THREE.CylinderGeometry(0.04, 0.04, 3.2), toon('#ffffff'));
-    pole.position.set(hole.hole.x, 1.6, hole.hole.z);
+    pole.position.set(hole.hole.x, hy + 1.6, hole.hole.z);
     const flag = mesh(new THREE.PlaneGeometry(1.1, 0.7), toonUnique('#ff3b5c', { side: THREE.DoubleSide }));
-    flag.position.set(hole.hole.x + 0.55, 2.8, hole.hole.z);
-    g.add(pole, flag);
+    flag.position.set(hole.hole.x + 0.55, hy + 2.8, hole.hole.z);
+    const num = textSprite(String(index + 1), { height: 0.5, color: '#ffffff', stroke: '#ff3b5c' });
+    num.position.set(hole.hole.x + 0.55, hy + 2.8, hole.hole.z + 0.02);
+    g.add(cup, pole, flag, num);
 
     // Árvores no rough, longe do fairway e do green
     const rng = createRng(500 + index);
-    for (let i = 0, placed = 0; i < 600 && placed < 70; i++) {
-      const x = (rng.next() - 0.5) * 120;
+    for (let i = 0, placed = 0; i < 700 && placed < 80; i++) {
+      const x = (rng.next() - 0.5) * 130;
       const z = 15 - rng.next() * (Math.abs(hole.hole.z) + 40);
       const lie = lieAt(hole, x, z);
       if (lie !== 'rough' && lie !== 'out') continue;
-      if (Math.hypot(x - hole.hole.x, z - hole.hole.z) < hole.greenRadius + 4) continue;
-      if (Math.hypot(x, z) < 6) continue;
+      if (lie === 'rough' && rng.next() < 0.6) continue;
+      if (Math.hypot(x - hole.hole.x, z - hole.hole.z) < hole.greenRadius + 5) continue;
+      if (Math.hypot(x, z) < 7) continue;
       const tree = rng.next() < 0.6 ? palmTree(rng, 1 + rng.next() * 0.6) : bush(rng);
-      tree.position.set(x, 0, z);
+      tree.position.set(x, heightAt(hole, x, z), z);
       g.add(tree);
       placed++;
     }
   }
 
   override dispose(): void {
+    this.offChoice?.();
     for (const gs of this.golfers) gs.ball.geometry.dispose();
+    this.caddie.dispose();
+    disposeObject(this.club3d);
     super.dispose();
   }
 }

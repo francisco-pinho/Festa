@@ -16,6 +16,7 @@ import type {
 import { ACK_TIMEOUT_MS, connectSocket } from '../common/socket';
 import { capture, createJoystick } from './joystick';
 import { renderMotion } from './motion';
+import { renderGolf } from './golf';
 import { sensors } from './sensors';
 
 const SESSION_KEY = 'festa.session';
@@ -274,6 +275,10 @@ function renderLayout(): void {
     case 'motion':
       setView('');
       cleanupView = renderMotion(view, l, send);
+      break;
+    case 'golf':
+      setView('');
+      cleanupView = renderGolf(view, l, send);
       break;
   }
   shownLayout = layout;

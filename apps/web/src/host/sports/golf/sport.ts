@@ -6,8 +6,8 @@ const Golf: SportDef = {
   order: 3,
   name: 'Golfe',
   emoji: '⛳',
-  description: '3 buracos com lagos, bunkers e vento. Menos pancadas ganha!',
-  howTo: '🕹️ aponta · tacada com o braço (ou arrasta para cima) · a força decide a distância',
+  description: 'Buracos com relevo, lagos, bunkers e vento. Menos pancadas ganha!',
+  howTo: 'Escolhe o taco · 🕹️ aponta · toca para o medidor e toca para parar (⬆️ topspin / ⬇️ backspin) · com o medidor a andar, 🕹️ dá curva e altura · ou balança o telemóvel',
   seatCount: (humans) => Math.max(2, humans),
   create: (ctx) => new GolfStage(ctx),
 };
