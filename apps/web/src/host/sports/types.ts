@@ -17,6 +17,8 @@ export interface SportContext {
   /** Jogadores (humanos e bots) por ordem. */
   players: Seat[];
   rng: Rng;
+  /** Habilidade dos bots (definições), 0–1. */
+  botSkill: number;
 }
 
 export interface SportStanding {

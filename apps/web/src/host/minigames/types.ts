@@ -16,6 +16,8 @@ export interface MinigameContext {
   mode: MinigameMode;
   seats: MinigameSeat[];
   rng: Rng;
+  /** Habilidade dos bots (definições), 0–1. */
+  botSkill: number;
   /** Comando efetivo (telemóvel/teclado, ou o do bot). */
   pad(id: string): PadInput;
   /** Se for preciso, a IA escreve aqui. */

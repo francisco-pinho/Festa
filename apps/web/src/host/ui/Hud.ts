@@ -4,6 +4,7 @@
  */
 import './ui.css';
 import type { Engine } from '../three/Engine';
+import { settings } from '../game/Settings';
 
 export interface ScoreEntry {
   id: string;
@@ -108,7 +109,9 @@ export class Hud {
     return this.panelEl;
   }
 
-  hint(text: string | null): void {
+  /** Dica no fundo do ecrã. As não `important` respeitam a definição "Dicas no ecrã". */
+  hint(text: string | null, important = false): void {
+    if (text && !important && !settings.value.hints) text = null;
     this.hintEl.hidden = !text;
     this.hintEl.textContent = text ?? '';
   }

@@ -326,10 +326,13 @@ export function ranking(state: PartyState): { player: PartyPlayer; rank: number 
 
 // ── Bots ──────────────────────────────────────────────────
 
-/** Num cruzamento, o bot vai pelo caminho mais curto até à estrela (com algum acaso). */
-export function botChooseNext(state: PartyState, options: number[], rng: Rng): number {
+/**
+ * Num cruzamento, o bot vai pelo caminho mais curto até à estrela.
+ * `skill` (0–1): quanto menor, mais vezes escolhe ao acaso.
+ */
+export function botChooseNext(state: PartyState, options: number[], rng: Rng, skill = 0.6): number {
   const dist = distancesTo(state.board, state.starSpaceId);
-  if (rng.next() < 0.2) return rng.pick(options);
+  if (rng.next() < 0.5 * (1 - skill)) return rng.pick(options);
   return [...options].sort((a, b) => (dist.get(a) ?? 999) - (dist.get(b) ?? 999))[0]!;
 }
 

@@ -261,10 +261,11 @@ export class BoxingStage extends SportStage {
   private botThink(f: Fighter, opp: Fighter, dt: number): void {
     const rng = this.ctx.rng;
     // Defende às vezes quando o adversário começa um soco.
-    if (opp.punch && opp.punch.t < 0.05 && f.botGuard <= 0 && rng.next() < 0.45) f.botGuard = 0.55;
+    const skill = this.ctx.botSkill;
+    if (opp.punch && opp.punch.t < 0.05 && f.botGuard <= 0 && rng.next() < 0.15 + 0.5 * skill) f.botGuard = 0.55;
     f.botTimer -= dt;
     if (f.botTimer <= 0) {
-      f.botTimer = 0.6 + rng.next() * 0.9;
+      f.botTimer = (0.6 + rng.next() * 0.9) * (1.5 - skill * 0.6);
       if (f.botGuard <= 0) this.throwPunch(f, rng.next() < 0.6 ? 'left' : 'right', 0.4 + rng.next() * 0.6);
     }
   }

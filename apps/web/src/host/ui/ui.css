@@ -442,3 +442,63 @@
   font-size: 1.9vh;
   color: #b9a9e8;
 }
+
+/* Menu de pausa / definições */
+.game-menu {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 5, 25, 0.62);
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+.menu-card {
+  width: min(80vw, 760px);
+  padding: 3.5vh 3vw;
+  border-radius: 28px;
+  background: var(--panel);
+  border: 4px solid var(--gold);
+  box-shadow: 0 2vh 6vh rgba(0, 0, 0, 0.5);
+  text-align: center;
+  animation: banner-in 0.3s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.menu-card h1 {
+  margin: 0;
+  font-size: clamp(30px, 6vh, 72px);
+  color: var(--gold);
+}
+.menu-sub {
+  margin: 0.8vh 0 2.4vh;
+  color: #b9a9e8;
+  font-size: clamp(14px, 2.2vh, 26px);
+}
+.menu-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2vh;
+}
+.menu-item {
+  font: inherit;
+  font-size: clamp(18px, 3vh, 36px);
+  font-weight: bold;
+  padding: 1.6vh 2vw;
+  border-radius: 16px;
+  border: 3px solid transparent;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+.menu-item:hover,
+.menu-item.sel {
+  border-color: var(--gold);
+  background: rgba(255, 210, 63, 0.16);
+}
+.menu-keys {
+  margin: 2vh 0 0;
+  color: #6f5fa8;
+  font-size: clamp(12px, 1.8vh, 20px);
+}

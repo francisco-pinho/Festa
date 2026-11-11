@@ -134,7 +134,7 @@ export class BaseballStage extends SportStage {
     // Lançamento
     const pitch = await this.ctx.seats.awaitSwing(pitcher, {
       layout: { kind: 'motion', action: 'pitch', aim: false, prompt: `Lança a ${batter.name}!`, hint: 'Força = velocidade · desvio = fora da zona' },
-      bot: () => botSwing(this.ctx.rng, 0.7, { dir: (this.ctx.rng.next() - 0.5) * 1.3 }),
+      bot: () => botSwing(this.ctx.rng, this.ctx.botSkill, { dir: (this.ctx.rng.next() - 0.5) * (1.6 - this.ctx.botSkill) }),
       botDelay: 0.9,
     });
     this.setLayout(pitcher, { kind: 'wait', message: 'Lá vai ela!' });
@@ -184,7 +184,7 @@ export class BaseballStage extends SportStage {
       const rng = this.ctx.rng;
       const willSwing = rng.next() < (inZone ? 0.8 : 0.25);
       if (willSwing) {
-        const err = (rng.next() - 0.5) * 0.24;
+        const err = (rng.next() - 0.5) * (0.36 - this.ctx.botSkill * 0.26);
         void this.wait(Math.max(0, T + err)).then(() => doSwing(0.5 + rng.next() * 0.5));
       }
     }

@@ -224,7 +224,8 @@ export class BowlingStage extends SportStage {
     const rng = this.ctx.rng;
     // Bots: ficam perto do centro e lançam com pouco efeito.
     this.aimX = (rng.next() - 0.5) * 0.4;
-    return botSwing(rng, 0.8, { spin: (rng.next() - 0.5) * 0.3, dir: (rng.next() - 0.5) * 0.4 - this.aimX * 0.8 });
+    const sloppy = 1.4 - this.ctx.botSkill;
+    return botSwing(rng, this.ctx.botSkill, { spin: (rng.next() - 0.5) * 0.3 * sloppy, dir: (rng.next() - 0.5) * 0.4 * sloppy - this.aimX * 0.8 });
   }
 
   // ── Simulação ───────────────────────────────────────────

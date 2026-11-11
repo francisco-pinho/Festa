@@ -2,10 +2,12 @@ import { connection, hub } from './services';
 import { Engine } from './three/Engine';
 import { Hud } from './ui/Hud';
 import { Director } from './game/Director';
+import { GameMenu } from './ui/GameMenu';
 
 const engine = new Engine(document.getElementById('game')!);
 const hud = new Hud(engine);
-const director = new Director(engine, hud, hub, connection);
+const menu = new GameMenu(engine, hub);
+const director = new Director(engine, hud, hub, connection, menu);
 
 const params = new URLSearchParams(location.search);
 const testMinigame = import.meta.env.DEV ? params.get('minigame') : null;
@@ -25,4 +27,4 @@ main.catch((err: unknown) => {
 });
 
 // Em desenvolvimento: acesso pela consola do browser para depurar (window.festa).
-if (import.meta.env.DEV) Object.assign(window, { festa: { engine, hud, hub, connection, director } });
+if (import.meta.env.DEV) Object.assign(window, { festa: { engine, hud, hub, connection, director, menu } });

@@ -167,7 +167,7 @@ export class TennisStage extends SportStage {
         let waited = 0;
         while (this.phase === 'serve') {
           if (this.ctx.seats.isAuto(server.seat) || waited > deadline) {
-            this.trySwing(server, botSwing(this.ctx.rng, 0.8));
+            this.trySwing(server, botSwing(this.ctx.rng, this.ctx.botSkill));
             break;
           }
           await this.wait(0.1);
@@ -297,14 +297,14 @@ export class TennisStage extends SportStage {
     if (Math.abs(dx) < REACH && along < 0.5 && along > -0.8 && this.ball.position.y < 2.4 && this.bounces < 2) {
       const rng = this.ctx.rng;
       // Quanto mais longa a troca de bolas, mais provável é errar.
-      const missChance = 0.05 + this.shots * 0.012;
+      const missChance = (0.05 + this.shots * 0.012) * (1.6 - this.ctx.botSkill);
       if (rng.next() < missChance) {
         this.botHesitated = this.shots;
         return;
       }
       if (this.botHesitated === this.shots) return; // já decidiu falhar esta bola
       const wild = rng.next() < 0.05 + this.shots * 0.008; // pancada para fora
-      this.trySwing(p, botSwing(rng, 0.75, { dir: (rng.next() - 0.5) * 0.6, ...(wild ? { power: 1 } : {}) }));
+      this.trySwing(p, botSwing(rng, this.ctx.botSkill, { dir: (rng.next() - 0.5) * 0.6, ...(wild ? { power: 1 } : {}) }));
     }
   }
 

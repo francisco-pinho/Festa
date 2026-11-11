@@ -144,7 +144,7 @@ export class GolfStage extends SportStage {
     this.showAim(true);
     this.updateHud(g.seat.id);
     this.waitAll(`Vez de ${g.seat.name} ⛳`, g.seat.id);
-    this.ctx.hud.hint(`${g.seat.name} · ${clubInfo.name} · ${Math.round(dist)} m · ${LIE_NAME[lie]}`);
+    this.ctx.hud.hint(`${g.seat.name} · ${clubInfo.name} · ${Math.round(dist)} m · ${LIE_NAME[lie]}`, true);
 
     const swing = await this.ctx.seats.awaitSwing(g.seat, {
       layout: {
@@ -261,11 +261,12 @@ export class GolfStage extends SportStage {
       const nearest = this.path.reduce((bi, p, i) => (p.distanceTo(g.pos) < this.path[bi]!.distanceTo(g.pos) ? i : bi), 0);
       for (let i = nearest; i < this.path.length; i++) if (this.path[i]!.distanceTo(g.pos) <= max * 0.85) target = this.path[i]!;
     }
-    this.aimAngle = Math.atan2(target.x - g.pos.x, target.y - g.pos.y) + (rng.next() - 0.5) * 0.08;
+    const sloppy = 1.6 - this.ctx.botSkill * 1.2; // 0,44 (mestre) … 1,18 (fácil)
+    this.aimAngle = Math.atan2(target.x - g.pos.x, target.y - g.pos.y) + (rng.next() - 0.5) * 0.08 * sloppy;
     const want = g.pos.distanceTo(target);
     let power = want / max;
     if (club === 'putter') power = Math.pow(Math.min(1, (want * 1.05) / max), 1 / 1.3);
-    power = Math.max(0.05, Math.min(1, power * (1 + (rng.next() - 0.5) * 0.18)));
+    power = Math.max(0.05, Math.min(1, power * (1 + (rng.next() - 0.5) * 0.18 * sloppy)));
     return { t: 'swing', power, dir: (rng.next() - 0.5) * 0.4, spin: 0, source: 'key' };
   }
 

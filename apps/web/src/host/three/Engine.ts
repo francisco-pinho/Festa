@@ -19,6 +19,10 @@ export class Engine {
   private time = 0;
   private last = performance.now();
   private lastFrameAt = performance.now();
+  /** Em pausa: nada avança (tweens, esperas, palco), só se desenha. */
+  paused = false;
+  /** Velocidade do jogo (definição "velocidade das animações"). */
+  timeScale = 1;
 
   constructor(container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -47,10 +51,17 @@ export class Engine {
     while (remaining > 0) {
       const dt = Math.min(0.05, remaining);
       remaining -= dt;
-      this.time += dt;
-      this.tweens.update(dt);
-      this.stage?.update(dt, this.time);
+      this.step(dt);
     }
+  }
+
+  /** Avança o jogo `dt` segundos reais (respeita pausa e velocidade). */
+  private step(realDt: number): void {
+    if (this.paused) return;
+    const dt = realDt * this.timeScale;
+    this.time += dt;
+    this.tweens.update(dt);
+    this.stage?.update(dt, this.time);
   }
 
   /** Muda de palco. O anterior só é destruído se `disposePrevious`. */
@@ -86,10 +97,8 @@ export class Engine {
     // Limita o dt para não "teletransportar" coisas depois de uma pausa.
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
-    this.time += dt;
-    this.tweens.update(dt);
+    this.step(dt);
     if (!this.stage) return;
-    this.stage.update(dt, this.time);
     this.renderer.render(this.stage.scene, this.stage.camera);
   }
 

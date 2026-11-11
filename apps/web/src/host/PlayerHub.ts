@@ -103,6 +103,9 @@ export class PlayerHub {
   private phonePlayers: HubPlayer[] = [];
   private keyboardPlayers: HubPlayer[] = [];
   private readonly lastLayout = new Map<PlayerId, string>();
+  /** Último layout "a sério" de cada telemóvel (para repor depois da pausa). */
+  private readonly layouts = new Map<PlayerId, ControllerLayout>();
+  private suspended: ControllerLayout | null = null;
   private readonly keysDown = new Set<string>();
   /** Quando começou a segurar cada botão (para a força do gesto no teclado). */
   private readonly chargeStart = new Map<string, number>();
@@ -136,10 +139,38 @@ export class PlayerHub {
     const targets = target === 'all' ? this.phonePlayers : target.source === 'phone' ? [target] : [];
     const json = JSON.stringify(layout);
     for (const p of targets) {
+      this.layouts.set(p.id, layout);
+      if (this.suspended) continue; // em pausa: guarda-se para repor depois
       if (this.lastLayout.get(p.id) === json) continue;
       this.lastLayout.set(p.id, json);
       this.conn.send(p.id, { t: 'layout', layout });
     }
+  }
+
+  /** Pausa: todos os telemóveis mostram `layout`, sem esquecer o que tinham. */
+  suspendLayouts(layout: ControllerLayout): void {
+    this.suspended = layout;
+    for (const p of this.phonePlayers) this.sendRaw(p, layout);
+  }
+
+  /** Fim da pausa: cada telemóvel volta ao que tinha. */
+  restoreLayouts(): void {
+    this.suspended = null;
+    for (const p of this.phonePlayers) {
+      const l = this.layouts.get(p.id);
+      if (l) this.sendRaw(p, l);
+    }
+  }
+
+  /** Mostra um layout num telemóvel sem o guardar como "o atual" (menus temporários). */
+  sendTemporaryLayout(player: HubPlayer, layout: ControllerLayout): void {
+    if (player.source === 'phone') this.sendRaw(player, layout);
+  }
+
+  private sendRaw(p: HubPlayer, layout: ControllerLayout): void {
+    if (p.source !== 'phone') return;
+    this.lastLayout.set(p.id, JSON.stringify(layout));
+    this.conn.send(p.id, { t: 'layout', layout });
   }
 
   vibrate(player: HubPlayer, pattern: number | number[]): void {

@@ -48,6 +48,8 @@ import { Hud, esc, type ScoreEntry } from '../ui/Hud';
 import { MINIGAMES, MODE_LABEL, pickMinigame } from '../minigames';
 import { SPORTS } from '../sports';
 import type { SportDef } from '../sports/types';
+import type { GameMenu } from '../ui/GameMenu';
+import { settings } from './Settings';
 import type { MinigameContext, MinigameSeat } from '../minigames/types';
 import { BotPad, SeatControl, type Seat } from './Seats';
 
@@ -67,6 +69,7 @@ export class Director {
     private readonly hud: Hud,
     private readonly hub: PlayerHub,
     private readonly conn: HostConnection,
+    private readonly menu: GameMenu,
   ) {
     this.seatsCtl = new SeatControl(hub, engine);
     conn.events.on('status', (s) =>
@@ -98,9 +101,10 @@ export class Director {
     );
     ['bolota', 'coral', 'nuvem', 'musgo', 'ameixa'].forEach((_, i) => stage.setAnim(`deco${i}`, i % 2 ? 'cheer' : 'idle'));
     this.conn.setLocked(false);
+    this.menu.mode = 'lobby';
     this.hud.setRound(null);
     this.hud.setScoreboard(null);
-    this.hud.hint('Teclas 1 / 2: jogador de teclado  ·  I: trocar IP  ·  Enter: Festa  ·  D: Desportos');
+    this.hud.hint('Teclas 1 / 2: jogador de teclado  ·  I: trocar IP  ·  Enter: Festa  ·  D: Desportos  ·  Esc: definições');
 
     this.hud.panel(`
       <h1>FESTA 🎉</h1>
@@ -145,9 +149,9 @@ export class Director {
       }).join('');
       const humans = players.length;
       const bots = humans ? seatCount(humans) - humans : 0;
-      panel.querySelector('#lobby-hint')!.textContent = humans
+      panel.querySelector('#lobby-hint')!.textContent = `🤖 Bots: ${settings.botLevelLabel} · ` + (humans
         ? `${humans} jogador${humans > 1 ? 'es' : ''}${bots ? ` + ${bots} bot${bots > 1 ? 's' : ''}` : ''} · ${this.hub.vip ? `⭐ ${this.hub.vip.name} escolhe o modo no telemóvel` : 'Enter: Festa · D: Desportos'}`
-        : 'Lê o código com o telemóvel para entrar!';
+        : 'Lê o código com o telemóvel para entrar!');
       // Telemóveis
       const vip = this.hub.vip;
       for (const p of this.hub.players) {
@@ -159,6 +163,7 @@ export class Director {
               options: [
                 ...RULES.roundOptions.map((r) => ({ id: `start:${r}`, label: `🎲 Festa · ${r} rondas`, color: '#ffd23f' })),
                 { id: 'sports', label: '🏆 Desportos', color: '#3fd0ff' },
+                { id: 'bots', label: `🤖 Bots: ${settings.botLevelLabel} (mudar)` },
               ],
             },
             p,
@@ -180,9 +185,11 @@ export class Director {
       offs.push(
         this.conn.events.on('room', () => void renderRoom()),
         this.hub.events.on('changed', renderPlayers),
+        settings.events.on('changed', renderPlayers),
         this.hub.events.on('choice', ({ player, id }) => {
           if (player.isVip && id.startsWith('start:')) tryStart(Number(id.split(':')[1]));
           if (player.isVip && id === 'sports') tryStart('sports');
+          if (player.isVip && id === 'bots') settings.cycleBotLevel();
         }),
       );
       const onKey = (e: KeyboardEvent) => {
@@ -196,6 +203,8 @@ export class Director {
       offs.push(() => window.removeEventListener('keydown', onKey));
     });
     offs.forEach((off) => off());
+    this.menu.close();
+    this.menu.mode = 'off';
     this.hud.panel(null);
     this.hud.hint(null);
     return choice;
@@ -343,6 +352,7 @@ export class Director {
   }
 
   private async party(totalRounds: number): Promise<PartyState> {
+    this.menu.mode = 'game';
     this.rng = createRng();
     const board = createIslandBoard();
     const state = createParty(
@@ -489,7 +499,7 @@ export class Director {
   private async chooseJunction(state: PartyState, stage: BoardStage, p: PartyPlayer, spaceId: number): Promise<number> {
     const options = getSpace(state.board, spaceId).next;
     stage.showArrows(spaceId, options.map((id, i) => ({ spaceId: id, color: PATH_COLORS[i % PATH_COLORS.length]! })));
-    this.hud.hint(`${p.name}: por onde vais?`);
+    this.hud.hint(`${p.name}: por onde vais?`, true);
     const choice = await this.seatsCtl.decide(this.seat(p.id), {
       layout: {
         kind: 'choices',
@@ -501,7 +511,7 @@ export class Director {
         })),
       },
       valid: options.map((id) => `path:${id}`),
-      bot: () => `path:${botChooseNext(state, options, this.rng)}`,
+      bot: () => `path:${botChooseNext(state, options, this.rng, settings.botSkill)}`,
       botDelay: 1.2,
     });
     stage.hideArrows();
@@ -660,6 +670,7 @@ export class Director {
       botPad: (id) => this.seat(id).botPad,
       isBot: (id) => this.seatsCtl.needsBot(this.seat(id)),
       vibrate: (id, ms) => this.seatsCtl.vibrate(this.seat(id), ms),
+      botSkill: settings.botSkill,
     };
     for (const s of this.seats) s.botPad.reset();
     this.hub.clearPresses();
@@ -729,6 +740,7 @@ export class Director {
    * Bots em todos os lugares, mais quem estiver ligado (telemóvel ou teclado).
    */
   async testMinigame(id: string, mode: MinigameMode, players = 4): Promise<void> {
+    this.menu.mode = 'game';
     await this.engine.wait(1.5); // deixa a lista de telemóveis sincronizar
     const humans = this.hub.players.slice(0, players);
     const bots = CHARACTERS.slice(humans.length, players);
@@ -772,6 +784,7 @@ export class Director {
   }
 
   private async pickSport(): Promise<SportDef | null> {
+    this.menu.mode = 'off';
     const stage = new ShowcaseStage();
     this.engine.setStage(stage);
     stage.view({ distance: 16, height: 5, orbitSpeed: 0.1 });
@@ -853,9 +866,12 @@ export class Director {
       seats: this.seatsCtl,
       players: this.seats,
       rng: this.rng,
+      botSkill: settings.botSkill,
     });
     this.engine.setStage(run);
+    this.menu.mode = 'game';
     const standings = await run.play();
+    this.menu.mode = 'off';
     this.hud.setScoreboard(null);
     this.hud.setRound(null);
     this.hud.hint(null);
@@ -938,6 +954,7 @@ export class Director {
   // ── Final ───────────────────────────────────────────────
 
   private async finale(state: PartyState): Promise<void> {
+    this.menu.mode = 'off';
     this.waitAll('Fim da festa! Olha para o ecrã 👀');
     this.hud.setScoreboard(null);
     await this.hud.banner('Fim da festa!', { sub: 'Hora das estrelas bónus…', hold: 2.4, color: '#ffd23f' });

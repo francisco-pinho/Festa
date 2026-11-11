@@ -123,7 +123,10 @@ export abstract class ArenaMinigame implements MinigameRun {
       this.elapsed += dt;
       for (const a of this.actors) {
         if (!a.alive) continue;
-        if (this.ctx.isBot(a.seat.id)) this.think(a, dt);
+        if (this.ctx.isBot(a.seat.id)) {
+          this.think(a, dt);
+          this.applySkill(a, dt);
+        }
         this.move(a, dt);
       }
       this.collide();
@@ -134,6 +137,24 @@ export abstract class ArenaMinigame implements MinigameRun {
       a.model.root.position.copy(a.pos);
       a.model.update(dt);
     }
+  }
+
+  private readonly wobble = new Map<string, number>();
+
+  /**
+   * Dificuldade: bots fracos são mais lentos a reagir e menos certeiros
+   * (o stick é atenuado e desviado); bots "Mestre" ficam como a IA os pensou.
+   */
+  private applySkill(a: Actor, dt: number): void {
+    const skill = this.ctx.botSkill;
+    const pad = this.ctx.botPad(a.seat.id);
+    const w = (this.wobble.get(a.seat.id) ?? Math.random() * 10) + dt * (1.5 + (1 - skill) * 2);
+    this.wobble.set(a.seat.id, w);
+    const err = (1 - skill) * 0.9 * Math.sin(w * 2.3);
+    const speed = 0.6 + 0.4 * skill;
+    const { x, y } = pad.stick;
+    pad.stick.x = (x * Math.cos(err) - y * Math.sin(err)) * speed;
+    pad.stick.y = (x * Math.sin(err) + y * Math.cos(err)) * speed;
   }
 
   protected move(a: Actor, dt: number): void {
