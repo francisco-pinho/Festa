@@ -190,11 +190,11 @@ Cada fase termina testada, com commit e push no seu ramo.
 - [x] Arena com público animado (reage aos golpes), árbitro (conta as quedas, levanta o braço do vencedor), sino entre rondas; no chão, dar socos levanta-te mais depressa
 
 ### Fase 4 — Basebol (refazer)
-- [ ] Estádio completo: bancadas, placar eletrónico, defesas em todas as posições (9), bases e banco
-- [ ] **Lançamento**: 4 tipos (rápida, curva, screwball, splitter) escolhidos no telemóvel; apontar a zona; velocidade pelo gesto
-- [ ] **Batida**: gesto de lado; momento + altura do bastão decidem ângulo e trajetória (rasteira, linha, alta, home run)
-- [ ] Física da bola (ressaltos, rolar no relvado), defesas que correm, apanham e lançam para a base, corredores que correm as bases
-- [ ] Repetição dos home runs, festejos, animações de lançador e batedor
+- [x] Estádio completo: bancadas com público, placar eletrónico (entradas, B/S/E, velocidade do lançamento), 9 defesas com bonés da equipa, bases, bancos, rede, postes de foul e torres de luz
+- [x] **Lançamento**: 4 tipos (rápida, curva, screwball, splitter) escolhidos no telemóvel; apontar a zona com o joystick; velocidade pelo gesto; o efeito só aparece no fim
+- [x] **Batida**: gesto de lado; altura do bastão (joystick) + momento decidem ângulo e direção (rasteira, linha, alta, home run, foul); compensa ~60 ms de atraso da rede — *afinar no telemóvel*
+- [x] Física da bola (ar, ressaltos, rolar, vedação), defesas que correm, apanham e lançam para a base, corredores que correm as bases; o resultado (simples…triplo, eliminado) sai da corrida entre o corredor e o lançamento
+- [x] Repetição dos home runs em câmara lenta, fogo de artifício, público a saltar, animações de lançador, batedor, apanhador e defesas
 
 ### Fase 5 — Golfe (refazer o controlo)
 - [ ] **Medidor de força** no telemóvel: toca para começar, toca para parar; zona vermelha arriscada
@@ -243,3 +243,4 @@ Cada fase termina testada, com commit e push no seu ramo.
 | 2026-11-11 | Fase 1: minijogos de duelo 1 contra 1 (Saque Rápido, Cabo de Guerra, Pontaria) | `fase1-festa` | ✔ |
 | 2026-11-11 | Fase 2: bowling novo (salão, placar suspenso, física Rapier, pêndulo + inclinação, câmara lenta e repetição) | `fase2-bowling` | ✔ (falta testar no telemóvel) |
 | 2026-11-11 | Fase 3: boxe refeito (luvas nas mãos, mover, 4 socos com alcance, energia, esquiva + contra-ataque, dano visível, árbitro, público, placar) | `fase3-boxe` | ✔ (falta testar no telemóvel) |
+| 2026-11-12 | Fase 4: basebol refeito (estádio, 4 lançamentos, altura do bastão, física da bola, 9 defesas, corredores, placar eletrónico, repetição de home runs) | `fase4-basebol` | ✔ (falta testar no telemóvel) |

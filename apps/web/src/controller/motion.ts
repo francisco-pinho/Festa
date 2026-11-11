@@ -35,7 +35,8 @@ export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): ()
   view.innerHTML = `
     <div class="motion">
       <p class="prompt">${esc(l.prompt)}</p>
-      ${l.aim ? `<div class="aim-zone"><span>🕹️ ${l.dodge ? 'Mover' : 'Posição'}</span><button class="tilt-aim" hidden><span class="tilt-arrow">⬆️</span><small>${l.dodge ? 'Inclina para os lados para esquivar' : 'Roda o telemóvel para apontar'} · toca para centrar</small></button></div>` : ''}
+      ${l.picks ? `<div class="picks">${l.picks.map((p) => `<button class="pick ${p.id === l.picked ? 'on' : ''}" data-id="${esc(p.id)}">${esc(p.label)}</button>`).join('')}</div>` : ''}
+      ${l.aim ? `<div class="aim-zone"><span>🕹️ ${esc(l.aimLabel ?? (l.dodge ? 'Mover' : 'Posição'))}</span><button class="tilt-aim" hidden><span class="tilt-arrow">⬆️</span><small>${l.dodge ? 'Inclina para os lados para esquivar' : 'Roda o telemóvel para apontar'} · toca para centrar</small></button></div>` : ''}
       <div class="pads ${l.hands ? 'two' : ''}">
         ${(l.hands ? (['left', 'right'] as Hand[]) : (['right'] as Hand[]))
           .map((h) => `<div class="pad" data-hand="${h}"><span class="icon">${text.icon}</span><span class="label"></span>${l.hands ? `<small>${h === 'left' ? 'Esquerda' : 'Direita'}</small>` : ''}</div>`)
@@ -133,6 +134,15 @@ export function renderMotion(view: HTMLElement, l: MotionLayout, send: Send): ()
     guard.addEventListener('pointerup', () => set(false));
     guard.addEventListener('pointercancel', () => set(false));
     cleanups.push(() => set(false));
+  }
+
+  // Escolhas rápidas
+  for (const b of view.querySelectorAll<HTMLButtonElement>('.pick')) {
+    b.addEventListener('click', () => {
+      view.querySelectorAll('.pick').forEach((o) => o.classList.toggle('on', o === b));
+      navigator.vibrate?.(15);
+      send({ t: 'choice', id: b.dataset.id! });
+    });
   }
 
   // Esquivas (botões)

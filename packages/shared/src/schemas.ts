@@ -113,6 +113,15 @@ export const controllerLayoutSchema = z.discriminatedUnion('kind', [
     guard: z.boolean().optional(),
     /** Botões de esquiva (A = esquerda, B = direita) e esquiva a inclinar o telemóvel. */
     dodge: z.boolean().optional(),
+    /** Escolhas rápidas (ex.: tipo de lançamento); tocar envia `choice`. */
+    picks: z
+      .array(z.object({ id: z.string().min(1).max(32), label: z.string().max(40) }))
+      .max(4)
+      .optional(),
+    /** Escolha atual (fica destacada). */
+    picked: z.string().max(32).optional(),
+    /** Texto do joystick (por omissão "Posição"). */
+    aimLabel: z.string().max(40).optional(),
     hint: z.string().max(200).optional(),
   }),
   /** Lançar dados: botão grande e, se o telemóvel deixar, abanar. Envia a escolha `roll`. */

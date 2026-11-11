@@ -730,6 +730,13 @@ button:disabled {
   .motion .dodge {
     padding: 10px;
   }
+  .motion .picks {
+    grid-column: 2;
+    grid-row: 3;
+  }
+  .motion:not(:has(.aim-zone)) .picks {
+    grid-column: 1 / -1;
+  }
   .pad .icon {
     font-size: 44px;
   }
@@ -832,4 +839,25 @@ button:disabled {
 .motion .dodge.down {
   background: #3fd0ff;
   color: #10223a;
+}
+
+/* Escolhas rápidas no comando de desporto (ex.: tipo de lançamento) */
+.motion .picks {
+  display: flex;
+  gap: 6px;
+}
+.motion .pick {
+  flex: 1;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 8px 4px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  font-size: 14px;
+}
+.motion .pick.on {
+  border-color: #ffd23f;
+  background: #3a3260;
 }

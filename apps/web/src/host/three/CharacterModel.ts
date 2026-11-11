@@ -43,7 +43,11 @@ export type CharacterAnim =
   | 'blockHit'
   | 'strafeLeft'
   | 'strafeRight'
-  | 'walkBack';
+  | 'walkBack'
+  | 'batIdle'
+  | 'batSwing'
+  | 'crouch'
+  | 'catch';
 
 interface AnimSpec {
   clip: string;
@@ -82,6 +86,10 @@ const ANIMS: Record<CharacterAnim, AnimSpec> = {
   strafeLeft: { clip: 'Running_Strafe_Left', loop: true, speed: 0.7 },
   strafeRight: { clip: 'Running_Strafe_Right', loop: true, speed: 0.7 },
   walkBack: { clip: 'Walking_Backwards', loop: true },
+  batIdle: { clip: '2H_Melee_Idle', loop: true },
+  batSwing: { clip: '2H_Melee_Attack_Slice', loop: false, speed: 2.2, thenIdle: true },
+  crouch: { clip: 'Sit_Chair_Idle', loop: true },
+  catch: { clip: 'Block', loop: false, speed: 1.6, thenIdle: true },
 };
 
 /** Altura final das personagens no mundo (topo da cabeça). */
@@ -180,6 +188,18 @@ export class CharacterModel {
   /** Osso onde se prendem objetos (raquete, taco, bola, luva…). */
   hand(side: 'left' | 'right'): THREE.Object3D {
     return (side === 'left' ? this.bones.left : this.bones.right) ?? this.root;
+  }
+
+  /** Prende um objeto à cabeça (boné, capacete…), com a escala compensada. */
+  attachHead(obj: THREE.Object3D): void {
+    const head = this.bones.head ?? this.root;
+    this.root.updateMatrixWorld(true);
+    const ws = new THREE.Vector3();
+    head.getWorldScale(ws);
+    const rootScale = new THREE.Vector3();
+    this.root.getWorldScale(rootScale);
+    obj.scale.multiplyScalar(rootScale.x / (ws.x || 1));
+    head.add(obj);
   }
 
   /** Prende um objeto a uma mão. A escala do esqueleto é compensada. */

@@ -7,7 +7,7 @@ const Baseball: SportDef = {
   name: 'Basebol',
   emoji: '⚾',
   description: 'Duas equipas, 3 entradas. Lança, bate e faz home runs!',
-  howTo: 'Lançador: gesto (força = velocidade) · Batedor: bate de lado quando a bola chega',
+  howTo: 'Lançador: escolhe o lançamento, aponta a zona 🕹️ e lança (gesto rápido = bola rápida) · Batedor: 🕹️ altura do bastão e bate de lado quando a bola chega',
   seatCount: (humans) => Math.max(2, humans % 2 === 0 ? humans : humans + 1),
   create: (ctx) => new BaseballStage(ctx),
 };
