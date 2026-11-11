@@ -53,6 +53,17 @@ function boundsOf(spaces: Space[]) {
   };
 }
 
+/** Casas com objetos interativos ao lado (alavancas, canhões, banco, portagens): a decoração fica longe. */
+function interactiveSpaces(board: Board): Space[] {
+  return [
+    ...board.levers.map((l) => getSpace(board, l.spaceId)),
+    ...board.cannons.map((c) => getSpace(board, c.spaceId)),
+    ...board.tolls.map((t) => getSpace(board, t.from)),
+    ...board.gates.filter((g) => g.lever).map((g) => getSpace(board, g.from)),
+    ...board.spaces.filter((s) => s.type === 'bank'),
+  ];
+}
+
 function segmentsOf(board: Board): [number, number, number, number][] {
   const out: [number, number, number, number][] = [];
   for (const s of board.spaces)
@@ -263,7 +274,7 @@ class IslandTheme implements BoardTheme {
 
     // Decoração
     const segs = segmentsOf(board);
-    const avoid = [...board.shops.map((sh) => getSpace(board, sh.spaceId)), ...board.tunnels.flatMap((t) => [getSpace(board, t.from), getSpace(board, t.to)])];
+    const avoid = [...board.shops.map((sh) => getSpace(board, sh.spaceId)), ...board.tunnels.flatMap((t) => [getSpace(board, t.from), getSpace(board, t.to)]), ...interactiveSpaces(board)];
     const rng = createRng(99);
     let placed = 0;
     for (let tries = 0; tries < 4000 && placed < 120; tries++) {
@@ -474,7 +485,7 @@ function deco(keys: readonly string[], rng: ReturnType<typeof createRng>, size: 
 
 function decorate(board: Board, group: THREE.Group, area: { cx: number; cz: number; w: number; d: number }, count: number, seed: number, make: (rng: ReturnType<typeof createRng>) => THREE.Object3D, clearance = 2.8, skip?: (x: number, z: number) => boolean): void {
   const segs = segmentsOf(board);
-  const avoid = [...board.shops.map((sh) => getSpace(board, sh.spaceId)), ...board.tunnels.flatMap((t) => [getSpace(board, t.from), getSpace(board, t.to)])];
+  const avoid = [...board.shops.map((sh) => getSpace(board, sh.spaceId)), ...board.tunnels.flatMap((t) => [getSpace(board, t.from), getSpace(board, t.to)]), ...interactiveSpaces(board)];
   const rng = createRng(seed);
   let placed = 0;
   for (let tries = 0; tries < count * 40 && placed < count; tries++) {
@@ -754,7 +765,7 @@ class CastleTheme implements BoardTheme {
     addPathStrips(board, this.group, () => ({ width: 1.3, height: 0.1, color: '#a39a8a', y: 0.05 }));
 
     // Elevadores: poços com cabos
-    for (const t of board.tunnels) {
+    for (const t of board.tunnels.filter((t) => t.kind === 'elevator')) {
       for (const id of [t.from, t.to]) {
         const s = getSpace(board, id);
         const top = 10;
@@ -770,7 +781,7 @@ class CastleTheme implements BoardTheme {
       }
     }
     // Portas nas escadarias
-    for (const gate of board.gates) {
+    for (const gate of board.gates.filter((g) => !g.lever)) {
       const a = getSpace(board, gate.from);
       const b = getSpace(board, gate.to);
       const pivot = new THREE.Group();
@@ -1141,7 +1152,7 @@ class CityTheme implements BoardTheme {
     }
 
     // Semáforos nos portões
-    for (const gate of board.gates) {
+    for (const gate of board.gates.filter((g) => !g.lever)) {
       const from = getSpace(board, gate.from);
       const to = getSpace(board, gate.to);
       const dir = new THREE.Vector2(to.x - from.x, to.z - from.z).normalize();

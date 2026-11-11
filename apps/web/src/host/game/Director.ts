@@ -75,8 +75,11 @@ export class Director {
     }
   }
 
+  /** Última festa (para depurar na consola: `festa.director.flow`). */
+  flow: PartyFlow | null = null;
+
   private partyFlow(): PartyFlow {
-    return new PartyFlow({
+    return (this.flow = new PartyFlow({
       engine: this.engine,
       hud: this.hud,
       hub: this.hub,
@@ -85,7 +88,7 @@ export class Director {
       rng: this.rng,
       menu: this.menu,
       forcedMinigame: this.forcedMinigame,
-    });
+    }));
   }
 
   /** Quem escolhe nos menus: o VIP (telemóvel) ou o primeiro jogador de teclado. */

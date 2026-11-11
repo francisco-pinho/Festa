@@ -47,6 +47,16 @@ import {
   lastPlaceIds,
   nearestShop,
   openNext,
+  botWantsLever,
+  leverAt,
+  passBank,
+  pathCost,
+  payToll,
+  pullLever,
+  tollBetween,
+  tollKey,
+  type Lever,
+  type Toll,
   playersOnSpace,
   priceFor,
   ranking,
@@ -170,6 +180,7 @@ export class PartyFlow {
     this.stage = new BoardStage(this.engine, board, this.d.seats);
     this.engine.setStage(this.stage);
     this.stage.setFlags(state.flags);
+    this.stage.setBank(state.bank);
     await this.arrangeAll(true);
     this.stage.overview();
     this.scoreboard();
@@ -182,6 +193,7 @@ export class PartyFlow {
       `O objetivo é juntar estrelas: quando passares pela estrela com ${RULES.starCost} moedas, podes comprá-la. Ganha quem tiver mais estrelas no fim!`,
       'Nas lojas compras itens, que usas antes de lançar os dados com o botão X. O botão menos mostra o mapa todo.',
       'Se parares numa casa onde já está alguém, há duelo! E no fim de cada ronda há um minijogo que dá moedas.',
+      'Atenção às alavancas, que abrem e fecham caminhos, às portagens, aos canhões e ao banco: quem passa deposita moedas, e quem lá para leva o cofre todo!',
       `Neste mapa: ${board.description}`,
     ]);
 
@@ -389,6 +401,8 @@ export class PartyFlow {
       const options = openNext(state.board, state.flags, here);
       let next = options[0]!;
       if (options.length > 1) next = await this.chooseJunction(p, here, options);
+      const toll = tollBetween(state.board, here, next);
+      if (toll) await this.payTollStep(p, toll);
       const tunnel = tunnelBetween(state.board, here, next);
       if (tunnel) {
         if (tunnel.cost) {
@@ -408,6 +422,9 @@ export class PartyFlow {
       if (next === state.starSpaceId) await this.starOffer(p);
       const shop = state.board.shops.find((s) => s.spaceId === next);
       if (shop) await this.shopVisit(p, shop);
+      if (steps > 0 && getSpace(state.board, next).type === 'bank') await this.bankDeposit(p);
+      const lever = leverAt(state.board, next);
+      if (lever) await this.leverOffer(p, lever);
     }
     this.stage.faceCamera(p.id);
 
@@ -584,17 +601,21 @@ export class PartyFlow {
     const dist = distancesTo(state.board, state.starSpaceId, state.flags);
     const info = options.map((id, i) => {
       const tunnel = tunnelBetween(state.board, spaceId, id);
+      const toll = tollBetween(state.board, spaceId, id);
       const d = (dist.get(id) ?? 99) + 1;
       const TUNNEL_NAMES = { metro: 'Ⓜ️ Metro', cave: '🕳️ Gruta', cart: '🛤️ Vagoneta', elevator: '🛗 Elevador', coaster: '🎢 Montanha-russa' } as const;
-      const name = tunnel ? TUNNEL_NAMES[tunnel.kind] : `Caminho ${i + 1}`;
-      const cost = tunnel?.cost ? ` · ${tunnel.cost}🪙` : '';
+      const name = tunnel ? (tunnel.kind === 'cave' ? `🕳️ ${tunnel.name}` : TUNNEL_NAMES[tunnel.kind]) : toll ? `💰 ${toll.name}` : `Caminho ${i + 1}`;
+      const price = pathCost(state, p, spaceId, id);
+      const cost = price ? ` · ${price}🪙` : toll ? ' · grátis (é tua)' : '';
       return {
         id,
         color: PATH_COLORS[i % PATH_COLORS.length]!,
         label: `${name}${cost} · ⭐ a ${d}`,
-        disabled: !!tunnel?.cost && p.coins < tunnel.cost,
+        disabled: price > 0 && p.coins < price,
       };
     });
+    // Nunca fica preso: se não puder pagar nenhum, paga o que tiver.
+    if (info.every((o) => o.disabled)) for (const o of info) o.disabled = false;
     this.stage.showArrows(spaceId, info.map((o) => ({ spaceId: o.id, color: o.color })));
     this.stage.showJunction(spaceId, info.map((o) => ({ spaceId: o.id, label: o.label, color: o.color })));
     this.hud.hint(`${p.name}: por onde vais?`, true);
@@ -615,6 +636,72 @@ export class PartyFlow {
     this.hud.hint(null);
     this.ctl.setLayout(this.seat(p.id), { kind: 'wait', message: 'A caminho…' });
     return Number(choice.slice(5));
+  }
+
+  /** Portagem: paga a quem pagou antes (ou ao banco) e fica dono dela. */
+  private async payTollStep(p: PartyPlayer, toll: Toll): Promise<void> {
+    const state = this.state;
+    const key = tollKey(toll);
+    const res = payToll(state, p, toll);
+    this.stage.focus(p.id, true);
+    this.stage.openToll(key);
+    this.stage.setTollOwner(key, p.name);
+    if (res.paid) {
+      this.coinBurst(p.id, -res.paid);
+      if (res.to) this.coinBurst(res.to, res.paid);
+      else this.stage.setBank(state.bank);
+    }
+    const owner = res.to && res.to !== p.id ? getPlayer(state, res.to).name : null;
+    await this.hud.banner(`💰 ${toll.name}`, {
+      sub: !res.paid ? 'Portagem tua: passas de graça!' : owner ? `${p.name} paga ${res.paid} 🪙 a ${owner}` : `${p.name} paga ${res.paid} 🪙 e fica dono da portagem`,
+      hold: 1.5,
+      color: '#ffd23f',
+    });
+    this.scoreboard(p.id);
+    this.stage.focus(p.id);
+  }
+
+  /** Passar pelo banco: deposita moedas. */
+  private async bankDeposit(p: PartyPlayer): Promise<void> {
+    const paid = passBank(this.state, p);
+    if (!paid) return;
+    this.stage.focus(p.id, true);
+    this.buzz(p.id, [50, 40, 50]);
+    this.stage.floatText(p.id, `🏦 -${paid} 🪙`, '#ff6b7a');
+    await this.stage.bankCoins(p.id, paid, true);
+    this.stage.setBank(this.state.bank);
+    this.scoreboard(p.id);
+    this.stage.focus(p.id);
+  }
+
+  /** Alavanca: quem passa decide se a puxa (abre um caminho e fecha outro). */
+  private async leverOffer(p: PartyPlayer, lever: Lever): Promise<void> {
+    const state = this.state;
+    const seat = this.seat(p.id);
+    const on = !!state.flags[lever.flag];
+    this.stage.focus(p.id, true);
+    this.stage.faceCamera(p.id);
+    const answer = await this.ctl.decide(seat, {
+      layout: {
+        kind: 'choices',
+        prompt: `🎚️ ${lever.name}: puxar?`,
+        options: [
+          { id: 'pull', label: `🎚️ Puxar · ${on ? lever.offText : lever.onText}`, color: '#ffa41b' },
+          { id: 'skip', label: 'Deixar como está' },
+        ],
+      },
+      valid: ['pull', 'skip'],
+      bot: () => (botWantsLever(state, p, lever, this.rng, settings.botSkill) ? 'pull' : 'skip'),
+      botDelay: 1.1,
+    });
+    this.ctl.setLayout(seat, { kind: 'wait', message: 'A caminho…' });
+    if (answer === 'pull') {
+      const now = pullLever(state, lever);
+      this.buzz(p.id, [40, 30, 120]);
+      await this.stage.pullLever(p.id, lever.spaceId, state.flags);
+      await this.hud.banner(`🎚️ ${now ? lever.onText : lever.offText}`, { sub: `${p.name} puxou a ${lever.name}`, hold: 1.6, color: '#ffa41b' });
+    }
+    this.stage.focus(p.id);
   }
 
   /** Fantasma do castelo: vende uma estrela; quem não compra é assaltado. */
@@ -851,6 +938,39 @@ export class PartyFlow {
       token.setAnim('cheer');
       if (!e.item) this.coinBurst(p.id, e.coins);
       await this.hud.banner(e.item ? `${p.name} ganhou: ${ITEMS[e.item].name}` : 'Inventário cheio: +5 moedas', { hold: 1.4 });
+    } else if (e.kind === 'bank') {
+      const name = state.board.bankName ?? 'Banco';
+      this.stage.focus(p.id, true);
+      await this.hud.banner(`🏦 ${name}`, { sub: e.amount ? `${p.name} leva o cofre todo: +${e.amount} 🪙!` : 'O cofre está vazio…', hold: 1.6, color: '#ffd23f' });
+      if (e.amount) {
+        token.setAnim('cheer');
+        this.ctl.vibrate(seat, [40, 30, 40, 30, 160]);
+        await this.stage.bankCoins(p.id, e.amount, false);
+      } else token.setAnim('sad');
+      this.stage.setBank(state.bank);
+      await this.wait(0.6);
+    } else if (e.kind === 'cannon') {
+      const cannon = state.board.cannons.find((c) => c.spaceId === e.from);
+      const volcano = state.board.theme === 'volcano';
+      this.buzz(p.id, [200]);
+      await this.hud.banner(`${volcano ? '💨' : '💥'} ${cannon?.name ?? 'Canhão'}!`, { sub: `${p.name} vai pelos ares!`, hold: 1.2, color: '#ff6b3d' });
+      await this.stage.launch(p.id, e.from, e.to);
+      this.buzz(p.id, [80, 40, 80]);
+      await this.arrangeAll();
+    } else if (e.kind === 'chest') {
+      const result = e.item ? `${ITEMS[e.item].emoji} ${ITEMS[e.item].name}` : e.coins ? `+${e.coins} 🪙` : 'Vazio! 🕸️';
+      await this.hud.banner('🧰 Baú do tesouro!', { sub: `Vamos ver o que tem…`, hold: 1, color: '#ffa41b' });
+      await this.stage.openChest(p.id, result);
+      if (e.coins) this.coinBurst(p.id, e.coins);
+      token.setAnim(e.coins || e.item ? 'cheer' : 'sad');
+      await this.hud.banner(e.item ? `${p.name} encontrou: ${ITEMS[e.item].name}` : e.coins ? `${p.name} encontrou ${e.coins} moedas!` : 'O baú estava vazio…', { hold: 1.4 });
+    } else if (e.kind === 'rockfall') {
+      this.buzz(p.id, [120, 50, 120, 50, 120]);
+      await this.hud.banner('🪨 Derrocada!', { sub: `${p.name} perde ${e.coins} 🪙 e recua`, hold: 1.2, color: '#b0784a' });
+      await this.stage.rockfall(p.id);
+      this.coinBurst(p.id, -e.coins);
+      await this.stage.hop(p.id, e.to, 0.6);
+      token.setAnim('idle');
     } else if (e.kind === 'vs') {
       await this.vs(p);
     } else if (e.kind === 'villain') {

@@ -27,6 +27,13 @@ import {
   stepsBack,
   tunnelBetween,
   villainRoll,
+  botWantsLever,
+  cannonAt,
+  eventKindAt,
+  leverAt,
+  passBank,
+  payToll,
+  pullLever,
   type Board,
   type PartyState,
 } from '../src';
@@ -64,8 +71,9 @@ describe.each(BOARDS.map((b) => [b.id, b.create()] as const))('mapa %s', (_id, b
   });
 
   it('com qualquer estado dos interruptores, a estrela é alcançável de todo o lado', () => {
-    for (const value of [true, false]) {
-      const flags = Object.fromEntries(Object.keys(board.initialFlags).map((k) => [k, value]));
+    const keys = Object.keys(board.initialFlags);
+    for (let mask = 0; mask < 1 << keys.length; mask++) {
+      const flags = Object.fromEntries(keys.map((k, i) => [k, !!(mask & (1 << i))]));
       for (const target of board.spaces.filter((s) => s.starCandidate)) {
         const dist = distancesTo(board, target.id, flags);
         expect(dist.size).toBe(board.spaces.length);
@@ -240,5 +248,108 @@ describe('duelo, VS, armadilha e trapaceiro', () => {
       expect(['loseCoins', 'payEveryone', 'shuffle', 'equalize', 'loseStar']).toContain(ev.kind);
       for (const p of s.players) expect(p.coins).toBeGreaterThanOrEqual(0);
     }
+  });
+});
+
+describe('interações dos tabuleiros (alavancas, portagens, canhões, banco)', () => {
+  it.each(BOARDS.map((b) => [b.id, b.create()] as const))('%s: objetos interativos bem ligados', (_id, board) => {
+    expect(board.levers.length).toBeGreaterThanOrEqual(1);
+    expect(board.cannons.length + board.tolls.length).toBeGreaterThanOrEqual(1);
+    for (const l of board.levers) {
+      expect(board.spaces[l.spaceId]!.type).toBe('lever');
+      expect(board.initialFlags).toHaveProperty(l.flag);
+      expect(board.gates.some((g) => g.lever && g.flag === l.flag)).toBe(true);
+    }
+    for (const c of board.cannons) {
+      expect(board.spaces[c.spaceId]!.type).toBe('cannon');
+      for (const t of c.targets) expect(board.spaces[t]).toBeDefined();
+    }
+    for (const t of board.tolls) expect(board.spaces[t.from]!.next).toContain(t.to);
+    if (board.spaces.some((s) => s.type === 'bank')) expect(board.bankName).toBeTruthy();
+  });
+
+  it('alavanca troca o caminho aberto', () => {
+    const state = party(BOARDS[0]!.create());
+    const lever = state.board.levers[0]!;
+    const gate = state.board.gates.find((g) => g.flag === lever.flag)!;
+    expect(openNext(state.board, state.flags, gate.from)).not.toContain(gate.to);
+    expect(pullLever(state, lever)).toBe(true);
+    expect(openNext(state.board, state.flags, gate.from)).toContain(gate.to);
+    expect(leverAt(state.board, lever.spaceId)).toBe(lever);
+  });
+
+  it('bot puxa a alavanca quando isso o aproxima da estrela', () => {
+    const state = party(BOARDS[0]!.create());
+    const lever = state.board.levers[0]!;
+    const gate = state.board.gates.find((g) => g.flag === lever.flag)!;
+    // Estrela no fim do trilho da selva: com o portão aberto fica muito mais perto.
+    let end = gate.to;
+    while (state.board.spaces[end]!.zone === 'jungle') end = state.board.spaces[end]!.next[0]!;
+    state.starSpaceId = end;
+    const p = state.players[0]!;
+    p.spaceId = lever.spaceId;
+    const rng = createRng(3);
+    const pulls = Array.from({ length: 20 }, () => botWantsLever(state, p, lever, rng, 1)).filter(Boolean).length;
+    expect(pulls).toBe(20);
+  });
+
+  it('banco: quem passa deposita, quem para leva tudo', () => {
+    const state = party(BOARDS[0]!.create());
+    const [a, b] = state.players;
+    a!.coins = 3;
+    expect(passBank(state, a!)).toBe(3);
+    expect(passBank(state, b!)).toBe(5);
+    expect(state.bank).toBe(8);
+    const bankId = state.board.spaces.find((s) => s.type === 'bank')!.id;
+    b!.spaceId = bankId;
+    const before = b!.coins;
+    const landing = resolveLanding(state, b!, createRng(1));
+    expect(landing.effect).toEqual({ kind: 'bank', amount: 8 });
+    expect(b!.coins).toBe(before + 8);
+    expect(state.bank).toBe(0);
+  });
+
+  it('portagem: a primeira vai para o banco, depois para quem pagou antes; a própria é grátis', () => {
+    const state = party(BOARDS[1]!.create());
+    const toll = state.board.tolls[0]!;
+    const [a, b] = state.players;
+    expect(payToll(state, a!, toll)).toEqual({ paid: toll.cost, to: null });
+    expect(state.bank).toBe(toll.cost);
+    const aCoins = a!.coins;
+    expect(payToll(state, b!, toll)).toEqual({ paid: toll.cost, to: a!.id });
+    expect(a!.coins).toBe(aCoins + toll.cost);
+    expect(payToll(state, b!, toll)).toEqual({ paid: 0, to: b!.id });
+  });
+
+  it('canhão dispara para uma das casas alvo', () => {
+    for (const make of BOARDS) {
+      const state = party(make.create());
+      const cannon = state.board.cannons[0];
+      if (!cannon) continue;
+      const p = state.players[0]!;
+      p.spaceId = cannon.spaceId;
+      const landing = resolveLanding(state, p, createRng(5));
+      expect(landing.effect.kind).toBe('cannon');
+      expect(cannon.targets).toContain(p.spaceId);
+      expect(cannonAt(state.board, cannon.spaceId)).toBe(cannon);
+    }
+  });
+
+  it('eventos por zona: baú na praia, derrocada na cratera', () => {
+    const island = party(BOARDS[0]!.create());
+    const beach = island.board.spaces.find((s) => s.zone === 'beach' && s.type === 'event');
+    expect(beach).toBeDefined();
+    expect(eventKindAt(island.board, beach!.id)).toBe('chest');
+    island.players[0]!.spaceId = beach!.id;
+    expect(resolveLanding(island, island.players[0]!, createRng(2)).effect.kind).toBe('chest');
+
+    const volcano = party(BOARDS[2]!.create());
+    const crater = volcano.board.spaces.find((s) => s.zone === 'crater')!;
+    crater.type = 'event';
+    const p = volcano.players[0]!;
+    p.spaceId = crater.id;
+    const e = resolveLanding(volcano, p, createRng(2)).effect;
+    expect(e.kind).toBe('rockfall');
+    if (e.kind === 'rockfall') expect(e.to).not.toBe(e.from);
   });
 });

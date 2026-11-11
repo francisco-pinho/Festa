@@ -5,7 +5,7 @@
  * Ciclo: ordem de jogo → N rondas (cada jogador lança 2 dados e anda; no fim da
  * ronda há minijogo) → estrelas bónus → classificação final.
  */
-import { distancesTo, getSpace, openNext, previousOf, tunnelBetween, type Board, type SpaceType } from './board';
+import { cannonAt, distancesTo, eventKindAt, getSpace, openNext, previousOf, tollBetween, tunnelBetween, type Board, type Lever, type SpaceType, type Toll } from './board';
 import { MAX_ITEMS, type ItemId } from './items';
 import type { Rng } from './rng';
 
@@ -33,6 +33,13 @@ export const RULES = {
   eruptionCoins: 5,
   /** Fantasma do castelo: preço da estrela. */
   ghostStarPrice: 30,
+  /** Banco: quem passa deposita isto. */
+  bankDeposit: 5,
+  /** Baú do tesouro: moedas possíveis. */
+  chestCoins: [6, 15] as const,
+  /** Derrocada: moedas perdidas e casas que recua. */
+  rockfallCoins: [3, 6] as const,
+  rockfallBack: 2,
 };
 
 export type SpaceColor = 'blue' | 'red';
@@ -75,6 +82,10 @@ export interface PartyState {
   traps: Record<number, string>;
   /** Loja em saldos nesta ronda (metade do preço). */
   saleShopId: string | null;
+  /** Moedas no banco do mapa. */
+  bank: number;
+  /** Portagens: "de>para" → id de quem pagou por último (recebe a próxima). */
+  tollOwners: Record<string, string>;
 }
 
 export interface PartyPlayerInput {
@@ -117,6 +128,8 @@ export function createParty(
     flags: { ...board.initialFlags },
     traps: {},
     saleShopId: null,
+    bank: 0,
+    tollOwners: {},
   };
   relocateStar(state, rng);
   return state;
@@ -200,6 +213,10 @@ export type LandingEffect =
   | { kind: 'vs' }
   | { kind: 'villain'; event: VillainEvent }
   | { kind: 'shop' }
+  | { kind: 'bank'; amount: number }
+  | { kind: 'cannon'; from: number; to: number }
+  | { kind: 'chest'; coins: number; item: ItemId | null }
+  | { kind: 'rockfall'; coins: number; from: number; to: number }
   | { kind: 'none' };
 
 export interface Landing {
@@ -227,6 +244,7 @@ export function resolveLanding(state: PartyState, p: PartyPlayer, rng: Rng): Lan
   switch (space.type) {
     case 'blue':
     case 'start':
+    case 'lever':
       color = 'blue';
       effect = { kind: 'coins', amount: addCoins(p, RULES.blueCoins * mult) };
       break;
@@ -253,9 +271,44 @@ export function resolveLanding(state: PartyState, p: PartyPlayer, rng: Rng): Lan
       }
       break;
     }
+    case 'bank': {
+      color = 'blue';
+      p.stats.eventSpaces++;
+      const amount = state.bank;
+      state.bank = 0;
+      effect = { kind: 'bank', amount: addCoins(p, amount) };
+      break;
+    }
+    case 'cannon': {
+      p.stats.eventSpaces++;
+      const cannon = cannonAt(state.board, p.spaceId);
+      const from = p.spaceId;
+      if (cannon?.targets.length) p.spaceId = rng.pick(cannon.targets);
+      effect = { kind: 'cannon', from, to: p.spaceId };
+      break;
+    }
     case 'event': {
       p.stats.eventSpaces++;
-      if (state.board.eventKind === 'minecart') {
+      const eventKind = eventKindAt(state.board, p.spaceId);
+      if (eventKind === 'chest') {
+        // Baú do tesouro: moedas (o mais comum), um item ou… vazio.
+        const r = rng.next();
+        if (r < 0.6) effect = { kind: 'chest', coins: addCoins(p, rng.int(...RULES.chestCoins)), item: null };
+        else if (r < 0.85) {
+          const item = rng.pick(FREE_ITEMS);
+          effect = addItem(p, item) ? { kind: 'chest', coins: 0, item } : { kind: 'chest', coins: addCoins(p, 5), item: null };
+        } else effect = { kind: 'chest', coins: 0, item: null };
+        break;
+      }
+      if (eventKind === 'rockfall') {
+        // Derrocada: perdes moedas e recuas casas.
+        const from = p.spaceId;
+        const coins = -addCoins(p, -rng.int(...RULES.rockfallCoins));
+        p.spaceId = stepsBack(state.board, p.spaceId, RULES.rockfallBack);
+        effect = { kind: 'rockfall', coins, from, to: p.spaceId };
+        break;
+      }
+      if (eventKind === 'minecart') {
         // Vagoneta: segue em frente 4 a 8 casas pelo caminho aberto.
         const from = p.spaceId;
         let cur = from;
@@ -265,11 +318,11 @@ export function resolveLanding(state: PartyState, p: PartyPlayer, rng: Rng): Lan
         effect = { kind: 'minecart', from, to: cur };
         break;
       }
-      if (state.board.eventKind === 'ghost') {
+      if (eventKind === 'ghost') {
         effect = { kind: 'ghost' };
         break;
       }
-      if (state.board.eventKind === 'taxi') {
+      if (eventKind === 'taxi') {
         // Táxi: leva-te para perto da estrela.
         const from = p.spaceId;
         p.spaceId = taxiDestination(state, rng);
@@ -318,6 +371,63 @@ export function resolveLanding(state: PartyState, p: PartyPlayer, rng: Rng): Lan
   return { type: space.type, color, effect, trap };
 }
 
+
+// ── Banco, alavancas e portagens ──────────────────────────
+
+/** Passar pelo banco: deposita até `bankDeposit` moedas. Devolve quanto deixou. */
+export function passBank(state: PartyState, p: PartyPlayer): number {
+  const paid = -addCoins(p, -RULES.bankDeposit);
+  state.bank += paid;
+  return paid;
+}
+
+/** Puxa a alavanca: troca o interruptor. Devolve o valor novo. */
+export function pullLever(state: PartyState, lever: Lever): boolean {
+  state.flags[lever.flag] = !(state.flags[lever.flag] ?? false);
+  return state.flags[lever.flag]!;
+}
+
+/**
+ * O bot puxa a alavanca se isso o deixar mais perto da estrela; se não fizer
+ * diferença para ele, às vezes puxa só para baralhar os outros.
+ */
+export function botWantsLever(state: PartyState, p: PartyPlayer, lever: Lever, rng: Rng, skill = 0.6): boolean {
+  const now = distancesTo(state.board, state.starSpaceId, state.flags).get(p.spaceId) ?? 999;
+  const toggled = { ...state.flags, [lever.flag]: !(state.flags[lever.flag] ?? false) };
+  const after = distancesTo(state.board, state.starSpaceId, toggled).get(p.spaceId) ?? 999;
+  if (after < now) return rng.next() < 0.5 + skill * 0.5;
+  if (after > now) return rng.next() < 0.5 * (1 - skill);
+  return rng.next() < 0.3;
+}
+
+export function tollKey(t: Toll): string {
+  return `${t.from}>${t.to}`;
+}
+
+/**
+ * Paga a portagem (o que conseguir, se não tiver o preço todo). O dinheiro vai
+ * para quem pagou antes (ou para o banco, se ninguém pagou ainda) e quem paga
+ * passa a ser o dono. Passar pela própria portagem é de graça.
+ */
+export function payToll(state: PartyState, p: PartyPlayer, toll: Toll): { paid: number; to: string | null } {
+  const key = tollKey(toll);
+  const owner = state.tollOwners[key];
+  if (owner === p.id) return { paid: 0, to: p.id };
+  const paid = -addCoins(p, -toll.cost);
+  if (owner) addCoins(getPlayer(state, owner), paid);
+  else state.bank += paid;
+  state.tollOwners[key] = p.id;
+  return { paid, to: owner ?? null };
+}
+
+/** Custo de seguir por `from → to` para este jogador (túnel pago ou portagem). */
+export function pathCost(state: PartyState, p: PartyPlayer, from: number, to: number): number {
+  const tunnel = tunnelBetween(state.board, from, to);
+  if (tunnel?.cost) return tunnel.cost;
+  const toll = tollBetween(state.board, from, to);
+  if (toll && state.tollOwners[tollKey(toll)] !== p.id) return toll.cost;
+  return 0;
+}
 
 // ── Itens ─────────────────────────────────────────────────
 
@@ -726,8 +836,9 @@ export function botChooseNext(state: PartyState, options: number[], rng: Rng, sk
   // Não escolhe um metro que não consegue pagar.
   const from = state.board.spaces.find((s) => options.every((o) => s.next.includes(o)))?.id;
   const affordable = options.filter((o) => {
-    const t = from !== undefined ? tunnelBetween(state.board, from, o) : undefined;
-    return !t || t.cost <= coins;
+    if (from === undefined) return true;
+    const cost = tunnelBetween(state.board, from, o)?.cost ?? tollBetween(state.board, from, o)?.cost ?? 0;
+    return cost <= coins;
   });
   if (affordable.length) options = affordable;
   if (rng.next() < 0.5 * (1 - skill)) return rng.pick(options);

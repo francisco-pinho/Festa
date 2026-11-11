@@ -114,13 +114,16 @@ export const PROPS = {
   minigolf: K('kenney-minigolf', ['windmill', 'castle', 'structure-windmill', 'flag-red', 'flag-blue', 'flag-large-red']),
 } as const;
 
+/** Objetos interativos usados em todos os tabuleiros (baú do tesouro, canhão). */
+const BOARD_COMMON = ['kenney-pirate/chest', 'kenney-pirate/cannon'];
+
 /** Que modelos cada tema/desporto precisa. */
 export const THEME_PROPS: Record<string, readonly string[]> = {
   island: [...PROPS.palms, ...PROPS.sandRocks, ...PROPS.beach, ...PROPS.ships, ...PROPS.pirateBits, ...PROPS.plants, ...PROPS.rocks],
-  city: [...PROPS.buildings, ...PROPS.cars, ...PROPS.street, ...PROPS.trees.slice(0, 3)],
-  volcano: [...PROPS.tallRocks, ...PROPS.rocks, ...PROPS.mountains, ...PROPS.camp, ...PROPS.deadTrees, 'kaykit-medieval/building_mine_red'],
-  castle: [...PROPS.graveyard, ...PROPS.deadTrees, ...PROPS.spooky, ...PROPS.medieval, ...PROPS.medievalNature],
-  park: [...PROPS.park, ...PROPS.minigolf, ...PROPS.food, ...PROPS.trees, ...PROPS.plants, 'kaykit-city/streetlight'],
+  city: [...BOARD_COMMON, ...PROPS.buildings, ...PROPS.cars, ...PROPS.street, ...PROPS.trees.slice(0, 3)],
+  volcano: [...BOARD_COMMON, ...PROPS.tallRocks, ...PROPS.rocks, ...PROPS.mountains, ...PROPS.camp, ...PROPS.deadTrees, 'kaykit-medieval/building_mine_red'],
+  castle: [...BOARD_COMMON, ...PROPS.graveyard, ...PROPS.deadTrees, ...PROPS.spooky, ...PROPS.medieval, ...PROPS.medievalNature],
+  park: [...BOARD_COMMON, ...PROPS.park, ...PROPS.minigolf, ...PROPS.food, ...PROPS.trees, ...PROPS.plants, 'kaykit-city/streetlight'],
   golf: [...PROPS.trees, ...PROPS.treesFall, ...PROPS.plants, ...PROPS.rocks, ...PROPS.natureBits, ...PROPS.medievalNature],
   bowling: [...PROPS.furniture, ...PROPS.food],
   tennis: [...PROPS.trees, ...PROPS.street, ...PROPS.plants],

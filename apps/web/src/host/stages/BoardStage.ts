@@ -12,6 +12,8 @@ import { canvasTexture, disposeObject, FONT, mesh, textSprite, toon, toonUnique 
 import { damp, ease, lerp } from '../three/tweens';
 import { starMesh } from './environment';
 import { createBoardTheme, rideCurve, type BoardTheme } from './boardThemes';
+import { BoardObjects } from './boardObjects';
+import { prop } from '../three/props';
 
 const TILE_R = 1.15;
 const TILE_TOP = 0.32;
@@ -28,6 +30,9 @@ const SPACE_STYLE: Record<SpaceType, { color: string; symbol: string }> = {
   item: { color: '#ff6fb5', symbol: '🎁' },
   vs: { color: '#ffd23f', symbol: 'VS' },
   villain: { color: '#3b2a4d', symbol: '😈' },
+  bank: { color: '#e0a800', symbol: '🏦' },
+  cannon: { color: '#4a4f58', symbol: '💥' },
+  lever: { color: '#a0522d', symbol: '🎚️' },
 };
 
 export interface Seat3D {
@@ -47,6 +52,7 @@ export class BoardStage implements Stage {
   readonly tokens = new Map<string, CharacterModel>();
 
   private readonly theme: BoardTheme;
+  private readonly objects: BoardObjects;
   private readonly star = new THREE.Group();
   private readonly mapLabels = new THREE.Group();
   private readonly trapSprites = new Map<number, THREE.Sprite>();
@@ -76,6 +82,9 @@ export class BoardStage implements Stage {
   ) {
     this.theme = createBoardTheme(board, this.scene);
     this.theme.setFlags(board.initialFlags);
+    this.objects = new BoardObjects(board);
+    this.objects.setFlags(board.initialFlags);
+    this.scene.add(this.objects.group);
     this.buildSpaces();
     this.scene.add(this.mapLabels);
 
@@ -375,6 +384,7 @@ export class BoardStage implements Stage {
   update(dt: number, time: number): void {
     this.time = time;
     this.theme.update(dt, time);
+    this.objects.update(dt);
     for (const l of this.mapLabels.children) l.position.y += Math.sin(time * 3 + l.id) * 0.004;
     for (const t of this.tokens.values()) t.update(dt);
     for (const d of this.dice) d.update(dt);
@@ -442,7 +452,172 @@ export class BoardStage implements Stage {
   /** Mudou a maré / o semáforo: atualiza o cenário. */
   setFlags(flags: Record<string, boolean>): void {
     this.theme.setFlags(flags);
+    this.objects.setFlags(flags);
   }
+
+  // ── Objetos interativos (alavancas, portagens, canhões, banco) ──
+
+  /** A personagem puxa a alavanca e a câmara mostra o(s) portão(ões) a mudar. */
+  async pullLever(id: string, spaceId: number, flags: Record<string, boolean>): Promise<void> {
+    const t = this.token(id);
+    t.setAnim('punchRight');
+    sound.play('whoosh');
+    await this.engine.wait(0.35);
+    this.objects.setFlags(flags);
+    sound.play('block');
+    const levers = this.board.levers.filter((l) => l.spaceId === spaceId);
+    const gates = this.board.gates.filter((g) => g.lever && levers.some((l) => l.flag === g.flag));
+    await this.engine.wait(0.4);
+    const pts = [getSpace(this.board, spaceId), ...gates.map((g) => getSpace(this.board, g.from))];
+    const xs = pts.map((p) => p.x);
+    const zs = pts.map((p) => p.z);
+    this.follow = null;
+    this.frame((Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...zs) + Math.max(...zs)) / 2, Math.max(...xs) - Math.min(...xs) + 8, Math.max(...zs) - Math.min(...zs) + 8);
+    this.theme.setFlags(flags);
+    await this.engine.wait(1.4);
+    t.setAnim('idle');
+  }
+
+  setBank(amount: number): void {
+    this.objects.setBank(amount);
+  }
+
+  /** Moedas a voar da personagem para o cofre (depósito) ou do cofre para a personagem. */
+  async bankCoins(id: string, amount: number, toBank: boolean): Promise<void> {
+    if (!amount) return;
+    sound.play(toBank ? 'coinLose' : 'coin');
+    const root = this.token(id).root.position;
+    const bank = this.objects.bankPosition();
+    const n = Math.min(14, amount);
+    const flights: Promise<void>[] = [];
+    for (let i = 0; i < n; i++) {
+      const coin = new THREE.Mesh(this.coinGeo, this.coinMat);
+      coin.rotation.x = Math.PI / 2;
+      const a = new THREE.Vector3(root.x, root.y + 1.6, root.z);
+      const [from, to] = toBank ? [a, bank] : [bank, a];
+      this.scene.add(coin);
+      flights.push(
+        this.engine
+          .tween(0.8, (k) => {
+            const kk = Math.min(1, Math.max(0, k * 1.3 - (i / n) * 0.3));
+            coin.position.lerpVectors(from, to, kk);
+            coin.position.y += Math.sin(kk * Math.PI) * 3;
+            coin.rotation.z = kk * 12;
+          })
+          .then(() => void this.scene.remove(coin)),
+      );
+    }
+    await Promise.all(flights);
+  }
+
+  setTollOwner(key: string, ownerName: string | null): void {
+    this.objects.setTollOwner(key, ownerName);
+  }
+
+  openToll(key: string): void {
+    sound.play('coin');
+    this.objects.openToll(key);
+  }
+
+  /** Canhão/géiser: dispara a personagem num arco alto até `toSpace`. */
+  async launch(id: string, fromSpace: number, toSpace: number): Promise<void> {
+    const t = this.token(id);
+    // Primeiro salta para dentro do canhão (ou para cima do géiser).
+    const mouth = this.objects.cannonPosition(fromSpace);
+    if (mouth) {
+      const p0 = t.root.position.clone();
+      t.setAnim('jump');
+      t.faceYaw(Math.atan2(mouth.x - p0.x, mouth.z - p0.z), true);
+      await this.engine.tween(0.45, (k) => {
+        t.root.position.lerpVectors(p0, mouth, k);
+        t.root.position.y += Math.sin(k * Math.PI) * 1.6;
+      });
+      await this.engine.wait(0.25);
+    }
+    const from = t.root.position.clone();
+    const to = getSpace(this.board, toSpace);
+    const toPos = new THREE.Vector3(to.x, TILE_TOP + (to.y ?? 0), to.z);
+    this.objects.fire(fromSpace);
+    sound.play('firework');
+    this.floatTextAt(this.board.theme === 'volcano' ? '💨' : '💥', from.x, from.z);
+    t.setAnim('jump');
+    this.follow = t;
+    this.followDistance = 1.8;
+    const dist = from.distanceTo(toPos);
+    const h = 10 + dist * 0.25;
+    await this.engine.tween(Math.min(3, 1.2 + dist / 30), (k) => {
+      t.root.position.lerpVectors(from, toPos, k);
+      t.root.position.y += Math.sin(k * Math.PI) * h;
+      t.root.rotation.x = k * Math.PI * 4;
+    }, ease.inOut);
+    t.root.rotation.x = 0;
+    t.root.position.copy(toPos);
+    sound.play('hit');
+    t.setAnim('dizzy');
+    this.followDistance = 1;
+    await this.engine.wait(0.8);
+    t.setAnim('idle');
+  }
+
+  /** Derrocada: pedras caem em cima da personagem. */
+  async rockfall(id: string): Promise<void> {
+    const t = this.token(id);
+    const p = t.root.position.clone();
+    const rocks: THREE.Mesh[] = [];
+    for (let i = 0; i < 5; i++) {
+      const r = mesh(new THREE.DodecahedronGeometry(0.35 + Math.random() * 0.3), toon('#6b5a4a'));
+      r.position.set(p.x + (Math.random() - 0.5) * 2, p.y + 10 + i * 1.5, p.z + (Math.random() - 0.5) * 2);
+      this.scene.add(r);
+      rocks.push(r);
+    }
+    const y0 = rocks.map((r) => r.position.y);
+    sound.play('whoosh');
+    await this.engine.tween(0.9, (k) => {
+      rocks.forEach((r, i) => {
+        r.position.y = Math.max(p.y + 0.3, y0[i]! - k * k * 18);
+        r.rotation.x = k * 6 + i;
+      });
+    });
+    sound.play('hit');
+    t.setAnim('hurt');
+    await this.engine.wait(0.7);
+    await this.engine.tween(0.4, (k) => rocks.forEach((r) => r.scale.setScalar(Math.max(0.01, 1 - k))));
+    for (const r of rocks) {
+      this.scene.remove(r);
+      disposeObject(r);
+    }
+  }
+
+  /** Baú do tesouro que aparece à frente da personagem e se abre. */
+  async openChest(id: string, result: string): Promise<void> {
+    const t = this.token(id);
+    const p = t.root.position.clone();
+    const chest =
+      prop('kenney-pirate/chest', { width: 1.4 }) ??
+      (() => {
+        const g = new THREE.Group();
+        const box = mesh(new THREE.BoxGeometry(1.4, 0.8, 0.9), toon('#8b5a2b'));
+        box.position.y = 0.4;
+        const band = mesh(new THREE.BoxGeometry(1.45, 0.15, 0.95), toon('#ffd23f'));
+        band.position.y = 0.6;
+        g.add(box, band);
+        return g;
+      })();
+    const yaw = this.cameraYawTo(p.x, p.z);
+    chest.position.set(p.x + Math.sin(yaw) * 1.6, p.y, p.z + Math.cos(yaw) * 1.6);
+    chest.rotation.y = yaw;
+    this.scene.add(chest);
+    chest.scale.setScalar(0.01);
+    await this.engine.tween(0.4, (k) => chest.scale.setScalar(Math.max(0.01, k)), ease.backOut);
+    await this.engine.wait(0.3);
+    sound.play('bell');
+    await this.engine.tween(0.25, (k) => (chest.position.y = p.y + Math.sin(k * Math.PI) * 0.6));
+    this.floatTextAt(result, chest.position.x, chest.position.z);
+    await this.engine.wait(1);
+    await this.engine.tween(0.3, (k) => chest.scale.setScalar(Math.max(0.01, 1 - k)));
+    this.scene.remove(chest);
+  }
+
 
   /** Efeito da roda gigante a girar (só no parque). */
   spinWheel(): void {
@@ -485,6 +660,18 @@ export class BoardStage implements Stage {
     for (const t of this.board.tunnels) {
       const s = getSpace(this.board, t.from);
       label(t.kind === 'metro' ? 'Ⓜ️' : '🕳️', s.x, s.z, 5, 2.6);
+    }
+    for (const l of this.board.levers) {
+      const s = getSpace(this.board, l.spaceId);
+      label('🎚️', s.x, s.z, 5 + (s.y ?? 0), 2.4);
+    }
+    for (const c of this.board.cannons) {
+      const s = getSpace(this.board, c.spaceId);
+      label(this.board.theme === 'volcano' ? '💨' : '💥', s.x, s.z, 5 + (s.y ?? 0), 2.4);
+    }
+    for (const t of this.board.tolls) {
+      const s = getSpace(this.board, t.from);
+      label(`💰${t.cost}`, s.x, s.z, 5 + (s.y ?? 0), 2);
     }
     for (const [i, p] of players.entries()) {
       const r = this.token(p.id).root.position;

@@ -8,6 +8,13 @@
  *  - **Portões**: ligações que só estão abertas conforme um "interruptor" do
  *    mapa (maré alta/baixa, semáforo verde/vermelho…), mudado pela mecânica do mapa.
  *  - **Lojas**: casas onde se compram itens ao passar.
+ *  - **Alavancas**: casas que, ao passar, deixam puxar uma alavanca que abre um
+ *    caminho e fecha outro (interruptor do mapa controlado pelos jogadores).
+ *  - **Portagens**: caminhos pagos; o dinheiro vai para quem pagou antes (que
+ *    passa a ser o "dono" até alguém pagar a seguir).
+ *  - **Canhões**: casas que disparam quem lá para para outra zona do mapa.
+ *  - **Banco**: quem passa deposita moedas; quem lá para leva o cofre todo.
+ *  - **Eventos por zona**: a casa "?" faz coisas diferentes conforme a zona.
  */
 import { createRng, type Rng } from './rng';
 
@@ -21,7 +28,10 @@ export type SpaceType =
   | 'shop'
   | 'item'
   | 'vs'
-  | 'villain';
+  | 'villain'
+  | 'bank'
+  | 'cannon'
+  | 'lever';
 
 export type ShopKind = 'geral' | 'barata' | 'luxo' | 'ultimo';
 
@@ -66,10 +76,37 @@ export interface Gate {
   /** Aberto quando o interruptor tem este valor. */
   openWhen: boolean;
   name: string;
+  /** Controlado por uma alavanca dos jogadores (e não pela mecânica do mapa). */
+  lever?: boolean;
+}
+
+/** Alavanca numa casa: quem passa pode trocar o interruptor `flag`. */
+export interface Lever {
+  spaceId: number;
+  flag: string;
+  name: string;
+  /** O que acontece quando o interruptor fica true / false (para mostrar no ecrã). */
+  onText: string;
+  offText: string;
+}
+
+/** Caminho pago (a ligação `from → to`). */
+export interface Toll {
+  from: number;
+  to: number;
+  cost: number;
+  name: string;
+}
+
+/** Canhão: dispara quem para em `spaceId` para uma das casas `targets`. */
+export interface Cannon {
+  spaceId: number;
+  targets: number[];
+  name: string;
 }
 
 export type BoardMechanic = 'tide' | 'traffic' | 'eruption' | 'doors' | 'wheel';
-export type EventKind = 'tornado' | 'taxi' | 'minecart' | 'ghost';
+export type EventKind = 'tornado' | 'taxi' | 'minecart' | 'ghost' | 'chest' | 'rockfall';
 
 export interface Board {
   id: string;
@@ -88,6 +125,13 @@ export interface Board {
   eventKind: EventKind;
   /** Casas da roda gigante, pela ordem em que giram (só no parque). */
   wheel?: number[];
+  levers: Lever[];
+  tolls: Toll[];
+  cannons: Cannon[];
+  /** Nome do banco (se o mapa tiver casas de banco). */
+  bankName?: string;
+  /** A casa "?" desta zona faz este evento em vez do `eventKind` do mapa. */
+  zoneEvents: Record<string, EventKind>;
 }
 
 export function getSpace(board: Board, id: number): Space {
@@ -98,6 +142,23 @@ export function getSpace(board: Board, id: number): Space {
 
 export function tunnelBetween(board: Board, from: number, to: number): Tunnel | undefined {
   return board.tunnels.find((t) => t.from === from && t.to === to);
+}
+
+export function tollBetween(board: Board, from: number, to: number): Toll | undefined {
+  return board.tolls.find((t) => t.from === from && t.to === to);
+}
+
+export function leverAt(board: Board, spaceId: number): Lever | undefined {
+  return board.levers.find((l) => l.spaceId === spaceId);
+}
+
+export function cannonAt(board: Board, spaceId: number): Cannon | undefined {
+  return board.cannons.find((c) => c.spaceId === spaceId);
+}
+
+/** Que evento faz a casa "?" nesta casa (zona primeiro, depois o mapa). */
+export function eventKindAt(board: Board, spaceId: number): EventKind {
+  return board.zoneEvents[getSpace(board, spaceId).zone ?? ''] ?? board.eventKind;
 }
 
 /** Casas seguintes a que se pode ir agora (portões fechados ficam de fora). */
@@ -247,7 +308,7 @@ function fillTypes(spaces: Space[], startId: number, seed: number, weights: [Spa
 }
 
 /** Zonas atrás de portões: a estrela nunca vai para lá (podia ficar inacessível). */
-const GATED_ZONES = new Set(['bridge', 'avenue', 'plaza', 'crater', 'stairs', 'wheel']);
+const GATED_ZONES = new Set(['bridge', 'avenue', 'plaza', 'crater', 'stairs', 'wheel', 'jungle', 'alley', 'lavaBridge', 'maze']);
 
 function markStarCandidates(spaces: Space[], every = 3, minId = 5): void {
   for (const s of spaces) {
@@ -292,6 +353,18 @@ export function createIslandBoard(): Board {
   const caveTo = 2;
   b.link(caveFrom, caveTo);
 
+  // Trilho da selva: do meio da aldeia até ao topo da ilha (portão com alavanca na aldeia)
+  const jungle = b.addBranch(center[6]!, ringIds[42]!, 8, { x: 7, z: -8 }, 'jungle');
+  const jungleLever = center[3]!;
+  b.set(jungleLever, 'lever');
+  // Canhão pirata na praia: dispara para o norte da ilha
+  const cannon = ringIds[14]!;
+  b.set(cannon, 'cannon');
+  // Cofre do pirata na aldeia
+  b.set(center[9]!, 'bank');
+  // Baús do tesouro (casas "?" fixas na praia e na selva)
+  for (const id of [ringIds[10]!, ringIds[19]!, jungle[2]!, jungle[6]!]) b.set(id, 'event');
+
   const shopBeach = 12;
   const shopCave = 44;
   b.set(shopBeach, 'shop');
@@ -313,12 +386,12 @@ export function createIslandBoard(): Board {
   ], {
     bridge: [['lucky', 35], ['red', 25], ['event', 15], ['blue', 25]],
   });
-  markStarCandidates(b.spaces);
+  markStarCandidates(b.spaces, 2);
 
   return {
     id: 'ilha',
     name: 'Ilha do Coqueiro',
-    description: 'Maré baixa abre a ponte; maré alta abre o túnel da gruta. A maré muda a cada 3 rondas.',
+    description: 'Maré baixa abre a ponte; maré alta abre o túnel da gruta (muda a cada 3 rondas). Puxa a alavanca da aldeia para abrir a selva, e cuidado com o canhão da praia!',
     theme: 'island',
     spaces: b.spaces,
     startId: 0,
@@ -330,9 +403,15 @@ export function createIslandBoard(): Board {
     gates: [
       { from: BRIDGE_FROM, to: bridge[0]!, flag: 'highTide', openWhen: false, name: 'Ponte' },
       { from: caveFrom, to: caveTo, flag: 'highTide', openWhen: true, name: 'Gruta' },
+      { from: center[6]!, to: jungle[0]!, flag: 'jungle', openWhen: true, name: 'Portão da Selva', lever: true },
     ],
+    levers: [{ spaceId: jungleLever, flag: 'jungle', name: 'Alavanca da Selva', onText: 'O portão da selva abriu!', offText: 'O portão da selva fechou!' }],
+    tolls: [],
+    cannons: [{ spaceId: cannon, targets: [ringIds[37]!, ringIds[45]!, jungle[4]!, ringIds[50]!], name: 'Canhão Pirata' }],
+    bankName: 'Cofre do Pirata',
+    zoneEvents: { beach: 'chest', jungle: 'chest' },
     mechanic: 'tide',
-    initialFlags: { highTide: false },
+    initialFlags: { highTide: false, jungle: false },
     eventKind: 'tornado',
   };
 }
@@ -378,6 +457,13 @@ export function createCityBoard(): Board {
   b.link(plaza, ewRight[0]!);
   b.link(ewRight[ewRight.length - 1]!, rightMid);
 
+  // Becos com obras: uma alavanca abre um e fecha o outro
+  const alleySW = b.addBranch(38, ewLeft[3]!, 4, null, 'alley');
+  const alleyNE = b.addBranch(10, ewRight[1]!, 4, null, 'alley');
+  const levers = [36, 7];
+  for (const id of levers) b.set(id, 'lever');
+  b.set(31, 'bank');
+
   // Metro: 3 estações em cantos opostos
   const stations = [3, 29, 18];
   for (let i = 0; i < stations.length; i++) b.link(stations[i]!, stations[(i + 1) % stations.length]!);
@@ -410,7 +496,7 @@ export function createCityBoard(): Board {
   return {
     id: 'cidade',
     name: 'Cidade Néon',
-    description: 'Semáforos mudam a cada ronda, metro entre 3 estações (3 moedas) e 4 lojas — uma só para quem vai em último.',
+    description: 'Semáforos mudam a cada ronda, metro entre 3 estações (3 moedas), alavancas que trocam os becos em obras e uma portagem na praça.',
     theme: 'city',
     spaces: b.spaces,
     startId: 0,
@@ -425,9 +511,16 @@ export function createCityBoard(): Board {
     gates: [
       { from: topMid, to: nsTop[0]!, flag: 'greenNS', openWhen: true, name: 'Semáforo da Avenida Norte' },
       { from: leftMid, to: ewLeft[0]!, flag: 'greenNS', openWhen: false, name: 'Semáforo da Avenida Oeste' },
+      { from: 38, to: alleySW[0]!, flag: 'alleySW', openWhen: true, name: 'Obras do Beco Sul', lever: true },
+      { from: 10, to: alleyNE[0]!, flag: 'alleySW', openWhen: false, name: 'Obras do Beco Norte', lever: true },
     ],
+    levers: levers.map((spaceId) => ({ spaceId, flag: 'alleySW', name: 'Alavanca das Obras', onText: 'Abriu o Beco Sul · fechou o Norte', offText: 'Abriu o Beco Norte · fechou o Sul' })),
+    tolls: [{ from: plaza, to: ewRight[0]!, cost: 3, name: 'Portagem da Avenida Este' }],
+    cannons: [],
+    bankName: 'Banco Néon',
+    zoneEvents: {},
     mechanic: 'traffic',
-    initialFlags: { greenNS: true },
+    initialFlags: { greenNS: true, alleySW: true },
     eventKind: 'taxi',
   };
 }
@@ -479,6 +572,14 @@ export function createVolcanoBoard(): Board {
   const b1 = (48 / N) * Math.PI * 2;
   const bm = (b0 + b1) / 2;
   const mine = b.addBranch(ring[34]!, ring[48]!, 13, { x: Math.cos(bm) * 80, z: Math.sin(bm) * 80 }, 'mine');
+  // Ponte de lava (por dentro do anel, do outro lado da cratera): abre com a alavanca
+  const lm = (41 / N) * Math.PI * 2;
+  const lava = b.addBranch(ring[35]!, ring[47]!, 8, { x: Math.cos(lm) * 10, z: Math.sin(lm) * 10 }, 'lavaBridge');
+  const lavaLever = ring[32]!;
+  b.set(lavaLever, 'lever');
+  // Géiser: atira quem lá cai para o outro lado do vulcão
+  const geyser = ring[24]!;
+  b.set(geyser, 'cannon');
   // Vagonetas
   const carts: [number, number][] = [
     [ring[27]!, ring[41]!],
@@ -510,15 +611,22 @@ export function createVolcanoBoard(): Board {
   return {
     id: 'vulcao',
     name: 'Mina do Vulcão',
-    description: 'A cada 3 rondas o vulcão entra em erupção: fecha o caminho da cratera e queima moedas. Vagonetas levam-te longe por 2 moedas.',
+    description: 'A cada 3 rondas o vulcão entra em erupção: fecha a cratera e queima moedas. Vagonetas por 2 moedas, ponte de lava com alavanca, portagem na mina e um géiser que te atira longe.',
     theme: 'volcano',
     spaces: b.spaces,
     startId: 0,
     shops,
     tunnels: carts.map(([from, to], i) => ({ from, to, kind: 'cart' as const, cost: 2, name: `Vagoneta ${i + 1}` })),
-    gates: [{ from: ring[9]!, to: crater[0]!, flag: 'erupting', openWhen: false, name: 'Cratera' }],
+    gates: [
+      { from: ring[9]!, to: crater[0]!, flag: 'erupting', openWhen: false, name: 'Cratera' },
+      { from: ring[35]!, to: lava[0]!, flag: 'lavaBridge', openWhen: true, name: 'Ponte de Lava', lever: true },
+    ],
+    levers: [{ spaceId: lavaLever, flag: 'lavaBridge', name: 'Alavanca da Ponte', onText: 'A ponte de lava baixou!', offText: 'A ponte de lava subiu!' }],
+    tolls: [{ from: ring[34]!, to: mine[0]!, cost: 2, name: 'Entrada da Mina' }],
+    cannons: [{ spaceId: geyser, targets: [ring[44]!, ring[50]!, ring[1]!, mine[10]!], name: 'Géiser' }],
+    zoneEvents: { crater: 'rockfall', mine: 'chest' },
     mechanic: 'eruption',
-    initialFlags: { erupting: false },
+    initialFlags: { erupting: false, lavaBridge: false },
     eventKind: 'minecart',
   };
 }
@@ -561,6 +669,15 @@ export function createCastleBoard(): Board {
     [nearest(f2, { x: 12, z: -36 }), nearest(f0, { x: 22, z: 30 })],
   ];
   for (const [f, t] of elevators) b.link(f, t);
+  // Passagem secreta atrás da estante: do pátio direto à torre (abre com a alavanca do pátio)
+  const secret: [number, number] = [nearest(f0, { x: -24, z: 22 }), nearest(f2, { x: -6, z: -37 })];
+  b.link(secret[0], secret[1]);
+  const secretLever = nearest(f0, { x: -10, z: 32 });
+  b.set(secretLever, 'lever');
+  // Canhão nas ameias da torre: dispara para o pátio
+  const towerCannon = f2[14]!;
+  b.set(towerCannon, 'cannon');
+  b.set(f1[7]!, 'bank');
 
   const shops: ShopDef[] = [
     { id: 'taberna', name: 'Taberna do Pátio', kind: 'geral', spaceId: f0[20]! },
@@ -589,18 +706,27 @@ export function createCastleBoard(): Board {
   return {
     id: 'castelo',
     name: 'Castelo Assombrado',
-    description: 'Três andares ligados por elevadores; as portas das escadas abrem e fecham a cada ronda. O fantasma troca 30 moedas por uma estrela!',
+    description: 'Três andares ligados por elevadores; as portas das escadas mudam a cada ronda. Um castiçal abre uma passagem secreta até à torre, e o fantasma troca 30 moedas por uma estrela!',
     theme: 'castle',
     spaces: b.spaces,
     startId: 0,
     shops,
-    tunnels: elevators.map(([from, to], i) => ({ from, to, kind: 'elevator' as const, cost: 0, name: `Elevador ${i + 1}` })),
+    tunnels: [
+      ...elevators.map(([from, to], i) => ({ from, to, kind: 'elevator' as const, cost: 0, name: `Elevador ${i + 1}` })),
+      { from: secret[0], to: secret[1], kind: 'cave' as const, cost: 0, name: 'Passagem Secreta' },
+    ],
     gates: [
       { from: s0from, to: stairs0[0]!, flag: 'doorsA', openWhen: true, name: 'Porta da escadaria do salão' },
       { from: s1from, to: stairs1[0]!, flag: 'doorsA', openWhen: false, name: 'Porta da escadaria da torre' },
+      { from: secret[0], to: secret[1], flag: 'secret', openWhen: true, name: 'Estante Secreta', lever: true },
     ],
+    levers: [{ spaceId: secretLever, flag: 'secret', name: 'Castiçal Misterioso', onText: 'A estante abriu uma passagem secreta!', offText: 'A passagem secreta fechou-se…' }],
+    tolls: [],
+    cannons: [{ spaceId: towerCannon, targets: [f0[2]!, f0[8]!, f0[16]!, f0[24]!], name: 'Canhão da Torre' }],
+    bankName: 'Cofre do Rei',
+    zoneEvents: { floor0: 'chest' },
     mechanic: 'doors',
-    initialFlags: { doorsA: true },
+    initialFlags: { doorsA: true, secret: false },
     eventKind: 'ghost',
   };
 }
@@ -632,6 +758,14 @@ export function createParkBoard(): Board {
   void aStart;
   // Avenida dos doces (pelo meio)
   const midway = b.addBranch(main[28]!, main[3]!, 10, { x: 0, z: 0 }, 'midway');
+  // Labirinto dos espelhos (lado de cima): abre e fecha com a alavanca
+  const maze = b.addBranch(main[36]!, main[46]!, 9, { x: 10, z: -6 }, 'maze');
+  const mazeLever = main[33]!;
+  b.set(mazeLever, 'lever');
+  // Canhão humano do circo
+  const humanCannon = main[22]!;
+  b.set(humanCannon, 'cannon');
+  b.set(main[48]!, 'bank');
   // Montanha-russa
   const coaster: [number, number] = [main[20]!, main[40]!];
   b.link(coaster[0], coaster[1]);
@@ -660,15 +794,20 @@ export function createParkBoard(): Board {
   return {
     id: 'parque',
     name: 'Parque de Diversões',
-    description: 'A roda gigante gira no início de cada ronda e muda de sítio quem lá está. A montanha-russa é um grande atalho por 5 moedas.',
+    description: 'A roda gigante gira a cada ronda e muda de sítio quem lá está; a montanha-russa é um atalho por 5 moedas. Há um labirinto com alavanca e um canhão humano!',
     theme: 'park',
     spaces: b.spaces,
     startId: 0,
     shops,
     tunnels: [{ from: coaster[0], to: coaster[1], kind: 'coaster', cost: 5, name: 'Montanha-russa' }],
-    gates: [],
+    gates: [{ from: main[36]!, to: maze[0]!, flag: 'maze', openWhen: true, name: 'Labirinto dos Espelhos', lever: true }],
+    levers: [{ spaceId: mazeLever, flag: 'maze', name: 'Alavanca do Labirinto', onText: 'O labirinto dos espelhos abriu!', offText: 'O labirinto dos espelhos fechou!' }],
+    tolls: [{ from: main[9]!, to: wheel[0]!, cost: 2, name: 'Bilhete da Roda' }],
+    cannons: [{ spaceId: humanCannon, targets: [main[45]!, main[2]!, midway[6]!, maze[5]!], name: 'Canhão Humano' }],
+    bankName: 'Bilheteira',
+    zoneEvents: { midway: 'chest' },
     mechanic: 'wheel',
-    initialFlags: {},
+    initialFlags: { maze: false },
     eventKind: 'tornado',
     wheel,
   };
