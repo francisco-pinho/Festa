@@ -10,3 +10,5 @@ coverage/
 apps/web/public/dev-boards.html
 apps/desktop/release/
 apps/desktop/resources/bin/cloudflared.exe
+apps/web/public/dev-ubc/
+apps/web/dev-modelo.html
