@@ -505,8 +505,12 @@ export class GolfStage extends SportStage {
     const putting = this.club === 'putter';
     const gy = heightAt(this.hole, g.pos.x, g.pos.y);
     const look = putting ? Math.min(8, this.distToHole(g) + 1) : Math.min(CLUBS[this.club].carry * 0.35, 18);
+    // Câmara atrás da bola, desviada para o lado oposto ao golfista (que fica à esquerda da bola,
+    // em `-side`): assim ele não tapa o caminho até ao buraco.
+    const camSide = new THREE.Vector2(dir.y, -dir.x).multiplyScalar(putting ? 1.6 : 2);
+    const back = putting ? 5 : 7;
     this.cameraTo(
-      { x: g.pos.x - dir.x * (putting ? 5.5 : 7.5) - dir.y * 1.2, y: gy + (putting ? 3 : 3.2), z: g.pos.y - dir.y * (putting ? 5.5 : 7.5) + dir.x * 1.2 },
+      { x: g.pos.x - dir.x * back + camSide.x, y: gy + (putting ? 3.4 : 4), z: g.pos.y - dir.y * back + camSide.y },
       { x: g.pos.x + dir.x * look, y: gy, z: g.pos.y + dir.y * look },
       { speed: 5 },
     );
