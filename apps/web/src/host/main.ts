@@ -55,7 +55,7 @@ main.catch((err: unknown) => {
 
 // Em desenvolvimento: acesso pela consola do browser para depurar (window.festa).
 if (import.meta.env.DEV) {
-  Object.assign(window, { festa: { engine, hud, hub, connection, director, menu, menus, getAsset, sound } });
+  Object.assign(window, { festa: { engine, hud, hub, connection, director, menu, menus, getAsset, sound, narrator } });
   // Teste rápido do motor de física: na consola, `await festa.physicsSmokeTest()`.
   Object.assign((window as unknown as { festa: object }).festa, {
     physicsSmokeTest: async () => {

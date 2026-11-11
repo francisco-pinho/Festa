@@ -15,8 +15,11 @@ export class NarratorPortrait {
   private readonly model: CharacterModel;
   private raf = 0;
   private last = 0;
-  private gestureT = 0;
-  private gesture = 0;
+  /** Energia da fala (sobe e desce suavemente), impulso das palavras e entusiasmo. */
+  private energy = 0;
+  private beat = 0;
+  private excited = 0;
+  private t = 0;
   talking = false;
 
   constructor(readonly canvas: HTMLCanvasElement) {
@@ -66,33 +69,24 @@ export class NarratorPortrait {
   }
 
   stop(): void {
-    cancelAnimationFrame(this.raf);
-    this.raf = 0;
     this.talking = false;
-    this.model.setAnim('idle');
+    // Deixa a pose voltar ao repouso suavemente antes de parar de desenhar.
+    setTimeout(() => {
+      if (this.talking) return;
+      cancelAnimationFrame(this.raf);
+      this.raf = 0;
+    }, 600);
   }
 
-  /** Nova frase: gesto conforme o tom (exclamação = festejar). */
+  /** Nova frase: frases com «!» ganham mais energia (um pequeno saltinho). */
   line(text: string): void {
     this.talking = true;
-    if (/!\s*$/.test(text)) {
-      this.model.restAnim = 'idle';
-      this.model.setAnim('cheer');
-      this.gestureT = 1.3;
-    } else {
-      this.nextGesture();
-    }
+    this.excited = /!\s*$/.test(text) ? 1 : 0;
   }
 
-  /** Cada palavra: um pequeno aceno com a cabeça. */
+  /** Cada palavra: dá um impulso suave ao movimento da cabeça (sem safanões). */
   word(): void {
-    this.model.kickHead(0.1 + Math.random() * 0.08, (Math.random() - 0.5) * 0.12);
-  }
-
-  private nextGesture(): void {
-    this.gesture = (this.gesture + 1) % 3;
-    this.model.setAnim(this.gesture === 2 ? 'talk2' : 'talk');
-    this.gestureT = 1.6 + Math.random() * 1.2;
+    this.beat = Math.min(1, this.beat + 0.45);
   }
 
   private tick(dt: number): void {
@@ -103,10 +97,22 @@ export class NarratorPortrait {
       this.camera.aspect = w / h;
       this.camera.updateProjectionMatrix();
     }
-    if (this.talking) {
-      this.gestureT -= dt;
-      if (this.gestureT <= 0) this.nextGesture();
-    }
+    // Movimento contínuo e suave enquanto fala (sem trocar de animação).
+    this.t += dt;
+    const k = 1 - Math.exp(-dt * 4);
+    this.energy += ((this.talking ? 1 : 0) - this.energy) * k;
+    this.beat *= Math.exp(-dt * 5);
+    this.excited *= Math.exp(-dt * 0.8);
+    const e = this.energy;
+    const t = this.t;
+    const pose = this.model.pose;
+    pose.headX = e * (0.05 * Math.sin(t * 5.2) + 0.07 * this.beat) - 0.04 * e;
+    pose.headY = e * 0.1 * Math.sin(t * 1.3);
+    pose.headZ = e * 0.05 * Math.sin(t * 1.9 + 1);
+    pose.chestY = e * 0.08 * Math.sin(t * 1.1 + 0.5);
+    pose.chestZ = e * 0.03 * Math.sin(t * 2.1);
+    this.model.root.position.y = Math.abs(Math.sin(t * 6)) * 0.06 * this.excited * e;
+    this.model.faceYaw(0.25 + e * 0.12 * Math.sin(t * 0.7));
     this.model.update(dt);
     this.renderer.render(this.scene, this.camera);
   }

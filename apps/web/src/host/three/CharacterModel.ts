@@ -125,6 +125,8 @@ export class CharacterModel {
   private restChest: THREE.Quaternion | null = null;
   private t = Math.random() * 10;
   private flashTime = 0;
+  /** Pose extra contínua (rad), somada por cima da animação a cada imagem (ex.: narrador a falar). */
+  readonly pose = { headX: 0, headY: 0, headZ: 0, chestY: 0, chestZ: 0 };
   /** Recuo da cabeça ao levar um soco (rad), decai sozinho. */
   private headKick = new THREE.Vector2();
 
@@ -287,6 +289,16 @@ export class CharacterModel {
     } else if (this.anim === 'dizzy') {
       this.bones.head?.rotateZ(Math.sin(this.t * 2.6) * 0.16);
       this.bones.chest?.rotateZ(Math.sin(this.t * 2.6 + 1) * 0.06);
+    }
+    const p = this.pose;
+    if (p.headX || p.headY || p.headZ) {
+      this.bones.head?.rotateX(p.headX);
+      this.bones.head?.rotateY(p.headY);
+      this.bones.head?.rotateZ(p.headZ);
+    }
+    if (p.chestY || p.chestZ) {
+      this.bones.chest?.rotateY(p.chestY);
+      this.bones.chest?.rotateZ(p.chestZ);
     }
     if (this.headKick.lengthSq() > 1e-4) {
       this.bones.head?.rotateX(-this.headKick.x);
