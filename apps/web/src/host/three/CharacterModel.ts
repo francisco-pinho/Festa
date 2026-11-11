@@ -47,7 +47,9 @@ export type CharacterAnim =
   | 'batIdle'
   | 'batSwing'
   | 'crouch'
-  | 'catch';
+  | 'catch'
+  | 'backhand'
+  | 'serve';
 
 interface AnimSpec {
   clip: string;
@@ -90,6 +92,8 @@ const ANIMS: Record<CharacterAnim, AnimSpec> = {
   batSwing: { clip: '2H_Melee_Attack_Slice', loop: false, speed: 2.2, thenIdle: true },
   crouch: { clip: 'Sit_Chair_Idle', loop: true },
   catch: { clip: 'Block', loop: false, speed: 1.6, thenIdle: true },
+  backhand: { clip: '1H_Melee_Attack_Slice_Diagonal', loop: false, speed: 1.9, thenIdle: true },
+  serve: { clip: '1H_Melee_Attack_Chop', loop: false, speed: 1.6, thenIdle: true },
 };
 
 /** Altura final das personagens no mundo (topo da cabeça). */

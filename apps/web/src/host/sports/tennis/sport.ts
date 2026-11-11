@@ -6,8 +6,8 @@ const Tennis: SportDef = {
   order: 2,
   name: 'Ténis',
   emoji: '🎾',
-  description: 'Pares, 2 contra 2. As personagens correm sozinhas — tu só bates!',
-  howTo: 'Faz a raquetada quando a bola chega · cedo = cruzada, tarde = para o outro lado · mais força = mais rápida',
+  description: 'Pares, 2 contra 2 num estádio. As personagens correm sozinhas — tu só bates!',
+  howTo: 'Raquetada quando a bola chega · cedo = cruzada, tarde = paralela · de baixo para cima = topspin, de cima para baixo = slice · bola alta = smash',
   seatCount: () => 4,
   create: (ctx) => new TennisStage(ctx),
 };

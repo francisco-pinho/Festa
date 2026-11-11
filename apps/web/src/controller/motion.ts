@@ -16,7 +16,7 @@ type Hand = 'left' | 'right';
 
 const ACTION_TEXT: Record<MotionLayout['action'], { touch: string; motion: string; icon: string }> = {
   throw: { icon: '🎳', touch: 'Arrasta para cima para lançar', motion: 'Segura aqui e lança com o braço' },
-  swing: { icon: '🎾', touch: 'Arrasta para cima para bater', motion: 'Segura aqui e dá a raquetada' },
+  swing: { icon: '🎾', touch: 'Arrasta para bater (para cima = topspin, para baixo = slice)', motion: 'Segura aqui e dá a raquetada' },
   punch: { icon: '🥊', touch: 'Toca/arrasta para dar um soco', motion: 'Segura e dá socos com o telemóvel' },
   pitch: { icon: '⚾', touch: 'Arrasta para cima para lançar', motion: 'Segura aqui e lança com o braço' },
   bat: { icon: '🏏', touch: 'Arrasta de lado para bater', motion: 'Segura aqui e bate com força' },
@@ -233,6 +233,17 @@ export function swipeToSwing(
   if (points.length < 2) return null;
   const first = points[0]!;
   const last = points[points.length - 1]!;
+  if (action === 'swing') {
+    // Ténis: qualquer direção. Lados = direção; para cima = topspin; para baixo = slice.
+    const dx = last.x - first.x;
+    const dy = first.y - last.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 30) return null;
+    const tail = points.filter((p) => last.t - p.t <= 120);
+    const t0 = tail[0]!;
+    const sp = Math.hypot(last.x - t0.x, last.y - t0.y) / Math.max(16, last.t - t0.t);
+    return { power: clamp(sp / 2.6, 0.05, 1), dir: clamp((dx / len) * 1.3), spin: clamp((dy / len) * 1.2), source: 'touch' };
+  }
   // Velocidade nos últimos ~120 ms (o "remate" do gesto).
   const tail = points.filter((p) => last.t - p.t <= 120);
   const t0 = tail[0]!;
