@@ -28,17 +28,60 @@ const SHOP_SIGN: Record<ShopKind, { emoji: string; color: string }> = {
 };
 
 export function createBoardTheme(board: Board, scene: THREE.Scene): BoardTheme {
+  const theme = (() => {
+    switch (board.theme) {
+      case 'city':
+        return new CityTheme(board, scene);
+      case 'volcano':
+        return new VolcanoTheme(board, scene);
+      case 'castle':
+        return new CastleTheme(board, scene);
+      case 'park':
+        return new ParkTheme(board, scene);
+      default:
+        return new IslandTheme(board, scene);
+    }
+  })();
+  extraDecor(board, theme);
+  return theme;
+}
+
+/**
+ * Camada extra de cenário com os modelos detalhados (Quaternius): vedações, carroças, bancas,
+ * barris, flores… espalhados longe dos caminhos (e arrumados das casas pelo BoardStage).
+ */
+function extraDecor(board: Board, theme: BoardTheme): void {
+  const { minX, maxX, minZ, maxZ } = theme.bounds;
+  const area = { cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2, w: maxX - minX + 16, d: maxZ - minZ + 16 };
+  const pick = (keys: readonly string[], size: { height?: number; width?: number }) => (rng: ReturnType<typeof createRng>) =>
+    deco(keys, rng, size, () => new THREE.Group());
+  const sizes = (rng: ReturnType<typeof createRng>, keys: readonly string[], h: [number, number]) => pick(keys, { height: h[0] + rng.next() * (h[1] - h[0]) })(rng);
   switch (board.theme) {
     case 'city':
-      return new CityTheme(board, scene);
+      decorate(board, theme.group, area, 30, 701, (rng) => (rng.next() < 0.5 ? sizes(rng, PROPS.street.filter((k) => k.startsWith('q-')), [0.8, 1.4]) : sizes(rng, [...PROPS.trees.slice(0, 5), ...PROPS.plants.slice(0, 2)], [1.2, 4.5])), 2.4);
+      break;
     case 'volcano':
-      return new VolcanoTheme(board, scene);
-    case 'castle':
-      return new CastleTheme(board, scene);
+      decorate(board, theme.group, area, 26, 702, (rng) => (rng.next() < 0.5 ? sizes(rng, PROPS.fences, [1, 1.4]) : sizes(rng, [...PROPS.camp, ...PROPS.pebbles], [0.6, 1.6])), 2.6, (x, z) => Math.hypot(x, z) < 16);
+      break;
+    case 'castle': {
+      // Só fora do castelo: nada dentro dos andares (pátio, salão, torre).
+      const floors = ['floor0', 'floor1', 'floor2'].map((z) => {
+        const sp = board.spaces.filter((x) => x.zone === z);
+        return { minX: Math.min(...sp.map((x) => x.x)) - 6, maxX: Math.max(...sp.map((x) => x.x)) + 6, minZ: Math.min(...sp.map((x) => x.z)) - 6, maxZ: Math.max(...sp.map((x) => x.z)) + 6 };
+      });
+      const inside = (x: number, z: number) => floors.some((f) => x > f.minX && x < f.maxX && z > f.minZ && z < f.maxZ);
+      decorate(board, theme.group, { ...area, w: area.w + 30, d: area.d + 30 }, 34, 703, (rng) => {
+        const r = rng.next();
+        return r < 0.35 ? sizes(rng, PROPS.fences, [1, 1.6]) : r < 0.65 ? sizes(rng, PROPS.village, [0.8, 2.4]) : sizes(rng, ['q-props/CandleStick_Stand', 'q-props/Banner_1', 'q-props/Banner_2', 'q-props/Torch_Metal', 'q-props/Cauldron', 'q-props/Barrel'], [1, 2.6]);
+      }, 2.6, inside);
+      break;
+    }
     case 'park':
-      return new ParkTheme(board, scene);
-    default:
-      return new IslandTheme(board, scene);
+      decorate(board, theme.group, area, 30, 704, (rng) => {
+        const r = rng.next();
+        return r < 0.4 ? sizes(rng, ['q-props/Stall_Empty', 'q-props/Stall_Cart_Empty', 'q-props/Bench', 'q-props/Barrel_Apples', 'q-props/FarmCrate_Apple'], [1, 2.6]) : sizes(rng, PROPS.plants, [0.6, 1.4]);
+      }, 2.6);
+      break;
   }
 }
 
@@ -285,13 +328,17 @@ class IslandTheme implements BoardTheme {
       if (avoid.some((s) => Math.hypot(s.x - x, s.z - z) < 5)) continue;
       const r = rng.next();
       const obj =
-        r < 0.45
+        r < 0.36
           ? deco(PROPS.palms, rng, { height: 4.2 + rng.next() * 2.2 }, () => palmTree(rng, 0.8 + rng.next() * 0.6))
-          : r < 0.72
-            ? deco(PROPS.plants, rng, { height: 0.6 + rng.next() * 0.8 }, () => bush(rng))
-            : r < 0.86
-              ? deco(PROPS.beach.slice(1, 5), rng, { height: 0.8 + rng.next() * 0.4 }, () => bush(rng))
-              : deco(PROPS.sandRocks, rng, { height: 1 + rng.next() * 1.2 }, () => rock(rng));
+          : r < 0.46
+            ? deco(PROPS.trees.slice(0, 5), rng, { height: 4.5 + rng.next() * 2 }, () => palmTree(rng, 0.9))
+            : r < 0.72
+              ? deco(PROPS.plants, rng, { height: 0.6 + rng.next() * 0.9 }, () => bush(rng))
+              : r < 0.84
+                ? deco([...PROPS.beach.slice(1, 5), 'q-props/Barrel', 'q-props/Chest_Wood', 'q-props/Crate_Wooden'], rng, { height: 0.8 + rng.next() * 0.4 }, () => bush(rng))
+                : r < 0.92
+                  ? deco(PROPS.pebbles, rng, { width: 1.2 + rng.next() }, () => rock(rng))
+                  : deco([...PROPS.sandRocks, ...PROPS.rocks], rng, { height: 1 + rng.next() * 1.2 }, () => rock(rng));
       obj.position.set(x, 0, z);
       this.group.add(obj);
       placed++;

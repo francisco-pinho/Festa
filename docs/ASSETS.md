@@ -16,6 +16,22 @@ Só usamos recursos com licença que permita uso comercial e redistribuição no
 | Kenney Coaster Kit 1.0 — bancas, entrada do parque, árvores, bancos (14) | `apps/web/public/models/kenney-coaster/` + `LICENSE.txt` | Kenney | [kenney.nl/assets/coaster-kit](https://kenney.nl/assets/coaster-kit) | CC0 1.0 | 2026-11-12 |
 | Kenney Minigolf Kit 3.1 — moinhos, castelo, bandeiras (6) | `apps/web/public/models/kenney-minigolf/` + `LICENSE.txt` | Kenney | [kenney.nl/assets/minigolf-kit](https://kenney.nl/assets/minigolf-kit) | CC0 1.0 | 2026-11-12 |
 
+## Cenários detalhados (Quaternius, CC0)
+
+Versão gratuita («Standard») das MegaKits, descarregada do itch.io oficial da Quaternius
+(https://quaternius.itch.io). Licença CC0 1.0 (ficheiro `LICENSE.txt` em cada pasta).
+
+| Pasta | Pack | O que usamos |
+|---|---|---|
+| `models/q-nature` | Stylized Nature MegaKit | 63 modelos: árvores comuns, pinheiros, árvores torcidas e secas, arbustos, flores, fetos, cogumelos, erva, pedras e calçadas |
+| `models/q-city` | Downtown City MegaKit | 3 prédios completos + adereços de rua (bolardos, floreiras, ar condicionado) |
+| `models/q-medieval` | Medieval Village MegaKit | 40 peças: vedações, carroça, caixotes, trepadeiras, chaminés, paredes, telhados, escadas |
+| `models/q-props` | Fantasy Props MegaKit | 40 adereços: barris, baús, bancas, bandeiras, tochas, bigorna, caldeirão, estante, castiçais, boneco de treino… |
+
+As texturas originais (2048–4096 px, 182 MB) foram reduzidas para 1024 px (cor) e 512 px (normais e
+rugosidade), JPEG quando não há transparência: ficam com 6 MB. Para refazer: `tools/pick-quaternius.py`
+(escolha e cópia) e `electron tools/shrink-textures.cjs` (redução com o Electron, sem instalar nada).
+
 ## Como os usamos
 
 - As armas, escudos e livros dos modelos ficam escondidos; as mãos ficam livres para os objetos do jogo.

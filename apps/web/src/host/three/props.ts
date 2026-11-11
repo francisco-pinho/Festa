@@ -85,6 +85,22 @@ export function pickProp(keys: readonly string[], r: number, opts: { height?: nu
 }
 
 const K = (pack: string, names: string[]) => names.map((n) => `${pack}/${n}`);
+const N = (prefix: string, count: number) => Array.from({ length: count }, (_, i) => `${prefix}_${i + 1}`);
+
+/** Modelos mais detalhados da Quaternius (MegaKits, CC0): natureza, cidade, aldeia medieval e adereços. */
+const Q = {
+  trees: K('q-nature', [...N('CommonTree', 5), ...N('Pine', 5)]),
+  twisted: K('q-nature', N('TwistedTree', 5)),
+  dead: K('q-nature', N('DeadTree', 5)),
+  rocks: K('q-nature', N('Rock_Medium', 3)),
+  plants: K('q-nature', ['Bush_Common', 'Bush_Common_Flowers', 'Fern_1', 'Plant_1', 'Plant_1_Big', 'Plant_7_Big', 'Flower_3_Group', 'Flower_4_Group', 'Grass_Common_Tall', 'Grass_Wispy_Tall', 'Clover_1', 'Mushroom_Common', 'Mushroom_Laetiporus']),
+  pebbles: K('q-nature', [...N('Pebble_Round', 5), 'RockPath_Round_Wide', 'RockPath_Square_Wide']),
+  buildings: K('q-city', ['Building_Large_2', 'Building_Medium_2_001', 'Building_Small_1']),
+  street: K('q-city', ['Prop_ACUnit', 'Prop_Bollard', 'Prop_Planter_Single', 'Sidewalk_Planter']),
+  fences: K('q-medieval', ['Prop_WoodenFence_Single', 'Prop_WoodenFence_Extension1', 'Prop_MetalFence_Ornament', 'Prop_MetalFence_Simple']),
+  village: K('q-medieval', ['Prop_Wagon', 'Prop_Crate', 'Prop_Chimney', 'Prop_Brick1', 'Prop_Brick2', ...['Prop_Vine1', 'Prop_Vine2', 'Prop_Vine4', 'Prop_Vine5']]),
+  props: K('q-props', ['Barrel', 'Barrel_Apples', 'Crate_Wooden', 'Crate_Metal', 'Chest_Wood', 'Stall_Empty', 'Stall_Cart_Empty', 'Banner_1', 'Banner_2', 'Torch_Metal', 'Bench', 'FarmCrate_Apple', 'FarmCrate_Carrot', 'Cauldron', 'Anvil', 'Workbench', 'Table_Large', 'WeaponStand', 'Vase_2', 'Vase_4', 'Pot_1', 'Bucket_Wooden_1', 'CandleStick_Stand', 'Bookcase_2', 'Dummy', 'Coin_Pile']),
+};
 
 export const PROPS = {
   palms: K('kenney-pirate', ['palm-bend', 'palm-straight', 'palm-detailed-bend', 'palm-detailed-straight']),
@@ -92,22 +108,26 @@ export const PROPS = {
   beach: K('kenney-pirate', ['patch-sand-foliage', 'grass-plant', 'barrel', 'chest', 'crate', 'boat-row-small']),
   ships: K('kenney-pirate', ['ship-pirate-medium', 'ship-wreck', 'ship-small']),
   pirateBits: K('kenney-pirate', ['structure-platform-dock', 'structure-platform-dock-small', 'flag-pirate-high', 'tower-watch', 'cannon', 'rocks-a', 'rocks-b', 'rocks-c']),
-  trees: K('kenney-nature', ['tree_default', 'tree_oak', 'tree_fat', 'tree_detailed', 'tree_cone', 'tree_small', 'tree_tall', 'tree_pineRoundA', 'tree_pineTallA']),
-  treesFall: K('kenney-nature', ['tree_default_fall', 'tree_oak_dark']),
-  rocks: K('kenney-nature', ['rock_largeA', 'rock_largeB', 'rock_largeC', 'rock_largeD', 'stone_largeA']),
+  trees: Q.trees,
+  treesFall: Q.twisted,
+  rocks: Q.rocks,
   tallRocks: K('kenney-nature', ['rock_tallA', 'rock_tallB', 'rock_tallC', 'stone_tallA']),
-  plants: K('kenney-nature', ['plant_bush', 'plant_bushLarge', 'plant_bushDetailed', 'flower_redA', 'flower_yellowA', 'flower_purpleA', 'grass_large', 'mushroom_redGroup']),
+  plants: Q.plants,
+  pebbles: Q.pebbles,
   natureBits: K('kenney-nature', ['log', 'stump_round', 'campfire_stones', 'canoe', 'lily_large', 'statue_obelisk', 'statue_column', 'fence_simple', 'tent_detailedOpen']),
-  buildings: K('kaykit-city', ['building_A', 'building_B', 'building_C', 'building_D', 'building_E', 'building_F', 'building_G', 'building_H']),
+  buildings: Q.buildings,
   cars: K('kaykit-city', ['car_hatchback', 'car_police', 'car_sedan', 'car_stationwagon', 'car_taxi']),
-  street: K('kaykit-city', ['bench', 'bush', 'dumpster', 'firehydrant', 'streetlight', 'trafficlight_A', 'trash_A', 'watertower', 'box_A']),
+  street: [...K('kaykit-city', ['bench', 'dumpster', 'firehydrant', 'streetlight', 'trafficlight_A', 'trash_A']), ...Q.street],
   graveyard: K('kaykit-halloween', ['gravestone', 'grave_A', 'gravemarker_A', 'gravemarker_B']),
-  deadTrees: K('kaykit-halloween', ['tree_dead_large', 'tree_dead_medium', 'tree_dead_small']),
+  deadTrees: Q.dead,
   spooky: K('kaykit-halloween', ['fence', 'fence_pillar', 'fence_gate', 'lantern_standing', 'post_lantern', 'pumpkin_orange_jackolantern', 'pumpkin_orange', 'crypt', 'arch', 'arch_gate', 'coffin', 'skull_candle', 'candle_triple', 'shrine_candles', 'bone_A', 'ribcage', 'tree_pine_orange_large']),
   medieval: K('kaykit-medieval', ['building_castle_red', 'building_tower_A_red', 'building_tower_B_red', 'wall_straight', 'wall_corner_A_outside', 'building_mine_red', 'building_windmill_yellow', 'building_tavern_blue']),
   mountains: K('kaykit-medieval', ['mountain_A', 'mountain_B', 'mountain_C']),
   medievalNature: K('kaykit-medieval', ['mountain_A_grass_trees', 'hills_A_trees', 'rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D', 'rock_single_E', 'trees_A_large', 'trees_B_large', 'tree_single_A']),
-  camp: K('kaykit-medieval', ['barrel', 'crate_A_big', 'tent', 'wheelbarrow', 'resource_stone', 'flag_red']),
+  camp: [...K('kaykit-medieval', ['tent', 'resource_stone', 'flag_red']), ...K('q-props', ['Barrel', 'Crate_Wooden', 'Anvil', 'Workbench', 'Bucket_Wooden_1', 'Torch_Metal']), 'q-medieval/Prop_Wagon'],
+  fences: Q.fences,
+  village: Q.village,
+  fantasyProps: Q.props,
   furniture: K('kaykit-furniture', ['couch', 'couch_pillows', 'armchair', 'table_low', 'table_medium', 'lamp_standing', 'cactus_medium_A', 'pictureframe_large_A', 'rug_rectangle_stripes_A', 'shelf_B_large_decorated']),
   food: K('kaykit-restaurant', ['table_round_A_decorated', 'chair_A', 'crate_buns', 'crate_tomatoes', 'food_burger']),
   park: K('kenney-coaster', ['stall-food', 'stall-drinks', 'stall-information', 'stall-toilets', 'park-entrance', 'ride-entrance', 'tree', 'tree-large', 'flowers', 'bench', 'trash', 'train-monorail', 'train-log-flume', 'station']),
@@ -119,6 +139,9 @@ const BOARD_COMMON = ['kenney-pirate/chest', 'kenney-pirate/cannon'];
 
 /** Cenário comum dos minijogos (árvores, tendas, barris…). */
 export const MINIGAME_PROPS: readonly string[] = [
+  ...PROPS.fantasyProps,
+  ...PROPS.fences,
+  ...PROPS.rocks,
   ...PROPS.trees,
   ...PROPS.plants,
   'kaykit-medieval/tent',
@@ -132,12 +155,12 @@ export const MINIGAME_PROPS: readonly string[] = [
 
 /** Que modelos cada tema/desporto precisa. */
 export const THEME_PROPS: Record<string, readonly string[]> = {
-  island: [...PROPS.palms, ...PROPS.sandRocks, ...PROPS.beach, ...PROPS.ships, ...PROPS.pirateBits, ...PROPS.plants, ...PROPS.rocks],
-  city: [...BOARD_COMMON, ...PROPS.buildings, ...PROPS.cars, ...PROPS.street, ...PROPS.trees.slice(0, 3)],
-  volcano: [...BOARD_COMMON, ...PROPS.tallRocks, ...PROPS.rocks, ...PROPS.mountains, ...PROPS.camp, ...PROPS.deadTrees, 'kaykit-medieval/building_mine_red'],
-  castle: [...BOARD_COMMON, ...PROPS.graveyard, ...PROPS.deadTrees, ...PROPS.spooky, ...PROPS.medieval, ...PROPS.medievalNature],
-  park: [...BOARD_COMMON, ...PROPS.park, ...PROPS.minigolf, ...PROPS.food, ...PROPS.trees, ...PROPS.plants, 'kaykit-city/streetlight'],
-  golf: [...PROPS.trees, ...PROPS.treesFall, ...PROPS.plants, ...PROPS.rocks, ...PROPS.natureBits, ...PROPS.medievalNature],
+  island: [...PROPS.palms, ...PROPS.sandRocks, ...PROPS.beach, ...PROPS.ships, ...PROPS.pirateBits, ...PROPS.plants, ...PROPS.rocks, ...PROPS.pebbles, ...PROPS.trees, ...PROPS.fantasyProps],
+  city: [...BOARD_COMMON, ...PROPS.buildings, ...PROPS.cars, ...PROPS.street, ...PROPS.trees.slice(0, 5), ...PROPS.plants.slice(0, 2)],
+  volcano: [...BOARD_COMMON, ...PROPS.tallRocks, ...PROPS.rocks, ...PROPS.mountains, ...PROPS.camp, ...PROPS.deadTrees, ...PROPS.pebbles, ...PROPS.fences, 'kaykit-medieval/building_mine_red'],
+  castle: [...BOARD_COMMON, ...PROPS.graveyard, ...PROPS.deadTrees, ...PROPS.spooky, ...PROPS.medieval, ...PROPS.medievalNature, ...PROPS.fences, ...PROPS.village, ...PROPS.fantasyProps],
+  park: [...BOARD_COMMON, ...PROPS.park, ...PROPS.minigolf, ...PROPS.food, ...PROPS.trees, ...PROPS.plants, ...PROPS.fantasyProps, 'kaykit-city/streetlight'],
+  golf: [...PROPS.trees, ...PROPS.treesFall, ...PROPS.plants, ...PROPS.rocks, ...PROPS.pebbles, ...PROPS.natureBits, ...PROPS.medievalNature],
   bowling: [...PROPS.furniture, ...PROPS.food],
   tennis: [...PROPS.trees, ...PROPS.street, ...PROPS.plants],
   baseball: [...PROPS.trees, ...PROPS.street, ...PROPS.food],
