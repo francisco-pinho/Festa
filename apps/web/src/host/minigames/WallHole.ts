@@ -30,6 +30,8 @@ class WallHoleRun extends ArenaMinigame {
   private pause = 1.2;
   private readonly outAt = new Map<string, number>();
   private readonly carried = new Set<Actor>();
+  /** Em que buraco está cada um (enquanto a parede passa por ele). */
+  private readonly inHole = new Map<Actor, { c: number; w: number }>();
   private readonly round: number;
 
   constructor(ctx: MinigameContext) {
@@ -137,6 +139,11 @@ class WallHoleRun extends ArenaMinigame {
     else a.pos.x = v;
   }
 
+  private setAlong(a: Actor, w: Wall, v: number): void {
+    if (w.axis === 'z') a.pos.x = v;
+    else a.pos.z = -v;
+  }
+
   protected step(dt: number): void {
     if (!this.wall) {
       this.pause -= dt;
@@ -149,14 +156,32 @@ class WallHoleRun extends ArenaMinigame {
       for (const a of this.actors) {
         if (!a.alive) continue;
         const d = (this.across(a, w) - w.pos) * w.dir;
-        const inGap = w.gaps.some((g) => Math.abs(this.along(a, w) - g.c) < g.w / 2 - a.radius * 0.6);
-        // A parede chegou à personagem e ela não está num buraco: é empurrada.
-        if (d < THICK / 2 + a.radius && d > -THICK / 2 && !inGap) {
+        const band = d < THICK / 2 + a.radius && d > -THICK / 2 - a.radius;
+        const along = this.along(a, w);
+        let hole = this.inHole.get(a);
+        if (band && !hole && !this.carried.has(a)) {
+          // A parede está a chegar: se estiver à frente de um buraco, passa por ele.
+          hole = w.gaps.find((g) => Math.abs(along - g.c) < g.w / 2 - a.radius * 0.4);
+          if (hole) this.inHole.set(a, hole);
+        }
+        if (band && hole) {
+          // Dentro do buraco: as paredes do buraco travam, mas pode andar à vontade (sem ficar preso).
+          const lim = hole.w / 2 - a.radius * 0.5;
+          this.setAlong(a, w, Math.max(hole.c - lim, Math.min(hole.c + lim, along)));
+        } else if (band && d > -THICK / 2) {
+          // A parede chegou e não está num buraco: é empurrada para a água.
           this.setAcross(a, w, w.pos + w.dir * (THICK / 2 + a.radius));
+          if (!this.carried.has(a)) this.ctx.vibrate(a.seat.id, 120);
           this.carried.add(a);
-          if (!a.stunned) this.ctx.vibrate(a.seat.id, 120);
           a.stunned = 0.2;
-        } else if (this.carried.has(a) && d > THICK / 2 + a.radius + 0.1) this.carried.delete(a);
+        } else if (band) {
+          // Já passou: não pode entrar na parede por trás.
+          this.setAcross(a, w, w.pos - w.dir * (THICK / 2 + a.radius));
+        }
+        if (!band) {
+          this.inHole.delete(a);
+          if (this.carried.has(a) && d > THICK / 2 + a.radius + 0.1) this.carried.delete(a);
+        }
         // Empurrada para fora da plataforma: cai à água.
         if (Math.abs(this.across(a, w)) > HALF + 0.2) {
           a.alive = false;
@@ -172,6 +197,7 @@ class WallHoleRun extends ArenaMinigame {
         this.scene.remove(w.group);
         this.wall = null;
         this.carried.clear();
+        this.inHole.clear();
         this.pause = Math.max(0.3, 1.1 - this.walls * 0.06);
         sound.play('coin', { vol: 0.3 });
       }
