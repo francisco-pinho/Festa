@@ -1465,10 +1465,12 @@ export class PartyFlow {
       updateHud();
       if (tiebreak) await this.hud.banner('Desempate!', { sub: 'Quem ganhar esta ronda leva o minijogo', hold: 1.4, color: '#ff6b7a' });
       else if (totalRounds > 1) await this.hud.big(`Ronda ${round}`, 1);
-      for (const n of ['3', '2', '1']) await this.hud.big(n, 0.8);
+      if (!def.noCountdown) for (const n of ['3', '2', '1']) await this.hud.big(n, 0.8);
       run.start();
-      for (const p of players) this.buzz(p.id, 120); // «Já!»
-      void this.hud.big('JÁ!', 0.6);
+      if (!def.noCountdown) {
+        for (const p of players) this.buzz(p.id, 120); // «Já!»
+        void this.hud.big('JÁ!', 0.6);
+      }
       while (!run.finished) {
         updateHud();
         await this.wait(0.2);

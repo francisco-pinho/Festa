@@ -52,6 +52,8 @@ export interface MinigameDef {
   modes: MinigameMode[];
   /** Só para duelos (1 contra 1). */
   duel?: boolean;
+  /** Sem a contagem «3, 2, 1, JÁ!» antes de começar (o próprio jogo tem o seu sinal). */
+  noCountdown?: boolean;
   description(mode: MinigameMode): string;
   controls: string;
   /** Joystick, cruz direcional ('dpad', ex.: memória de setas) ou nada. */
