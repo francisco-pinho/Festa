@@ -127,6 +127,7 @@ export class BoardStage implements Stage {
 
   focus(seatId: string, close = false): void {
     if (this.deferWhileMap(() => this.focus(seatId, close))) return;
+    this.endPersonalCam();
     this.closeUpOn = false;
     this.follow = this.tokens.get(seatId) ?? null;
     this.followDistance = close ? 0.65 : 1;
@@ -135,15 +136,65 @@ export class BoardStage implements Stage {
   /** Grande plano da personagem (compras, estrelas): a câmara desce e aproxima-se. */
   closeUp(seatId: string): void {
     if (this.deferWhileMap(() => this.closeUp(seatId))) return;
+    this.endPersonalCam();
     this.follow = this.tokens.get(seatId) ?? null;
     this.closeUpOn = true;
     this.faceCamera(seatId);
   }
 
   private closeUpOn = false;
+  private camMode: 'roll' | 'walk' | null = null;
+  private camYaw = 0;
+  /** Personagens escondidas atrás de quem está a lançar (repostas no fim). */
+  private readonly hiddenForRoll = new Set<string>();
+
+  /**
+   * Câmara pessoal de lançar os dados: atrás da personagem, virada para o caminho (`towards`),
+   * baixa e perto. Quem estiver ali ao lado fica transparente.
+   */
+  rollView(seatId: string, towards?: { x: number; z: number }): void {
+    if (this.deferWhileMap(() => this.rollView(seatId, towards))) return;
+    const t = this.token(seatId);
+    this.closeUpOn = false;
+    this.follow = t;
+    if (towards) {
+      t.faceTowards(towards.x, towards.z);
+      this.camYaw = Math.atan2(towards.x - t.root.position.x, towards.z - t.root.position.z);
+    } else this.camYaw = t.root.rotation.y;
+    this.camMode = 'roll';
+    for (const [id, o] of this.tokens) {
+      if (id === seatId || this.hiddenForRoll.has(id)) continue;
+      if (o.root.position.distanceTo(t.root.position) < 3.2) {
+        o.setFaded(true);
+        this.hiddenForRoll.add(id);
+      }
+    }
+  }
+
+  /** Câmara pessoal a seguir de perto enquanto anda as casas. */
+  walkView(seatId: string): void {
+    if (this.deferWhileMap(() => this.walkView(seatId))) return;
+    const t = this.token(seatId);
+    this.closeUpOn = false;
+    if (this.camMode !== 'walk' && this.camMode !== 'roll') this.camYaw = t.root.rotation.y;
+    this.follow = t;
+    this.camMode = 'walk';
+    this.unfadeOthers();
+  }
+
+  private unfadeOthers(): void {
+    for (const id of this.hiddenForRoll) this.tokens.get(id)?.setFaded(false);
+    this.hiddenForRoll.clear();
+  }
+
+  private endPersonalCam(): void {
+    this.camMode = null;
+    this.unfadeOthers();
+  }
 
   focusPoint(x: number, z: number, distance = 1): void {
     if (this.deferWhileMap(() => this.focusPoint(x, z, distance))) return;
+    this.endPersonalCam();
     this.closeUpOn = false;
     this.follow = null;
     this.camTargetLook.set(x, 0.8, z);
@@ -241,23 +292,34 @@ export class BoardStage implements Stage {
   }
 
   /** Salta da posição atual para o centro de uma casa. */
-  async hop(id: string, spaceId: number, duration = 0.32): Promise<void> {
+  async hop(id: string, spaceId: number, duration = 0.36): Promise<void> {
     sound.play('step', { pitch: 0.9 + Math.random() * 0.3 });
     const t = this.token(id);
     const s = getSpace(this.board, spaceId);
     const from = t.root.position.clone();
     const to = new THREE.Vector3(s.x, TILE_TOP + (s.y ?? 0), s.z);
     t.faceTowards(s.x, s.z);
-    t.setAnim('walk');
+    // A correr (sem voltar a parar entre casas): só para se não houver outro passo logo a seguir.
+    const hopId = ((t.root.userData.hopId as number | undefined) ?? 0) + 1;
+    t.root.userData.hopId = hopId;
+    t.setAnim('run');
+    const scale = t.root.scale.y;
     await this.engine.tween(
       duration,
       (k) => {
-        t.root.position.lerpVectors(from, to, k);
-        t.root.position.y = lerp(from.y, to.y, k) + Math.sin(k * Math.PI) * 0.9;
+        const e = k * k * (3 - 2 * k); // arranca e trava suavemente
+        t.root.position.lerpVectors(from, to, e);
+        // Saltinho baixo a meio do passo (mais alto se a casa for noutro andar).
+        t.root.position.y = lerp(from.y, to.y, e) + Math.sin(k * Math.PI) * (0.35 + Math.abs(to.y - from.y) * 0.4);
       },
       ease.linear,
     );
-    t.setAnim('idle');
+    // Aterragem: encolhe um pouco e volta, com pó nos pés.
+    this.sparkle(to.clone().setY(to.y + 0.1), '#e8dcc0', 4, 1.3);
+    void this.engine.tween(0.16, (k) => (t.root.scale.y = scale * (1 - Math.sin(k * Math.PI) * 0.12)));
+    void this.engine.wait(0.18).then(() => {
+      if (t.root.userData.hopId === hopId && t.anim === 'run') t.setAnim('idle');
+    });
   }
 
   /** Faz a personagem virar-se para a câmara. */
@@ -587,7 +649,24 @@ export class BoardStage implements Stage {
     if (this.follow) {
       const p = this.follow.root.position;
       const d = this.followDistance;
-      if (this.closeUpOn) {
+      if (this.camMode) {
+        // Câmara pessoal: atrás da personagem, a olhar para onde ela vai (o ângulo vira suavemente).
+        const yaw = this.follow.root.rotation.y;
+        let dy = yaw - this.camYaw;
+        dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+        this.camYaw += dy * damp(this.camMode === 'walk' ? 2.2 : 4, dt);
+        const fx = Math.sin(this.camYaw);
+        const fz = Math.cos(this.camYaw);
+        if (this.camMode === 'roll') {
+          // Lançar: baixa e perto, com os dados por cima da cabeça e o caminho ao fundo.
+          this.camTargetPos.set(p.x - fx * 4.4 + fz * 0.5, p.y + 3.1, p.z - fz * 4.4 - fx * 0.5);
+          this.camTargetLook.set(p.x + fx * 3, p.y + 2, p.z + fz * 3);
+        } else {
+          // Andar: segue de perto, um pouco mais alta para se ver o caminho.
+          this.camTargetPos.set(p.x - fx * 6.2, p.y + 4.6, p.z - fz * 6.2);
+          this.camTargetLook.set(p.x + fx * 2.5, p.y + 1, p.z + fz * 2.5);
+        }
+      } else if (this.closeUpOn) {
         // Grande plano: câmara baixa e perto, de frente para a personagem.
         this.camTargetLook.set(p.x, p.y + 1.5, p.z);
         this.camTargetPos.set(p.x + 0.6, p.y + 2.9, p.z + 5.4);

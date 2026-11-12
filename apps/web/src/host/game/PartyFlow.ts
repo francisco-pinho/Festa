@@ -506,8 +506,11 @@ export class PartyFlow {
     // Antes de lançar: itens e mapa
     const plan = await this.beforeRoll(p);
 
-    // Dados
-    this.stage.focus(p.id);
+    // Dados: câmara pessoal atrás de quem lança, virada para o caminho.
+    const ahead = openNext(state.board, state.flags, p.spaceId)[0];
+    const aheadSpace = ahead !== undefined ? getSpace(state.board, ahead) : undefined;
+    this.stage.rollView(p.id, aheadSpace);
+    await this.wait(0.6);
     this.stage.spawnDice(p.id, plan.dice);
     // Um dado de cada vez: cada toque (ou abanão) para um dado; depois de todos, anda.
     const values: number[] = [];
@@ -553,6 +556,8 @@ export class PartyFlow {
     // Andar
     let steps = total;
     while (steps > 0) {
+      // Câmara de perto a seguir (volta a ela depois de lojas, estrelas, cruzamentos…).
+      this.stage.walkView(p.id);
       const here = p.spaceId;
       const options = openNext(state.board, state.flags, here);
       let next = options[0]!;
@@ -584,6 +589,8 @@ export class PartyFlow {
       const lever = leverAt(state.board, next);
       if (lever) await this.leverOffer(p, lever);
     }
+    // Chegou: a câmara volta à vista normal e a personagem vira-se para ela.
+    this.stage.focus(p.id);
     this.stage.faceCamera(p.id);
 
     // Chegada: duelo e casa
@@ -800,6 +807,7 @@ export class PartyFlow {
         valid: [...enabled.map((o) => `path:${o.id}`), 'map'],
         bot: () => `path:${botChooseNext(state, enabled.map((o) => o.id), this.rng, settings.botSkill, p.coins)}`,
         botDelay: 1.2,
+        corner: this.mapOpen,
       });
       if (choice !== 'map') break;
       this.toggleMap();
@@ -872,6 +880,7 @@ export class PartyFlow {
         valid: ['pull', 'skip', 'map'],
         bot: () => (botWantsLever(state, p, lever, this.rng, settings.botSkill) ? 'pull' : 'skip'),
         botDelay: 1.1,
+        corner: this.mapOpen,
       });
       if (answer !== 'map') break;
       this.toggleMap();

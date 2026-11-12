@@ -88,8 +88,9 @@ class FishingRun extends RowMinigame {
       this.scene.add(line);
       this.anglers.push({ r, state: 'idle', t: 0, biteAt: 0, fakes: [], points: 0, bobber, line, tip, home, mark: null, botReact: 0 });
     }
-    this.camera.position.set(0, 4.2, 8.5);
-    this.camera.lookAt(0, 0, -4);
+    // Câmara do lado da água, de frente para os pescadores (vê-se a cara, as boias e o «❗»).
+    this.camera.position.set(0, 3.4, -10.5);
+    this.camera.lookAt(0, 0.6, -1.5);
   }
 
   scores(): MinigameScore[] {

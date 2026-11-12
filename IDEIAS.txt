@@ -46,7 +46,7 @@ MODELO (copia daqui...)
   AS MINHAS IDEIAS
 ==============================================================
 
-[ ] TÍTULO: Câmara pessoal ao lançar os dados
+[x] TÍTULO: Câmara pessoal ao lançar os dados
     Tipo: tabuleiro / visual
     Prioridade (alta / média / baixa): alta
     Onde no jogo (que ecrã, minijogo, mapa...): tabuleiro, na vez de
@@ -68,8 +68,11 @@ MODELO (copia daqui...)
     atrás dele ao nível do chão).
 
     Notas do Claude:
+      Feito: a câmara vai para trás de quem lança, baixa e perto, virada
+      para o caminho, com os dados por cima da cabeça. Quem estiver na
+      mesma casa fica transparente.
 
-[ ] TÍTULO: Câmara a seguir de perto enquanto anda as casas
+[x] TÍTULO: Câmara a seguir de perto enquanto anda as casas
     Tipo: tabuleiro / visual
     Prioridade (alta / média / baixa): alta
     Onde no jogo (que ecrã, minijogo, mapa...): tabuleiro, enquanto o
@@ -89,8 +92,10 @@ MODELO (copia daqui...)
     cima, câmara próxima).
 
     Notas do Claude:
+      Feito: segue por trás e mais perto, a virar suavemente nas
+      curvas; volta a ela depois de lojas, estrelas e cruzamentos.
 
-[ ] TÍTULO: Melhorar a animação de andar no tabuleiro
+[x] TÍTULO: Melhorar a animação de andar no tabuleiro
     Tipo: personagem / visual
     Prioridade (alta / média / baixa): alta
     Onde no jogo (que ecrã, minijogo, mapa...): tabuleiro (andar casa
@@ -108,8 +113,10 @@ MODELO (copia daqui...)
     Inspirado em (jogo, vídeo, link, imagem...): Mario Party Jamboree.
 
     Notas do Claude:
+      Feito: corre sem parar entre casas, passo que arranca e trava
+      suave, saltinho baixo, encolhe ao aterrar e levanta pó.
 
-[ ] TÍTULO: Pesca de Baús — câmara à frente dos jogadores
+[x] TÍTULO: Pesca de Baús — câmara à frente dos jogadores
     Tipo: minijogo / visual
     Prioridade (alta / média / baixa): média
     Onde no jogo (que ecrã, minijogo, mapa...): minijogo «Pesca de Baús»
@@ -126,6 +133,7 @@ MODELO (copia daqui...)
     Inspirado em (jogo, vídeo, link, imagem...): —
 
     Notas do Claude:
+      Feito: a câmara está do lado da água, de frente para eles.
 
 [ ] TÍTULO:
     Tipo:

@@ -110,6 +110,8 @@ export interface DecideOptions {
   onFocus?: (id: string) => void;
   /** Esconde o menu de escolha (o ecrã já mostra as opções noutro painel, que realça a escolha). */
   hideMenu?: boolean;
+  /** Menu encostado ao canto (ex.: com o mapa aberto, para não o tapar). */
+  corner?: boolean;
 }
 
 export class SeatControl {
@@ -293,6 +295,7 @@ export class SeatControl {
       cancel: opts.cancel,
       onFocus: opts.onFocus,
       hidden: opts.hideMenu,
+      corner: opts.corner,
       isAuto: () => this.isAuto(seat),
       bot: { pick: opts.bot, delay: opts.botDelay ?? 0.9 },
     });
