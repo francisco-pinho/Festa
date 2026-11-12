@@ -8,6 +8,7 @@ import { CharacterModel } from '../three/CharacterModel';
 import { disposeObject, mesh, textSprite, toon } from '../three/materials';
 import { setupSky } from '../stages/environment';
 import type { MinigameContext, MinigameRun, MinigameScore, MinigameSeat } from './types';
+import { themeGround, themeScenery } from './scenery';
 
 export interface Duelist {
   seat: MinigameSeat;
@@ -28,12 +29,15 @@ export abstract class DuelMinigame implements MinigameRun {
 
   constructor(
     protected readonly ctx: MinigameContext,
-    opts: { ground: string; spacing?: number; faceCamera?: boolean } = { ground: '#8fd16a' },
+    opts: { ground: string; spacing?: number; faceCamera?: boolean; scenery?: { radius: number; count?: number } } = { ground: '#8fd16a' },
   ) {
     setupSky(this.scene, { fog: [60, 160] });
-    const ground = mesh(new THREE.CircleGeometry(60, 48), toon(opts.ground), { cast: false, receive: true });
+    // `scenery`: chão e cenário com o tema do mapa (só atrás e dos lados: a câmara está à frente).
+    const groundColor = opts.scenery ? themeGround(ctx.theme) : opts.ground;
+    const ground = mesh(new THREE.CircleGeometry(60, 48), toon(groundColor), { cast: false, receive: true });
     ground.rotation.x = -Math.PI / 2;
     this.scene.add(ground);
+    if (opts.scenery) themeScenery(this.scene, ctx.rng, ctx.theme, opts.scenery.radius, { behind: true, count: opts.scenery.count ?? 30 });
     const spacing = opts.spacing ?? 3;
     ctx.seats.slice(0, 2).forEach((seat, i) => {
       const side = (i === 0 ? -1 : 1) as -1 | 1;

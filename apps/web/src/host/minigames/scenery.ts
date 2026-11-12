@@ -159,3 +159,50 @@ export function ringDecor(scene: THREE.Scene, rng: Rng, radius: number, count = 
   }
   themeScenery(scene, rng, opts.theme, radius - 1, { count, water: !!opts.ground });
 }
+
+/**
+ * Bandeirinhas a sério: uma corda com barriga entre dois pontos (os mastros) e triângulos de pano
+ * pendurados nela. Devolve os triângulos para se abanarem com `swayBunting`.
+ */
+export function bunting(
+  scene: THREE.Scene,
+  a: THREE.Vector3,
+  b: THREE.Vector3,
+  opts: { sag?: number; gap?: number; size?: number; colors?: readonly string[] } = {},
+): THREE.Mesh[] {
+  const sag = opts.sag ?? 0.9;
+  const size = opts.size ?? 0.45;
+  const colors = opts.colors ?? ['#ff3b5c', '#ffd23f', '#2f7dff', '#3fbf5f', '#ff8a2a', '#b15cff'];
+  const at = (k: number) => new THREE.Vector3().lerpVectors(a, b, k).add(new THREE.Vector3(0, -sag * 4 * k * (1 - k), 0));
+  const pts: THREE.Vector3[] = [];
+  for (let i = 0; i <= 40; i++) pts.push(at(i / 40));
+  const rope = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.018, 4), new THREE.MeshToonMaterial({ color: '#3a2a1a' }));
+  scene.add(rope);
+  const tri = new THREE.Shape();
+  tri.moveTo(-size / 2, 0);
+  tri.lineTo(size / 2, 0);
+  tri.lineTo(0, -size);
+  tri.closePath();
+  const geo = new THREE.ShapeGeometry(tri);
+  const len = a.distanceTo(b);
+  const n = Math.max(2, Math.floor(len / (opts.gap ?? 0.62)));
+  const yaw = Math.atan2(-(b.z - a.z), b.x - a.x);
+  const out: THREE.Mesh[] = [];
+  for (let i = 1; i < n; i++) {
+    const k = i / n;
+    const p = new THREE.Mesh(geo, new THREE.MeshToonMaterial({ color: colors[(i - 1) % colors.length]!, side: THREE.DoubleSide }));
+    p.position.copy(at(k));
+    // O pano fica no plano da corda e baloiça à volta dela.
+    p.rotation.order = 'YXZ';
+    p.rotation.y = yaw;
+    p.castShadow = true;
+    scene.add(p);
+    out.push(p);
+  }
+  return out;
+}
+
+/** Abana as bandeirinhas com o vento. */
+export function swayBunting(pennants: readonly THREE.Mesh[], time: number): void {
+  pennants.forEach((p, i) => (p.rotation.x = Math.sin(time * 2.2 + i * 0.7) * 0.35));
+}

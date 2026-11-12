@@ -37,7 +37,8 @@ export type Sfx =
   | 'banner'
   | 'boom'
   | 'coinBig'
-  | 'countdown';
+  | 'countdown'
+  | 'pop';
 
 export type Track = 'lobby' | 'board' | 'minigame' | 'sports' | 'finale';
 
@@ -312,6 +313,11 @@ class SoundEngine {
         // Contagem final (5, 4, 3…): bip curto e seco; no último o tom sobe.
         this.tone(880 * p, 0.12, { type: 'square', vol: 0.12 * v });
         this.tone(440 * p, 0.12, { type: 'sine', vol: 0.08 * v });
+        break;
+      case 'pop':
+        // Estalo de pistola de brincar (sai a bandeira): ruído seco e um «tuc».
+        this.hiss(0.07, { vol: 0.5 * v, freq: 2200 * p, q: 0.8, attack: 0.001 });
+        this.tone(420 * p, 0.09, { type: 'triangle', vol: 0.25 * v, to: 160 });
         break;
       case 'beep':
         this.tone(660 * p, 0.14, { type: 'square', vol: 0.12 * v });
