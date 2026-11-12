@@ -13,7 +13,11 @@ import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 
 interface BalloonObj {
   group: THREE.Group;
-  ball: THREE.Mesh;
+  /** Um balão por jogador (em equipa enchem todos juntos: o ar é partilhado). */
+  balls: THREE.Mesh[];
+  knots: THREE.Mesh[];
+  /** Meio do grupo (para os textos). */
+  x: number;
   /** Quem enche este balão. */
   owners: Rower[];
   air: number;
@@ -52,16 +56,25 @@ class BalloonRun extends RowMinigame {
       const x = owners.reduce((s, r) => s + r.x, 0) / owners.length;
       const color = teams ? (owners[0]!.seat.team === 'blue' ? '#2f7dff' : '#ff3b5c') : getCharacter(owners[0]!.seat.characterId).color;
       const group = new THREE.Group();
-      const ball = mesh(new THREE.SphereGeometry(1, 24, 18), toonUnique(color, { emissive: color, emissiveIntensity: 0.15 }));
-      ball.scale.set(0.3, 0.36, 0.3);
-      const knot = mesh(new THREE.ConeGeometry(0.08, 0.16, 8), toon(color), { cast: false });
-      group.add(ball, knot);
-      group.position.set(x, 1, -1.6);
-      // Bomba de ar
-      const pump = mesh(new THREE.CylinderGeometry(0.16, 0.2, 1, 12), toon('#c9ccd4'));
-      pump.position.set(x + 0.7, 0.5, -0.8);
-      this.scene.add(group, pump);
-      this.balloons.push({ group, ball, owners, air: 0, need: teams ? 26 * owners.length : 30, popped: false, poppedAt: 0 });
+      const balls: THREE.Mesh[] = [];
+      const knots: THREE.Mesh[] = [];
+      const ballMat = toonUnique(color, { emissive: color, emissiveIntensity: 0.15 });
+      for (const r of owners) {
+        // Balão e bomba de ar à frente de cada jogador.
+        const ball = mesh(new THREE.SphereGeometry(1, 24, 18), ballMat);
+        ball.scale.set(0.3, 0.36, 0.3);
+        const knot = mesh(new THREE.ConeGeometry(0.08, 0.16, 8), toon(color), { cast: false });
+        ball.position.set(r.x, 1, -1.6);
+        knot.position.set(r.x, 1, -1.6);
+        group.add(ball, knot);
+        balls.push(ball);
+        knots.push(knot);
+        const pump = mesh(new THREE.CylinderGeometry(0.16, 0.2, 1, 12), toon('#c9ccd4'));
+        pump.position.set(r.x + 0.7, 0.5, -0.8);
+        this.scene.add(pump);
+      }
+      this.scene.add(group);
+      this.balloons.push({ group, balls, knots, x, owners, air: 0, need: teams ? 26 * owners.length : 30, popped: false, poppedAt: 0 });
     }
     // Medidor de cada jogador: vermelho em baixo, amarelo, verde em cima; o marcador branco sobe e desce.
     for (const r of this.row) {
@@ -141,7 +154,7 @@ class BalloonRun extends RowMinigame {
           this.ctx.vibrate(o.seat.id, 250);
           o.model.setAnim(b.poppedAt === 1 ? 'cheer' : 'idle');
         }
-        this.float(b.poppedAt === 1 ? '💥 1.º!' : `💥 ${b.poppedAt}.º`, b.group.position.x, 3.2, '#ffd23f', 0.9);
+        this.float(b.poppedAt === 1 ? '💥 1.º!' : `💥 ${b.poppedAt}.º`, b.x, 3.2, '#ffd23f', 0.9);
         b.group.visible = false;
         if (b.poppedAt === 1) this.elapsed = Math.max(this.elapsed, this.duration - 2.5);
       } else if (b.air > b.need * 0.8) this.ctx.vibrate(r.seat.id, 15);
@@ -158,9 +171,11 @@ class BalloonRun extends RowMinigame {
       const k = Math.min(1, b.air / b.need);
       const s = 0.3 + k * 1.1;
       const shake = k > 0.8 ? Math.sin(time * 40) * 0.04 * (k - 0.8) * 5 : 0;
-      b.ball.scale.set(s + shake, s * 1.18, s - shake);
-      b.ball.position.y = s * 1.18;
-      b.group.children[1]!.position.y = 0;
+      for (const ball of b.balls) {
+        ball.scale.set(s + shake, s * 1.18, s - shake);
+        ball.position.y = 1 + s * 1.18;
+      }
+      for (const knot of b.knots) knot.position.y = 1;
     }
   }
 }
