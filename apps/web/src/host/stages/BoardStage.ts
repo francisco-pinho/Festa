@@ -435,6 +435,7 @@ export class BoardStage implements Stage {
     for (const l of this.mapLabels.children) l.position.y += Math.sin(time * 3 + l.id) * 0.004;
     for (const t of this.tokens.values()) t.update(dt);
     for (const d of this.dice) d.update(dt);
+    this.updateOcclusion(dt);
 
     if (this.star.visible) {
       const s = this.star.children[0]!;
@@ -914,6 +915,7 @@ export class BoardStage implements Stage {
       }
       return best;
     };
+    this.occluders = targets;
     let moved = 0;
     let hidden = 0;
     for (const o of targets) {
@@ -937,6 +939,81 @@ export class BoardStage implements Stage {
       }
     }
     if (import.meta.env.DEV && (moved || hidden)) console.info(`Cenário arrumado: ${moved} empurrões, ${hidden} escondidos`);
+    root.updateMatrixWorld(true);
+    this.occluderBoxes = this.occluders.map((o) => new THREE.Box3().setFromObject(o));
+  }
+
+  // ── Cenário à frente das personagens ───────────────────
+  private occluders: THREE.Object3D[] = [];
+  private occluderBoxes: THREE.Box3[] = [];
+  /** Opacidade atual de cada objeto do cenário que está (ou esteve) à frente de alguém. */
+  private readonly fading = new Map<THREE.Object3D, number>();
+  private occlusionTimer = 0;
+  private occluding = new Set<THREE.Object3D>();
+
+  /**
+   * Árvores e adereços que ficam entre a câmara e uma personagem ficam transparentes
+   * (e voltam ao normal quando deixam de tapar).
+   */
+  private updateOcclusion(dt: number): void {
+    this.occlusionTimer -= dt;
+    if (this.occlusionTimer <= 0) {
+      this.occlusionTimer = 0.12;
+      this.occluding = new Set();
+      const ray = new THREE.Ray();
+      const head = new THREE.Vector3();
+      const hit = new THREE.Vector3();
+      for (const t of this.tokens.values()) {
+        if (!t.root.visible) continue;
+        for (const h of [0.6, 1.6, 2.9]) { // pés, cabeça e dados por cima da cabeça
+          head.copy(t.root.position).setY(t.root.position.y + h);
+          const dist = this.camera.position.distanceTo(head);
+          ray.origin.copy(this.camera.position);
+          ray.direction.copy(head).sub(this.camera.position).normalize();
+          this.occluderBoxes.forEach((box, i) => {
+            const o = this.occluders[i]!;
+            if (!o.visible || this.occluding.has(o)) return;
+            // Encolhe um pouco a caixa (as copas não são caixas cheias).
+            const b = box.clone().expandByScalar(-0.25);
+            if (ray.intersectBox(b, hit) && hit.distanceTo(this.camera.position) < dist - 0.6) this.occluding.add(o);
+          });
+        }
+      }
+      for (const o of this.occluding) if (!this.fading.has(o)) this.fading.set(o, 1);
+    }
+    for (const [o, op] of this.fading) {
+      const target = this.occluding.has(o) ? 0.28 : 1;
+      const next = op + (target - op) * Math.min(1, dt * 8);
+      const done = target === 1 && next > 0.98;
+      this.setOpacity(o, done ? 1 : next);
+      if (done) this.fading.delete(o);
+      else this.fading.set(o, next);
+    }
+  }
+
+  private setOpacity(o: THREE.Object3D, opacity: number): void {
+    o.traverse((c) => {
+      const m = c as THREE.Mesh;
+      if (!m.isMesh) return;
+      // Material próprio (os materiais são partilhados entre adereços): guarda o original para repor.
+      if (!m.userData.fadeOriginal) {
+        if (opacity >= 1) return;
+        m.userData.fadeOriginal = m.material;
+        m.material = Array.isArray(m.material) ? m.material.map((x) => x.clone()) : m.material.clone();
+      }
+      const mats = Array.isArray(m.material) ? m.material : [m.material];
+      if (opacity >= 1) {
+        for (const x of mats) x.dispose();
+        m.material = m.userData.fadeOriginal as THREE.Material;
+        delete m.userData.fadeOriginal;
+        return;
+      }
+      for (const x of mats) {
+        x.transparent = true;
+        x.opacity = opacity;
+        x.depthWrite = false;
+      }
+    });
   }
 
   private buildSpaces(): void {
