@@ -12,7 +12,7 @@ import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 
 const SHOTS = 5;
 const BAR = 3;
-/** Vista de lado: arqueiros à esquerda, alvos à direita, uma pista por jogador. */
+/** Arqueiros à esquerda, alvos à direita, uma pista por jogador; a câmara fica atrás dos arqueiros. */
 const SHOOT_X = -6;
 const TARGET_X = 6;
 const laneZ = (d: Duelist) => (d.side < 0 ? -1.8 : 1.8);
@@ -107,13 +107,17 @@ class MarksmanRun extends DuelMinigame {
       const green = mesh(new THREE.BoxGeometry(BAR * 0.12, 0.3, 0.07), toonUnique('#4cd964'), { cast: false });
       const marker = mesh(new THREE.BoxGeometry(0.08, 0.6, 0.1), toonUnique('#ffffff'), { cast: false });
       bar.add(red, yellow, green, marker);
-      bar.position.set(SHOOT_X + 1.2, 3.3, laneZ(d));
+      // Por cima de cada arqueiro (o nome fica por baixo), virada para a câmara que está atrás deles.
+      bar.position.set(SHOOT_X, 3.75, laneZ(d) * 1.15);
+      bar.rotation.y = -Math.PI / 2;
+      bar.scale.setScalar(0.8);
       this.scene.add(bar);
       this.shooters.push({ d, phase: ctx.rng.next() * 6, marker, bar, shots: 0, total: 0, freeze: 0, aim: 0, waited: 0 });
     }
     for (const s of this.shooters) this.newAim(s);
-    this.camera.position.set(0, 5.2, 13);
-    this.camera.lookAt(0, 1.3, 0);
+    // Câmara atrás dos arqueiros, um pouco acima, a ver os alvos ao fundo.
+    this.camera.position.set(SHOOT_X - 6.5, 4.6, 0);
+    this.camera.lookAt(TARGET_X, 1.4, 0);
   }
 
   /** Carreira de tiro: linha de tiro, fardos de palha, vedação, bandeirolas, árvores, barris e tendas. */
@@ -166,7 +170,7 @@ class MarksmanRun extends DuelMinigame {
       const x = -22 + i * 3.4 + rng.next();
       place(pickProp(PROPS.trees, rng.next(), { height: 5 + rng.next() * 3 }) ?? fallbackTree(rng.next()), x, -10 - rng.next() * 6, rng.next() * 6);
     }
-    place(pickProp(['kaykit-medieval/tent', 'kenney-nature/tent_detailedOpen'], rng.next(), { height: 2.6 }), -10, -2.5, 0.6);
+    place(pickProp(['kaykit-medieval/tent', 'kenney-nature/tent_detailedOpen'], rng.next(), { height: 2.6 }), -11, -5, 0.6); // afastada para não tapar a câmara (atrás dos arqueiros)
     place(pickProp(['kaykit-medieval/barrel', 'kenney-pirate/barrel'], 0, { height: 1 }) ?? barrel(), -8.2, 2.6);
     place(pickProp(['kaykit-medieval/barrel', 'kenney-pirate/barrel'], 0.5, { height: 1 }) ?? barrel(), -8.9, 3.3);
     place(pickProp(['kaykit-medieval/crate_A_big', 'kenney-pirate/crate'], 0, { height: 0.9 }), 9.5, 3, 0.4);
