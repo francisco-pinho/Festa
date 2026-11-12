@@ -54,59 +54,7 @@ MODELO (copia daqui...)
 (As ideias acabadas são apagadas daqui; ficam só as por fazer,
 em andamento ou com dúvidas.)
 
-[ ] TÍTULO: Saque rápido 
-    Tipo: mini jogo 
-    Prioridade (alta / média / baixa): médio
-    Onde no jogo (que ecrã, minijogo, mapa...): minijogo
-
-    Como funciona: neste jogo acho que deviam mudar algumas coisas. Gostei da dinâmica da bandeira e da bandeira amarela podias altera-la para que, em vez dela aparecer do chão, ser uma pistola que sai uma bandeira da ponta, anima bem esta ideia. Quando alguém dispara, podes dar trigger a uma animação em slowmotion que segue a banana a acertar no outro jogador. quando este é atingido, deve ter algumas animações diferentes de levar com a banana. vamos experimentar esta ideia e ver no que dá. no minigame do buzz para a ps2 dos macacos há este minijogo. acresenta um cenário bastante mais complexo, também no tema do mapa que estamos a jogar. Mas que o cenário seja mais completo
-
-
-    Controlos no telemóvel (botões, joystick, abanar...):
-
-    Como se ganha / o que acontece no fim:
-
-    Inspirado em (jogo, vídeo, link, imagem...):
-
-    Fotos (põe as imagens na pasta ideias-fotos e escreve aqui os nomes):
-
-    Notas do Claude:
-
-[ ] TÍTULO: cabo de guerra
-    Tipo: correções
-    Prioridade (alta / média / baixa): média
-    Onde no jogo (que ecrã, minijogo, mapa...): minijogo cabe de guerra
-
-    Como funciona: O jogo do cabo de guerra está bom. precisas de melhorar a dinâmica da corda para parecer que tem física real e para que pareça que eles realmente estão a pegar na corda. No meio adiciona um buraco mais realista para que pareça mesmo um buraco que eles caiam. Este jogo podia ser um jogo de equipas 2v2 e até 1v3. no 1v3 faz com que o que está sozinho seja maior e com mais força para ser justo. no caso do jogador da frente cair no buraco, os de trás podem continuar a jogar na mesma mas estão sozinhos, logo ficam em desvantagem. O que precisa mais urgente de ser melhorado é novamente o cenário com o tema do mapa e mais realista. Faz com que os personagens dêm passos para a frente e para trás realisticamente quando andam. não quero que os pés dos personagens deslizem nno chão! 
-
-
-    Controlos no telemóvel (botões, joystick, abanar...):
-
-    Como se ganha / o que acontece no fim:
-
-    Inspirado em (jogo, vídeo, link, imagem...):
-
-    Fotos (põe as imagens na pasta ideias-fotos e escreve aqui os nomes):
-
-    Notas do Claude:
-
-[ ] TÍTULO: Pontaria 
-    Tipo: correções
-    Prioridade (alta / média / baixa): media
-    Onde no jogo (que ecrã, minijogo, mapa...): minijogo pontaria 
-
-    Como funciona: quero mudar este jogo. o mapa está melhor que os outros mas podes colocar os jogadores no meio de uma floresta para não se ver o infinito atrás. Neste jogo a ideia é: para disparar é preciso carregar duas vezes: Uma para definir o eixo horizontal, como está agora e depois muda para outro slider vertical para ajustar o eixo vertical. Neste jogo também há umas bandeira penduradas que não estão nada realistas, resolve isso.
-
-
-    Controlos no telemóvel (botões, joystick, abanar...):
-
-    Como se ganha / o que acontece no fim:
-
-    Inspirado em (jogo, vídeo, link, imagem...):
-
-    Fotos (põe as imagens na pasta ideias-fotos e escreve aqui os nomes):
-
-    Notas do Claude:
+(Sem ideias por fazer. Acrescenta novas com o modelo de cima.)
 
 [ ] TÍTULO:
     Tipo:

@@ -1,6 +1,9 @@
 /**
- * "Pontaria" (duelo): um marcador anda de um lado para o outro numa barra;
- * carrega quando estiver no centro. 5 tiros, cada vez mais rápidos. Mais pontos ganha.
+ * "Pontaria" (duelo): cada tiro faz-se em dois toques. 1.º: um marcador anda de um lado para o
+ * outro numa barra horizontal — carrega quando estiver no centro (acerta a mira na horizontal).
+ * 2.º: aparece uma barra vertical — carrega outra vez no centro (acerta na vertical). A mira vê-se
+ * no alvo enquanto se aponta. 5 tiros, cada vez mais rápidos. Mais pontos ganha.
+ * Cenário: carreira de tiro no meio de uma floresta (não se vê o horizonte), bandeirinhas a sério.
  */
 import { sound } from '../audio/Sound';
 import * as THREE from 'three';
@@ -9,9 +12,13 @@ import { PROPS, pickProp } from '../three/props';
 import { getCharacter } from '@festa/game';
 import { DuelMinigame, type Duelist } from './DuelMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { bunting, swayBunting } from './scenery';
 
 const SHOTS = 5;
 const BAR = 3;
+/** Raio do alvo (onde a mira pode ir parar). */
+const TARGET_R = 1.2;
+const TARGET_Y = 1.6;
 /** Arqueiros à esquerda, alvos à direita, uma pista por jogador; a câmara fica atrás dos arqueiros. */
 const SHOOT_X = -6;
 const TARGET_X = 6;
@@ -40,6 +47,15 @@ interface Shooter {
   phase: number;
   marker: THREE.Mesh;
   bar: THREE.Group;
+  /** 0 = a apontar na horizontal, 1 = na vertical. */
+  stage: 0 | 1;
+  /** Horizontal escolhida no 1.º toque (-1…1). */
+  h: number;
+  vphase: number;
+  vbar: THREE.Group;
+  vmarker: THREE.Mesh;
+  /** Mira no alvo. */
+  sight: THREE.Group;
   shots: number;
   total: number;
   freeze: number;
@@ -74,9 +90,11 @@ function makeArrow(color: string): THREE.Group {
 }
 
 class MarksmanRun extends DuelMinigame {
-  protected readonly duration = 30;
+  protected readonly duration = 45;
   private readonly shooters: Shooter[] = [];
   private readonly arrows: Arrow[] = [];
+  private pennants: THREE.Mesh[] = [];
+  private clock = 0;
 
   constructor(ctx: MinigameContext) {
     super(ctx, { ground: '#9be07a', spacing: 3 });
@@ -91,7 +109,7 @@ class MarksmanRun extends DuelMinigame {
         ring.rotation.z = Math.PI / 2;
         target.add(ring);
       });
-      target.position.set(TARGET_X, 1.6, z);
+      target.position.set(TARGET_X, TARGET_Y, z);
       const post = mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.6), toon('#7a5230'));
       post.position.set(TARGET_X + 0.1, 0.8, z);
       // Pista de terra entre o arqueiro e o alvo
@@ -100,19 +118,57 @@ class MarksmanRun extends DuelMinigame {
       this.scene.add(target, post, lane);
     }
     this.buildRange();
-    for (const d of this.duelists) {
+    /** Barra com as zonas (vermelho, amarelo, verde ao meio) e o marcador; a vertical é rodada 90°. */
+    const makeBar = (): { bar: THREE.Group; marker: THREE.Mesh } => {
       const bar = new THREE.Group();
       const red = mesh(new THREE.BoxGeometry(BAR, 0.3, 0.05), toonUnique('#ff5a5f'), { cast: false });
       const yellow = mesh(new THREE.BoxGeometry(BAR * 0.4, 0.3, 0.06), toonUnique('#ffd23f'), { cast: false });
       const green = mesh(new THREE.BoxGeometry(BAR * 0.12, 0.3, 0.07), toonUnique('#4cd964'), { cast: false });
       const marker = mesh(new THREE.BoxGeometry(0.08, 0.6, 0.1), toonUnique('#ffffff'), { cast: false });
       bar.add(red, yellow, green, marker);
+      return { bar, marker };
+    };
+    for (const d of this.duelists) {
       // Por cima de cada arqueiro (o nome fica por baixo), virada para a câmara que está atrás deles.
-      bar.position.set(SHOOT_X, 3.75, laneZ(d) * 1.15);
-      bar.rotation.y = -Math.PI / 2;
-      bar.scale.setScalar(0.8);
-      this.scene.add(bar);
-      this.shooters.push({ d, phase: ctx.rng.next() * 6, marker, bar, shots: 0, total: 0, freeze: 0, aim: 0, waited: 0 });
+      const holder = new THREE.Group();
+      holder.position.set(SHOOT_X, 3.75, laneZ(d) * 1.15);
+      holder.rotation.y = -Math.PI / 2;
+      holder.scale.setScalar(0.8);
+      const { bar, marker } = makeBar();
+      const v = makeBar();
+      v.bar.rotation.z = Math.PI / 2;
+      v.bar.position.set(BAR / 2 + 0.5, 0.2, 0);
+      v.bar.scale.setScalar(0.85);
+      v.bar.visible = false;
+      holder.add(bar, v.bar);
+      this.scene.add(holder);
+      // Mira (anel e cruz) que anda no alvo enquanto se aponta.
+      const sight = new THREE.Group();
+      const sightMat = new THREE.MeshBasicMaterial({ color: getCharacter(d.seat.characterId).color, depthTest: false, transparent: true });
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.035, 6, 24), sightMat);
+      const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.035, 0.01), sightMat);
+      const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.5, 0.01), sightMat);
+      sight.add(ring, crossH, crossV);
+      for (const o of sight.children) o.renderOrder = 5;
+      sight.rotation.y = -Math.PI / 2;
+      this.scene.add(sight);
+      this.shooters.push({
+        d,
+        phase: ctx.rng.next() * 6,
+        marker,
+        bar,
+        stage: 0,
+        h: 0,
+        vphase: 0,
+        vbar: v.bar,
+        vmarker: v.marker,
+        sight,
+        shots: 0,
+        total: 0,
+        freeze: 0,
+        aim: 0,
+        waited: 0,
+      });
     }
     for (const s of this.shooters) this.newAim(s);
     // Câmara atrás dos arqueiros, um pouco acima, a ver os alvos ao fundo.
@@ -145,20 +201,17 @@ class MarksmanRun extends DuelMinigame {
       rail.position.set(0, y, -5.5);
       this.scene.add(rail);
     }
-    // Bandeirolas coloridas entre dois mastros
-    const colors = ['#ff3b5c', '#ffd23f', '#2f7dff', '#25c26b', '#ff6fb5'];
-    for (const x of [-9, 9]) {
-      const mast = mesh(new THREE.CylinderGeometry(0.08, 0.08, 5), toon('#ffffff'));
-      mast.position.set(x, 2.5, -5);
+    // Bandeirinhas: uma ao longo da vedação e outra por cima das pistas.
+    const masts: [number, number, number][] = [[-9, -5, 5], [9, -5, 5], [1, -4.2, 5.4], [1, 4.2, 5.4]];
+    for (const [x, z, h] of masts) {
+      const mast = mesh(new THREE.CylinderGeometry(0.08, 0.1, h), toon('#ffffff'));
+      mast.position.set(x, h / 2, z);
       this.scene.add(mast);
     }
-    for (let i = 0; i < 17; i++) {
-      const k = i / 16;
-      const flag = mesh(new THREE.ConeGeometry(0.28, 0.5, 3), toon(colors[i % colors.length]!), { cast: false });
-      flag.rotation.x = Math.PI;
-      flag.position.set(-9 + k * 18, 4.6 - Math.sin(k * Math.PI) * 1.1, -5);
-      this.scene.add(flag);
-    }
+    this.pennants = [
+      ...bunting(this.scene, new THREE.Vector3(-9, 4.85, -5), new THREE.Vector3(9, 4.85, -5), { sag: 1.1 }),
+      ...bunting(this.scene, new THREE.Vector3(1, 5.25, -4.2), new THREE.Vector3(1, 5.25, 4.2), { sag: 0.7 }),
+    ];
     // Árvores, barris, caixotes e tendas (modelos dos packs, se estiverem carregados)
     const place = (obj: THREE.Object3D | null, x: number, z: number, rotY = 0) => {
       if (!obj) return;
@@ -166,9 +219,19 @@ class MarksmanRun extends DuelMinigame {
       obj.rotation.y = rotY;
       this.scene.add(obj);
     };
-    for (let i = 0; i < 14; i++) {
-      const x = -22 + i * 3.4 + rng.next();
-      place(pickProp(PROPS.trees, rng.next(), { height: 5 + rng.next() * 3 }) ?? fallbackTree(rng.next()), x, -10 - rng.next() * 6, rng.next() * 6);
+    // Floresta à volta: atrás dos alvos e dos dois lados, cerrada, para não se ver o infinito.
+    const tree = (x: number, z: number, h: number) =>
+      place(pickProp(PROPS.trees, rng.next(), { height: h }) ?? fallbackTree(rng.next()), x + rng.next() * 1.2, z + rng.next() * 1.2, rng.next() * 6);
+    for (let x = 12; x <= 22; x += 3.2) for (let z = -24; z <= 24; z += 3) tree(x, z, 6.5 + rng.next() * 4 + (x - 12) * 0.3);
+    for (const sz of [-1, 1]) {
+      for (let x = -26; x < 12; x += 3) {
+        for (let row = 0; row < 3; row++) tree(x, sz * (8.5 + row * 2.6 + (sz > 0 ? 0 : 1.5)), 5.5 + rng.next() * 4 + row);
+      }
+    }
+    // Arbustos e pedras à frente das árvores.
+    for (let i = 0; i < 26; i++) {
+      const sz = i % 2 ? 1 : -1;
+      place(pickProp([...PROPS.plants, ...PROPS.rocks], rng.next(), { height: 0.6 + rng.next() * 0.8 }), -18 + rng.next() * 30, sz * (6.4 + rng.next() * 1.4), rng.next() * 6);
     }
     place(pickProp(['kaykit-medieval/tent', 'kenney-nature/tent_detailedOpen'], rng.next(), { height: 2.6 }), -11, -5, 0.6); // afastada para não tapar a câmara (atrás dos arqueiros)
     place(pickProp(['kaykit-medieval/barrel', 'kenney-pirate/barrel'], 0, { height: 1 }) ?? barrel(), -8.2, 2.6);
@@ -192,21 +255,34 @@ class MarksmanRun extends DuelMinigame {
     return a.total === b.total ? [] : [a.total > b.total ? a.d.seat.id : b.d.seat.id];
   }
 
+  /** 1.º toque: fixa a horizontal e passa para a barra vertical. */
+  private lockH(s: Shooter): void {
+    s.h = Math.sin(s.phase);
+    s.stage = 1;
+    s.vphase = this.ctx.rng.next() * 6;
+    s.vbar.visible = true;
+    sound.play('click', { pitch: 1.2 });
+    this.ctx.vibrate(s.d.seat.id, 25);
+    this.newAim(s);
+  }
+
   private shoot(s: Shooter): void {
     sound.play('ball', { pitch: 1.4 });
-    const m = Math.sin(s.phase);
-    const points = Math.max(0, Math.round(100 * (1 - Math.abs(m) * 1.15)));
+    const h = s.h;
+    const v = Math.sin(s.vphase);
+    s.stage = 0;
+    s.vbar.visible = false;
+    const dist = Math.min(1.3, Math.hypot(h, v));
+    const points = Math.max(0, Math.round(100 * (1 - dist * 1.1)));
     s.total += points;
     s.shots++;
     s.freeze = 0.8;
     s.d.model.setAnim('throw');
-    // A seta voa até ao alvo e crava-se mais longe do centro quanto pior o tiro.
-    const miss = 1 - points / 100;
-    const ang = this.ctx.rng.next() * Math.PI * 2;
+    // A seta voa até ao alvo e crava-se onde estava a mira.
     const arrow = makeArrow(getCharacter(s.d.seat.characterId).color);
     const z = laneZ(s.d);
     const from = new THREE.Vector3(SHOOT_X + 0.5, 1.5, z);
-    const to = new THREE.Vector3(TARGET_X - 0.15, 1.6 + Math.sin(ang) * miss * 1.1, z + Math.cos(ang) * miss * 1.1);
+    const to = new THREE.Vector3(TARGET_X - 0.15, TARGET_Y + v * TARGET_R, z + h * TARGET_R);
     arrow.position.copy(from);
     arrow.rotation.y = -Math.PI / 2; // a seta aponta para +x (para o alvo)
     this.scene.add(arrow);
@@ -232,20 +308,40 @@ class MarksmanRun extends DuelMinigame {
         if (s.freeze <= 0) s.d.model.setAnim('idle');
         continue;
       }
-      s.phase += dt * (2.4 + s.shots * 0.6);
-      const m = Math.sin(s.phase);
+      const speed = 2.4 + s.shots * 0.6;
+      let m: number;
+      if (s.stage === 0) {
+        s.phase += dt * speed;
+        m = Math.sin(s.phase);
+      } else {
+        s.vphase += dt * speed * 1.1;
+        m = Math.sin(s.vphase);
+      }
       if (this.isBot(s.d)) {
         s.waited += dt;
         if (Math.abs(m - s.aim) < 0.06 || s.waited > 4) this.botPress(s.d, 'a');
       }
-      if (this.pressed(s.d, 'a')) this.shoot(s);
+      if (this.pressed(s.d, 'a')) {
+        if (s.stage === 0) this.lockH(s);
+        else this.shoot(s);
+      }
     }
     if (this.shooters.every((s) => s.shots >= SHOTS && s.freeze <= 0)) this.endGame();
   }
 
   override update(dt: number, time: number): void {
     super.update(dt, time);
-    for (const s of this.shooters) s.marker.position.x = (Math.sin(s.phase) * BAR) / 2;
+    this.clock += dt;
+    swayBunting(this.pennants, this.clock);
+    for (const s of this.shooters) {
+      const h = s.stage === 0 ? Math.sin(s.phase) : s.h;
+      const v = s.stage === 1 ? Math.sin(s.vphase) : 0;
+      s.marker.position.x = (h * BAR) / 2;
+      s.vmarker.position.x = (v * BAR) / 2;
+      // Mira no alvo: só enquanto se aponta (some a seguir ao tiro).
+      s.sight.visible = s.freeze <= 0 && s.shots < SHOTS;
+      s.sight.position.set(TARGET_X - 0.2, TARGET_Y + v * TARGET_R, laneZ(s.d) + h * TARGET_R);
+    }
     for (const a of this.arrows) {
       if (a.t >= 1) continue;
       a.t = Math.min(1, a.t + dt / 0.35);
@@ -265,9 +361,10 @@ export const Marksman: MinigameDef = {
   name: 'Pontaria',
   modes: ['ffa'],
   duel: true,
-  description: () => `Carrega quando o marcador estiver no verde! ${SHOTS} tiros, cada vez mais rápidos. Quem somar mais pontos ganha.`,
-  controls: 'Ⓐ Disparar',
+  description: () =>
+    `Cada tiro são dois toques: carrega quando o marcador estiver no verde na barra deitada (horizontal) e outra vez na barra de pé (vertical)! ${SHOTS} tiros, cada vez mais rápidos. Quem somar mais pontos ganha.`,
+  controls: 'Ⓐ Apontar (horizontal) · Ⓐ Disparar (vertical)',
   stick: false,
-  buttons: [{ id: 'a', label: 'Disparar' }],
+  buttons: [{ id: 'a', label: 'Apontar / Disparar' }],
   create: (ctx) => new MarksmanRun(ctx),
 };
