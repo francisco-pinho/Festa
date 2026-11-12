@@ -45,145 +45,10 @@ MODELO (copia daqui...)
 ==============================================================
   AS MINHAS IDEIAS
 ==============================================================
+(As ideias acabadas são apagadas daqui; ficam só as por fazer,
+em andamento ou com dúvidas.)
 
-[x] TÍTULO: Câmara pessoal ao lançar os dados
-    Tipo: tabuleiro / visual
-    Prioridade (alta / média / baixa): alta
-    Onde no jogo (que ecrã, minijogo, mapa...): tabuleiro, na vez de
-    cada jogador, quando vai lançar os dados
-
-    Como funciona:
-      A câmara foca só no jogador que vai lançar: baixa, perto e
-      atrás/à frente dele, com o dado grande a flutuar por cima da
-      cabeça e o caminho à frente a ver-se ao fundo (desfocado).
-      Os outros jogadores não aparecem (ou ficam fora de plano).
-
-    Controlos no telemóvel (botões, joystick, abanar...): os mesmos
-    (A ou abanar para lançar).
-
-    Como se ganha / o que acontece no fim: —
-
-    Inspirado em (jogo, vídeo, link, imagem...): Mario Party Jamboree
-    (imagens enviadas: Donkey Kong no kart com o dado por cima, câmara
-    atrás dele ao nível do chão).
-
-    Notas do Claude:
-      Feito: a câmara vai para trás de quem lança, baixa e perto, virada
-      para o caminho, com os dados por cima da cabeça. Quem estiver na
-      mesma casa fica transparente.
-
-[x] TÍTULO: Câmara a seguir de perto enquanto anda as casas
-    Tipo: tabuleiro / visual
-    Prioridade (alta / média / baixa): alta
-    Onde no jogo (que ecrã, minijogo, mapa...): tabuleiro, enquanto o
-    jogador anda as casas depois de lançar
-
-    Como funciona:
-      A câmara segue o jogador mais de perto e mais baixa (vista de
-      3/4 por trás/lado), acompanhando o caminho, com o número de
-      casas que faltam grande por cima dele.
-
-    Controlos no telemóvel (botões, joystick, abanar...): —
-
-    Como se ganha / o que acontece no fim: —
-
-    Inspirado em (jogo, vídeo, link, imagem...): Mario Party Jamboree
-    (imagem do deserto: Donkey Kong a andar nos carris com o «6» por
-    cima, câmara próxima).
-
-    Notas do Claude:
-      Feito: segue por trás e mais perto, a virar suavemente nas
-      curvas; volta a ela depois de lojas, estrelas e cruzamentos.
-
-[x] TÍTULO: Melhorar a animação de andar no tabuleiro
-    Tipo: personagem / visual
-    Prioridade (alta / média / baixa): alta
-    Onde no jogo (que ecrã, minijogo, mapa...): tabuleiro (andar casa
-    a casa)
-
-    Como funciona:
-      A animação de andar entre casas deve parecer mais natural e
-      com mais vida (passos/corrida a sério, saltinho em cada casa,
-      virar suavemente nas curvas).
-
-    Controlos no telemóvel (botões, joystick, abanar...): —
-
-    Como se ganha / o que acontece no fim: —
-
-    Inspirado em (jogo, vídeo, link, imagem...): Mario Party Jamboree.
-
-    Notas do Claude:
-      Feito: corre sem parar entre casas, passo que arranca e trava
-      suave, saltinho baixo, encolhe ao aterrar e levanta pó.
-
-[x] TÍTULO: Pesca de Baús — câmara à frente dos jogadores
-    Tipo: minijogo / visual
-    Prioridade (alta / média / baixa): média
-    Onde no jogo (que ecrã, minijogo, mapa...): minijogo «Pesca de Baús»
-
-    Como funciona:
-      A câmara deve ficar à frente dos jogadores (do lado da água, a
-      olhar para eles), e não nas costas, para se ver melhor a cara de
-      cada um, as boias e o «!» quando o peixe morde.
-
-    Controlos no telemóvel (botões, joystick, abanar...): os mesmos.
-
-    Como se ganha / o que acontece no fim: igual.
-
-    Inspirado em (jogo, vídeo, link, imagem...): —
-
-    Notas do Claude:
-      Feito: a câmara está do lado da água, de frente para eles.
-
-[ ] TÍTULO: adicionar física mais realista nos tacos de golf
-    Tipo: física mini jogo
-    Prioridade (média ):
-    Onde no jogo (que ecrã, minijogo, mapa...): golf
-
-    Como funciona: quando o jogador bate na bola, ela sai lentamente em vez de ser como uma batida real numa bola, o backspin também está demasiado evidente
-
-
-    Controlos no telemóvel (botões, joystick, abanar...):
-
-    Como se ganha / o que acontece no fim:
-
-    Inspirado em (jogo, vídeo, link, imagem...):
-
-    Notas do Claude:
-
-[ ] TÍTULO: avançar repetição 
-    Tipo: menus
-    Prioridade ( baixa):
-    Onde no jogo (que ecrã, minijogo, mapa...): ecrã de repetição
-
-    Como funciona: deve existir maneira de avançar o ecrã de repetição dos jogos 
-
-
-    Controlos no telemóvel (botões, joystick, abanar...): no botão -
-
-    Como se ganha / o que acontece no fim: avança a cutscene
-
-    Inspirado em (jogo, vídeo, link, imagem...):
-
-    Notas do Claude:
-
-[ ] TÍTULO: organizar ideias 
-    Tipo: técnico
-    Prioridade (alta):
-    Onde no jogo (que ecrã, minijogo, mapa...): no vscode
-
-    Como funciona: sempre que uma ideia do ficheiro de ideias for concluída, podes apaga-la para que apenas tenha ideias por fazer ou em andamento
-
-
-    Controlos no telemóvel (botões, joystick, abanar...):
-
-    Como se ganha / o que acontece no fim:
-
-    Inspirado em (jogo, vídeo, link, imagem...):
-
-    Notas do Claude:
-
-[ ] TÍTULO: ilha inicial
+[?] TÍTULO: ilha inicial
     Tipo: gráfica
     Prioridade ( média ):
     Onde no jogo (que ecrã, minijogo, mapa...): ecrã inicial de escolha de personagens
@@ -191,29 +56,31 @@ MODELO (copia daqui...)
     Como funciona: muda a ilha inicial para que seja algo mais bonito. não precisa de ser uma ilha porque aí seria alusivo apenas a um mapa. uma ideia é ser dentro de uma sala de estar em que as personagens que vão entrando podem ir sentando no sofá, ficar perto da lareira etc.
     Não é obrigatório ser uma casa, dá-me sugestões que podemos decidir em conjunto
 
-    Controlos no telemóvel (botões, joystick, abanar...): 
+    Controlos no telemóvel (botões, joystick, abanar...):
 
     Como se ganha / o que acontece no fim:
 
     Inspirado em (jogo, vídeo, link, imagem...):
 
     Notas do Claude:
-
-[ ] TÍTULO: lançar dados
-    Tipo: camera
-    Prioridade (baixa):
-    Onde no jogo (que ecrã, minijogo, mapa...): no jogo festa 
-
-    Como funciona: quando estou a saltar para lançar os dados há duas coisas a corrijir. a camera deve ficar à frente quando salto e apeans ir para trás quando começo a andar. quando lanço o 3 dado no caso dos dois primeiros serem iguais, o dado fica fora da tela. 
-
-
-    Controlos no telemóvel (botões, joystick, abanar...): voltar a usar o botões A B Y X e não a maneira atual para mandar os dados.
-
-    Como se ganha / o que acontece no fim: 
-
-    Inspirado em (jogo, vídeo, link, imagem...):
-
-    Notas do Claude:
+      Sugestões (escolhe uma, ou mistura):
+      1. Sala de estar acolhedora: sofá grande, lareira acesa, tapete,
+         TV na parede com o código QR. Quem entra senta-se no sofá
+         (ou no puff/cadeirão quando o sofá enche) e acena.
+      2. Arraial português à noite: bandeirinhas e luzes, bancas, um
+         palco com o nome FESTA. Quem entra dança em frente ao palco.
+         Combina com o nome do jogo.
+      3. Bastidores de um concurso de TV: holofotes, cortina vermelha,
+         cadeiras com o nome de cada um; ao entrar sobem ao palco.
+      4. Parque de diversões ao anoitecer: carrossel a rodar, cada
+         personagem entra num cavalinho.
+      5. Autocarro/comboio da festa: vão entrando e sentam-se; quando
+         começa, o autocarro parte para o tabuleiro escolhido.
+      6. Casa na árvore: plataforma de madeira com luzinhas, escorrega
+         e cordas; quem entra aparece a descer a escada.
+      A minha preferida: 1 (sala de estar), com a TV a mostrar o QR e a
+      lareira; dá para animar quem entra (sentar, acenar, saltar).
+      Diz-me qual queres e faço.
 
 [ ] TÍTULO: Músicas
     Tipo: música
@@ -222,7 +89,6 @@ MODELO (copia daqui...)
 
     Como funciona: altera as músicas todas. não sei o que será possível fazer quanto a isto mas quero músicas melhores e temáticas para cada coisa, jogo, mapa etc
 
-
     Controlos no telemóvel (botões, joystick, abanar...):
 
     Como se ganha / o que acontece no fim:
@@ -230,3 +96,18 @@ MODELO (copia daqui...)
     Inspirado em (jogo, vídeo, link, imagem...):
 
     Notas do Claude:
+      [?] Preciso que decidas de onde vem a música:
+      a) Música feita pelo próprio jogo (como agora), mas muito melhor:
+         um tema por mapa (ilha: ukulele/marimba; vulcão: tambores;
+         castelo: cordas/sopros; parque: órgão de feira; cidade neon:
+         sintetizadores), minijogos e desportos com ritmo próprio.
+         Sem downloads, sem licenças. Fica bom mas «sintetizado».
+      b) Músicas a sério, gratuitas e livres (CC0/CC-BY), de sites como
+         o OpenGameArt ou o incompetech (Kevin MacLeod). Soa muito
+         melhor, mas tens de autorizar estes sites (até agora só
+         autorizaste KayKit, Kenney e Quaternius). As CC-BY obrigam a
+         pôr os créditos no jogo (faço uma página de créditos).
+      c) Kenney: só tem jingles curtos (CC0), que dão para vitórias,
+         estrelas e fim de minijogo, não para música de fundo.
+      Recomendo b) para a música de fundo + c) para os jingles.
+
