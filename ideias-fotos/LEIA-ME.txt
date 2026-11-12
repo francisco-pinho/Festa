@@ -1,0 +1,3 @@
+Põe aqui as imagens das ideias (prints, fotos, desenhos).
+No IDEIAS.txt, no campo «Fotos» da ideia, escreve o nome do ficheiro
+(ex.: corda-ecra-escuro.png). Podes pôr várias, separadas por vírgulas.

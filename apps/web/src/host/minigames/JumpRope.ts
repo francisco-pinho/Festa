@@ -39,7 +39,11 @@ class JumpRopeRun extends RowMinigame {
     // Corda a sério: uma curva presa nos postes que roda (o meio vai lá abaixo, as pontas ficam paradas).
     this.ropePts = Array.from({ length: 25 }, () => new THREE.Vector3());
     this.ropeCurve = new THREE.CatmullRomCurve3(this.ropePts);
-    this.rope = mesh(new THREE.TubeGeometry(this.ropeCurve, 48, 0.07, 6), toon('#ff6fb5'));
+    // Curva «catmullrom» simples: a «centripetal» (por omissão) pode dar valores inválidos.
+    this.ropeCurve.curveType = 'catmullrom';
+    // Sem sombra: a corda é refeita a cada imagem e a sombra dela chegou a escurecer o ecrã todo.
+    this.rope = mesh(new THREE.TubeGeometry(this.ropeCurve, 48, 0.07, 6), toon('#ff6fb5'), { cast: false });
+    this.rope.frustumCulled = false;
     this.scene.add(this.rope);
     this.camera.position.set(0, 5.5, this.half * 1.25 + 4);
     this.camera.lookAt(0, 2, 0);
@@ -121,9 +125,18 @@ class JumpRopeRun extends RowMinigame {
       const y = HAND_Y + Math.cos(a) * R * bulge;
       this.ropePts[i]!.set(-this.half + u * this.half * 2, Math.max(0.07, y), Math.sin(a) * R * 0.7 * bulge);
     }
+    // Proteção: se algum ponto vier inválido, mantém a corda da imagem anterior.
+    if (this.ropePts.some((p) => !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.z))) return;
     this.ropeCurve.updateArcLengths();
+    const geo = new THREE.TubeGeometry(this.ropeCurve, 48, 0.07, 6);
+    const pos = geo.attributes.position!.array as Float32Array;
+    for (let i = 0; i < pos.length; i++)
+      if (!Number.isFinite(pos[i]!)) {
+        geo.dispose();
+        return;
+      }
     this.rope.geometry.dispose();
-    this.rope.geometry = new THREE.TubeGeometry(this.ropeCurve, 48, 0.07, 6);
+    this.rope.geometry = geo;
   }
 }
 
