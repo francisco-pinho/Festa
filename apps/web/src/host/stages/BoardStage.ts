@@ -336,15 +336,24 @@ export class BoardStage implements Stage {
     if (!append) this.clearDice();
     const root = this.token(id).root;
     const yaw = this.cameraYawTo(root.position.x, root.position.z);
-    const lift = (append ? 1.35 : 0) + (numbers ? 1.1 : 0);
+    const lift = numbers ? 1.1 : 0;
+    const total = this.dice.length + count;
+    // Lugar de cada dado numa fila centrada por cima da cabeça.
+    const slot = (i: number) => {
+      const side = (i - (total - 1) / 2) * 1.25;
+      return new THREE.Vector3(root.position.x + Math.cos(yaw) * side, root.position.y + HEAD_Y + 0.6 + lift, root.position.z - Math.sin(yaw) * side);
+    };
+    // Ao juntar um dado (dados iguais), os que já lá estavam deslizam para o lado e o novo fica
+    // na mesma fila (antes ia para cima e saía do ecrã).
+    if (append)
+      this.dice.forEach((d, i) => {
+        const from = d.root.position.clone();
+        const to = slot(i);
+        void this.engine.tween(0.3, (k) => d.root.position.lerpVectors(from, to, k), ease.out);
+      });
     for (let i = 0; i < count; i++) {
       const d = new Dice(numbers ? 1.15 : 0.95, { numbers });
-      const side = (i - (count - 1) / 2) * 1.25;
-      d.root.position.set(
-        root.position.x + Math.cos(yaw) * side,
-        root.position.y + HEAD_Y + 0.6 + lift,
-        root.position.z - Math.sin(yaw) * side,
-      );
+      d.root.position.copy(slot(this.dice.length));
       d.root.scale.setScalar(0.01);
       this.engine.tween(0.35, (k) => d.root.scale.setScalar(Math.max(0.01, k)), ease.backOut);
       this.dice.push(d);
@@ -661,9 +670,10 @@ export class BoardStage implements Stage {
         const fx = Math.sin(this.camYaw);
         const fz = Math.cos(this.camYaw);
         if (this.camMode === 'roll') {
-          // Lançar: baixa e perto, com os dados por cima da cabeça e o caminho ao fundo.
-          this.camTargetPos.set(p.x - fx * 4.4 + fz * 0.5, p.y + 3.1, p.z - fz * 4.4 - fx * 0.5);
-          this.camTargetLook.set(p.x + fx * 3, p.y + 2, p.z + fz * 3);
+          // Lançar: à frente da personagem, baixa e perto (vê-se a cara, o salto e os dados).
+          // Só passa para trás quando começa a andar.
+          this.camTargetPos.set(p.x + fx * 5.2 + fz * 0.4, p.y + 2.9, p.z + fz * 5.2 - fx * 0.4);
+          this.camTargetLook.set(p.x, p.y + 2.3, p.z);
         } else {
           // Andar: segue de perto, um pouco mais alta para se ver o caminho.
           this.camTargetPos.set(p.x - fx * 6.2, p.y + 4.6, p.z - fz * 6.2);

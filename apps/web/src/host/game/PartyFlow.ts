@@ -638,9 +638,6 @@ export class PartyFlow {
         label: 'Lançar!',
         extras: [{ id: 'map', label: this.mapOpen ? '🗺️ Fechar mapa' : '🗺️ Ver mapa' }, ...itemExtras],
       };
-      // No telemóvel: o mapa ao vivo com os botões de lançar por baixo.
-      const live = this.boardLayout(layout.prompt, p.id);
-      if (live.kind === 'board') layout.board = live;
       const botPlan = usedItem ? null : botChooseItem(this.state, p, this.rng, settings.botSkill);
       const choice = await this.ctl.decide(seat, {
         layout,
