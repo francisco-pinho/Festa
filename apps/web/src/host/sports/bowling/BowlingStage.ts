@@ -293,9 +293,9 @@ export class BowlingStage extends SportStage {
 
   private async celebrate(seat: Seat, knocked: number, standing: number, freshRack: boolean, gutter: boolean): Promise<void> {
     const m = this.model(seat.id);
-    // Vira-se para a câmara para reagir.
-    m.faceYaw(0);
-    this.cameraTo({ x: m.root.position.x * 0.5, y: 1.9, z: RELEASE_Z - 3.2 }, { x: m.root.position.x, y: 1.1, z: RELEASE_Z + 1 }, { speed: 3 });
+    // Reage virado para os pinos; a câmara fica nos pinos (antes ia à pessoa e voltava aos pinos
+    // para a máquina, num vaivém estranho). Só volta para trás no lançamento seguinte.
+    m.faceYaw(Math.PI);
     if (standing === 0 && freshRack) {
       m.setAnim('cheer');
       this.ctx.seats.vibrate(seat, [100, 50, 100, 50, 300]);
