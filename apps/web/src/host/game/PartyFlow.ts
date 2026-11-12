@@ -1376,6 +1376,8 @@ export class PartyFlow {
     for (let round = 1; round <= totalRounds; round++) {
       for (const s of this.d.seats) s.botPad.reset();
       this.d.hub.clearPresses();
+      ctx.round = round;
+      ctx.rounds = totalRounds;
       const run = def.create(ctx);
       this.engine.setStage(run, false);
       const updateHud = () => {

@@ -24,6 +24,9 @@ export interface MinigameContext {
   botPad(id: string): BotPad;
   isBot(id: string): boolean;
   vibrate(id: string, ms: number): void;
+  /** Ronda atual (1, 2, …) e total de rondas: os minijogos podem ficar mais difíceis a cada ronda. */
+  round?: number;
+  rounds?: number;
 }
 
 export interface MinigameScore {
