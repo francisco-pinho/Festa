@@ -779,16 +779,26 @@ export class PartyFlow {
     this.stage.showJunction(spaceId, info.map((o) => ({ spaceId: o.id, label: o.label, color: o.color })));
     this.hud.hint(`${p.name}: por onde vais?`, true);
     const enabled = info.filter((o) => !o.disabled);
-    const choice = await this.ctl.decide(this.seat(p.id), {
-      layout: {
-        kind: 'choices',
-        prompt: 'Por onde vais?',
-        options: info.map((o) => ({ id: `path:${o.id}`, label: `${this.stage.screenDirection(spaceId, o.id)}  ${o.label}`, color: o.color, disabled: o.disabled })),
-      },
-      valid: enabled.map((o) => `path:${o.id}`),
-      bot: () => `path:${botChooseNext(state, enabled.map((o) => o.id), this.rng, settings.botSkill, p.coins)}`,
-      botDelay: 1.2,
-    });
+    // Também se pode ver o tabuleiro inteiro antes de escolher.
+    let choice: string;
+    for (;;) {
+      choice = await this.ctl.decide(this.seat(p.id), {
+        layout: {
+          kind: 'choices',
+          prompt: 'Por onde vais?',
+          options: [
+            ...info.map((o) => ({ id: `path:${o.id}`, label: `${this.stage.screenDirection(spaceId, o.id)}  ${o.label}`, color: o.color, disabled: o.disabled })),
+            { id: 'map', label: this.mapOpen ? '🗺️ Fechar mapa' : '🗺️ Ver mapa' },
+          ],
+        },
+        valid: [...enabled.map((o) => `path:${o.id}`), 'map'],
+        bot: () => `path:${botChooseNext(state, enabled.map((o) => o.id), this.rng, settings.botSkill, p.coins)}`,
+        botDelay: 1.2,
+      });
+      if (choice !== 'map') break;
+      this.toggleMap();
+    }
+    this.closeMap();
     this.stage.hideArrows();
     this.stage.clearJunction();
     this.stage.focus(p.id);
@@ -840,19 +850,27 @@ export class PartyFlow {
     const on = !!state.flags[lever.flag];
     this.stage.focus(p.id, true);
     this.stage.faceCamera(p.id);
-    const answer = await this.ctl.decide(seat, {
-      layout: {
-        kind: 'choices',
-        prompt: `🎚️ ${lever.name}: puxar?`,
-        options: [
-          { id: 'pull', label: `🎚️ Puxar · ${on ? lever.offText : lever.onText}`, color: '#ffa41b' },
-          { id: 'skip', label: 'Deixar como está' },
-        ],
-      },
-      valid: ['pull', 'skip'],
-      bot: () => (botWantsLever(state, p, lever, this.rng, settings.botSkill) ? 'pull' : 'skip'),
-      botDelay: 1.1,
-    });
+    // Pode ver o tabuleiro inteiro antes de decidir (abre/fecha o mapa e volta a perguntar).
+    let answer: string;
+    for (;;) {
+      answer = await this.ctl.decide(seat, {
+        layout: {
+          kind: 'choices',
+          prompt: `🎚️ ${lever.name}: puxar?`,
+          options: [
+            { id: 'pull', label: `🎚️ Puxar · ${on ? lever.offText : lever.onText}`, color: '#ffa41b' },
+            { id: 'skip', label: 'Deixar como está' },
+            { id: 'map', label: this.mapOpen ? '🗺️ Fechar mapa' : '🗺️ Ver mapa' },
+          ],
+        },
+        valid: ['pull', 'skip', 'map'],
+        bot: () => (botWantsLever(state, p, lever, this.rng, settings.botSkill) ? 'pull' : 'skip'),
+        botDelay: 1.1,
+      });
+      if (answer !== 'map') break;
+      this.toggleMap();
+    }
+    this.closeMap();
     this.ctl.setLayout(seat, { kind: 'wait', message: 'A caminho…' });
     if (answer === 'pull') {
       const now = pullLever(state, lever);
