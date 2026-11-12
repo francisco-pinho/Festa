@@ -60,6 +60,7 @@ import {
   playersOnSpace,
   priceFor,
   ranking,
+  SHOP_LABEL,
   splitDice,
   removeItem,
   resolveDuel,
@@ -988,23 +989,41 @@ export class PartyFlow {
     const sale = state.saleShopId === shop.id;
     const stock = SHOP_STOCK[shop.kind].map((item) => ({ item, price: priceFor(item, shop.kind, sale) }));
     const full = p.items.length >= 3;
-    // Um só menu (no ecrã grande e no comando): nome, preço e o que faz cada item.
+    // Um só menu: o painel grande da loja. O cursor (comando ou teclado) realça o cartão escolhido.
     const options = stock.map(({ item, price }) => ({
       id: `buy:${item}`,
-      label: `${ITEMS[item].emoji} ${ITEMS[item].name} · ${sale ? `${price}🪙 (era ${priceFor(item, shop.kind, false)})` : `${price}🪙`}`,
-      sub: ITEMS[item].description,
+      label: `${ITEMS[item].emoji} ${ITEMS[item].name} · ${price}🪙`,
       disabled: full || p.coins < price,
     }));
+    const all = [...options, { id: 'buy:none', label: '🚪 Sair da loja', disabled: false }];
+    const cols = Math.min(all.length, 5);
     const icon = shop.kind === 'luxo' ? '💎' : '🛒';
-    const extra = sale ? ' · 💥 SALDOS: metade do preço!' : full ? ' · inventário cheio' : '';
+    this.hud.panel(`
+      <h1>${icon} ${esc(shop.name)}</h1>
+      <h2>${esc(SHOP_LABEL[shop.kind])}${sale ? ' · 💥 SALDOS: metade do preço!' : ''} · ${esc(p.name)} tem ${p.coins} 🪙${full ? ' · inventário cheio' : ''}</h2>
+      <div class="shop-items" style="grid-template-columns:repeat(${cols}, 1fr)">${stock
+        .map(({ item, price }) => {
+          const def = ITEMS[item];
+          const ok = !full && p.coins >= price;
+          const base = priceFor(item, shop.kind, false);
+          return `<div class="shop-item ${ok ? '' : 'no'}" data-id="buy:${item}"><span class="emoji">${def.emoji}</span><span class="nm">${esc(def.name)}</span>
+            <span class="ds">${esc(def.description)}</span><span class="pr">${sale ? `<span class="old">${base}</span>` : ''}${price} 🪙</span></div>`;
+        })
+        .join('')}<div class="shop-item exit" data-id="buy:none"><span class="emoji">🚪</span><span class="nm">Sair da loja</span><span class="ds">Não comprar nada</span></div></div>
+      <p class="shop-keys">✚ escolher · Ⓐ comprar</p>`);
+    const highlight = (id: string) => {
+      for (const el of this.hud.panelElement().querySelectorAll<HTMLElement>('.shop-item')) el.classList.toggle('sel', el.dataset.id === id);
+    };
     const choice = await this.ctl.decide(seat, {
-      layout: { kind: 'choices', prompt: `${icon} ${shop.name} · tens ${p.coins} 🪙${extra}`, columns: 2, options: [...options, { id: 'buy:none', label: '🚪 Sair da loja', disabled: false }] },
+      layout: { kind: 'choices', prompt: `${shop.name} · tens ${p.coins} 🪙`, columns: cols, options: all },
       valid: ['buy:none', ...options.filter((o) => !o.disabled).map((o) => o.id)],
       bot: () => {
         const pick = botChooseBuy(state, p, stock, this.rng);
         return pick ? `buy:${pick}` : 'buy:none';
       },
       botDelay: 1.6,
+      hideMenu: true,
+      onFocus: highlight,
     });
     this.hud.panel(null);
     this.ctl.setLayout(seat, { kind: 'wait', message: 'A caminho…' });

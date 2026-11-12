@@ -106,6 +106,8 @@ export interface DecideOptions {
   cancel?: string;
   /** O cursor mudou (escolhas). */
   onFocus?: (id: string) => void;
+  /** Esconde o menu de escolha (o ecrã já mostra as opções noutro painel, que realça a escolha). */
+  hideMenu?: boolean;
 }
 
 export class SeatControl {
@@ -275,6 +277,7 @@ export class SeatControl {
       columns: l.columns,
       cancel: opts.cancel,
       onFocus: opts.onFocus,
+      hidden: opts.hideMenu,
       isAuto: () => this.isAuto(seat),
       bot: { pick: opts.bot, delay: opts.botDelay ?? 0.9 },
     });

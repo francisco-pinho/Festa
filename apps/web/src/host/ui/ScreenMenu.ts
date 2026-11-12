@@ -46,6 +46,8 @@ export interface MenuRequest {
   big?: boolean;
   /** Encostado ao canto inferior direito (para não tapar um painel ao centro). */
   corner?: boolean;
+  /** Não desenha nada: a navegação continua, mas quem mostra a escolha é outro painel (via `onFocus`). */
+  hidden?: boolean;
 }
 
 interface OpenMenu {
@@ -227,6 +229,8 @@ export class ScreenMenus {
 
   private render(m: OpenMenu): void {
     const r = m.req;
+    m.el.hidden = !!r.hidden;
+    if (r.hidden) return;
     const cols = Math.max(1, r.columns ?? 1);
     m.el.innerHTML = `
       <div class="smenu-head">${r.name ? `<span class="dot"></span><b>${esc(r.name)}</b> · ` : ''}${esc(r.title)}</div>
