@@ -13,15 +13,18 @@ import { HotPotato } from './HotPotato';
 import { JumpRope } from './JumpRope';
 import { Maestro } from './Maestro';
 import { Snowballs } from './Snowballs';
+import { Bomber } from './Bomber';
+import { LookAway } from './LookAway';
+import { Meteors } from './Meteors';
 import type { MinigameDef } from './types';
 
 /** Para adicionar um minijogo: cria o ficheiro e acrescenta-o aqui. */
 export const MINIGAMES: MinigameDef[] = [
   CoinShower, Sumo, Tag, QuickDraw, TugOfWar, Marksman,
   ColorFloor, Snowballs, JumpRope, Maestro, Balloon, HotPotato, Hammer, Canoe,
+  LookAway, Bomber, Meteors,
 ];
 
-/** Escolhe um minijogo que suporte o modo, evitando repetir o anterior. */
 /**
  * Escolhe ao calhas um que ainda não se jogou nesta festa (`played`). Só repete quando já saíram
  * todos os possíveis para este modo — e mesmo aí nunca o último que se jogou.
