@@ -438,14 +438,16 @@ export class BoardStage implements Stage {
   /** A estrela voa para a personagem, que festeja. */
   async collectStar(id: string): Promise<void> {
     const t = this.token(id);
-    // Grande plano: a estrela sobe, gira cada vez mais depressa, desce para as mãos e explode em brilhos.
+    // Grande plano: a estrela sobe, gira cada vez mais depressa, desce até por cima da cabeça e explode em brilhos.
     this.closeUp(id);
     await this.engine.wait(0.5);
     sound.play('star');
     const icon = starMesh(0.9);
-    const from = this.star.position.clone().add(new THREE.Vector3(0, 2.6, 0));
+    const from = this.star.position.clone().add(new THREE.Vector3(0, 3.9, 0));
+    // A estrela da casa «passa» para a que voa (não ficam duas, nem dentro da personagem).
+    this.star.visible = false;
     const above = t.root.position.clone().add(new THREE.Vector3(0, HEAD_Y + 2.4, 0));
-    const hands = t.root.position.clone().add(new THREE.Vector3(0, HEAD_Y + 0.5, 0.2));
+    const hands = t.root.position.clone().add(new THREE.Vector3(0, HEAD_Y + 1.2, 0));
     this.scene.add(icon);
     t.setAnim('cheer');
     await this.engine.tween(0.9, (k) => {
@@ -629,7 +631,7 @@ export class BoardStage implements Stage {
     if (this.star.visible) {
       const s = this.star.children[0]!;
       s.rotation.y += dt * 1.6;
-      s.position.y = 2.6 + Math.sin(time * 2) * 0.25;
+      s.position.y = 3.9 + Math.sin(time * 2) * 0.25;
       (this.starBeam.material as THREE.MeshBasicMaterial).opacity = 0.16 + Math.sin(time * 3) * 0.06;
     }
     for (const a of this.arrows.children) a.position.y = ((a.userData.baseY as number | undefined) ?? 1.2) + Math.sin(time * 5) * 0.15;

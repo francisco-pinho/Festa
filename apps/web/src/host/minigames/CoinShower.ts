@@ -5,7 +5,8 @@
  */
 import { sound } from '../audio/Sound';
 import * as THREE from 'three';
-import { mesh, toon, toonUnique, disposeObject } from '../three/materials';
+import { mesh, toon, toonUnique, disposeObject, textSprite } from '../three/materials';
+import { coinMaterials, glowTexture } from '../three/coinArt';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 
@@ -27,7 +28,11 @@ class CoinShowerRun extends ArenaMinigame {
   private readonly score = new Map<string, number>();
   private spawnTimer = 0;
   private readonly coinGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.12, 20);
-  private readonly coinMat = new THREE.MeshStandardMaterial({ color: '#ffd23f', metalness: 0.1, roughness: 0.35, emissive: '#c98a00', emissiveIntensity: 0.55 });
+  /** Moeda normal: dourada com uma estrela em relevo; borda serrilhada. */
+  private readonly coinMat = coinMaterials(false);
+  /** Moeda grande (vale 3): roxa com aro dourado e um «3». */
+  private readonly bigMat = coinMaterials(true);
+  private readonly glowTex = glowTexture();
 
   constructor(ctx: MinigameContext) {
     super(ctx);
@@ -107,6 +112,10 @@ class CoinShowerRun extends ArenaMinigame {
           const value = it.kind === 'big' ? 3 : 1;
           this.score.set(who.seat.id, (this.score.get(who.seat.id) ?? 0) + value);
           sound.play('coin', { vol: 0.5, pitch: value > 1 ? 1.3 : 1 });
+          if (value > 1) {
+            sound.play('star', { vol: 0.4 });
+            this.floatAt('+3', it.obj.position.x, it.obj.position.z);
+          }
           this.ctx.vibrate(who.seat.id, 20);
           this.removeItem(i);
         }
@@ -130,18 +139,32 @@ class CoinShowerRun extends ArenaMinigame {
       g.add(ball, fuse, spark);
       obj = g;
     } else {
-      const coin = new THREE.Mesh(this.coinGeo, this.coinMat);
+      const big = kind === 'big';
+      const coin = new THREE.Mesh(this.coinGeo, big ? this.bigMat : this.coinMat);
       coin.castShadow = true;
       coin.rotation.x = Math.PI / 2;
       const holder = new THREE.Group();
       holder.add(coin);
-      if (kind === 'big') holder.scale.setScalar(1.8);
+      if (big) {
+        holder.scale.setScalar(1.8);
+        // Aura e um feixe de luz até ao chão: vê-se logo que é a especial.
+        const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glowTex, color: '#d58cff', transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+        glow.scale.setScalar(1.6);
+        holder.add(glow);
+        const beam = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.18, 0.4, 16, 12, 1, true),
+          new THREE.MeshBasicMaterial({ color: '#e7b6ff', transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }),
+        );
+        beam.position.y = -8 / 1.8;
+        beam.scale.setScalar(1 / 1.8);
+        holder.add(beam);
+      }
       obj = holder;
     }
     obj.position.set(x, 14 + this.ctx.rng.next() * 4, z);
     const marker = new THREE.Mesh(
-      new THREE.CircleGeometry(kind === 'bomb' ? 2.2 : 0.6, 24),
-      new THREE.MeshBasicMaterial({ color: kind === 'bomb' ? '#ff3b5c' : '#3a2a10', transparent: true, opacity: 0.15, depthWrite: false }),
+      kind === 'big' ? new THREE.RingGeometry(0.75, 1.05, 32) : new THREE.CircleGeometry(kind === 'bomb' ? 2.2 : 0.6, 24),
+      new THREE.MeshBasicMaterial({ color: kind === 'bomb' ? '#ff3b5c' : kind === 'big' ? '#ffd23f' : '#3a2a10', transparent: true, opacity: kind === 'big' ? 0.7 : 0.15, depthWrite: false }),
     );
     marker.rotation.x = -Math.PI / 2;
     marker.position.set(x, 0.03, z);
@@ -177,6 +200,31 @@ class CoinShowerRun extends ArenaMinigame {
         this.scene.remove(boom);
         disposeObject(boom);
       });
+  }
+
+  private readonly floaters: { s: THREE.Sprite; t: number }[] = [];
+
+  /** «+3» a subir de onde se apanhou a moeda grande. */
+  private floatAt(text: string, x: number, z: number): void {
+    const s = textSprite(text, { height: 1, color: '#e7b6ff', stroke: '#2a0f45' });
+    s.position.set(x, 2.6, z);
+    this.scene.add(s);
+    this.floaters.push({ s, t: 0 });
+  }
+
+  override update(dt: number, time: number): void {
+    super.update(dt, time);
+    for (let i = this.floaters.length - 1; i >= 0; i--) {
+      const f = this.floaters[i]!;
+      f.t += dt;
+      f.s.position.y += dt * 1.6;
+      (f.s.material as THREE.SpriteMaterial).opacity = Math.max(0, 1 - f.t);
+      if (f.t >= 1) {
+        this.scene.remove(f.s);
+        disposeObject(f.s);
+        this.floaters.splice(i, 1);
+      }
+    }
   }
 
   private removeItem(i: number): void {
@@ -220,7 +268,8 @@ class CoinShowerRun extends ArenaMinigame {
 
   override dispose(): void {
     this.coinGeo.dispose();
-    this.coinMat.dispose();
+    for (const m of [...this.coinMat, ...this.bigMat]) m.dispose();
+    this.glowTex.dispose();
     super.dispose();
   }
 }
