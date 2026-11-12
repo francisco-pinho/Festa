@@ -9,11 +9,14 @@ import { CharacterModel, type CharacterAnim } from '../three/CharacterModel';
 import { disposeObject, mesh, textSprite, toon } from '../three/materials';
 import { damp } from '../three/tweens';
 import { Clouds, Water, palmTree, setupSky } from './environment';
+import { ROOM_SEATS, buildLivingRoom, type LivingRoom } from './livingRoom';
 
 interface Slot {
   model: CharacterModel;
   label: THREE.Sprite | null;
   labelLift?: number;
+  /** Sentado (sofá, cadeirão, almofada): «idle» passa a «sit». */
+  sit?: boolean;
 }
 
 interface Confetti {
@@ -38,7 +41,15 @@ export class ShowcaseStage implements Stage {
   private camDistance = 15;
   private camHeight = 5;
 
-  constructor() {
+  /** Sala de estar (ecrã inicial) em vez da ilha. */
+  private readonly room: LivingRoom | null = null;
+
+  constructor(opts: { room?: boolean } = {}) {
+    if (opts.room) {
+      this.room = buildLivingRoom(this.scene);
+      this.scene.add(this.podium);
+      return;
+    }
     setupSky(this.scene, { fog: [60, 160] });
     this.scene.add(this.water.mesh, this.clouds.group, this.podium);
 
@@ -72,10 +83,20 @@ export class ShowcaseStage implements Stage {
         this.slots.set(e.key, slot);
         model.root.scale.setScalar(0.01);
       }
-      const a = n === 1 ? 0 : -spread / 2 + (i / (n - 1)) * spread;
-      const r = 8.5;
-      slot.model.root.position.set(Math.sin(a) * r, 0.1, -Math.cos(a) * r + 6);
-      slot.model.faceYaw(-a * 0.6, true);
+      const seat = this.room ? ROOM_SEATS[i] : undefined;
+      if (seat) {
+        // Sala de estar: cada um no seu lugar (sofá, cadeirões, almofadas, de pé junto à lareira).
+        slot.model.root.position.set(seat.x, seat.y ?? 0.02, seat.z);
+        slot.model.faceYaw(seat.yaw, true);
+        slot.sit = seat.sit;
+        slot.model.restAnim = seat.sit ? 'sit' : 'idle';
+        if (seat.sit && slot.model.anim === 'idle') slot.model.setAnim('sit');
+      } else {
+        const a = n === 1 ? 0 : -spread / 2 + (i / (n - 1)) * spread;
+        const r = 8.5;
+        slot.model.root.position.set(Math.sin(a) * r, 0.1, -Math.cos(a) * r + 6);
+        slot.model.faceYaw(-a * 0.6, true);
+      }
       // Nomes em duas alturas alternadas, para não se sobreporem quando há muitas personagens.
       slot.labelLift = n > 5 && i % 2 === 1 ? 0.6 : 0;
       this.setLabel(e.key, e.label ?? null, e.labelColor);
@@ -102,7 +123,9 @@ export class ShowcaseStage implements Stage {
   }
 
   setAnim(key: string, anim: CharacterAnim): void {
-    this.slots.get(key)?.model.setAnim(anim);
+    const slot = this.slots.get(key);
+    if (!slot) return;
+    slot.model.setAnim(slot.sit && anim === 'idle' ? 'sit' : anim);
   }
 
   setFaded(key: string, faded: boolean): void {
@@ -194,8 +217,11 @@ export class ShowcaseStage implements Stage {
   }
 
   update(dt: number, time: number): void {
-    this.water.update(time);
-    this.clouds.update(dt);
+    this.room?.update(time);
+    if (!this.room) {
+      this.water.update(time);
+      this.clouds.update(dt);
+    }
     for (const slot of this.slots.values()) {
       slot.model.update(dt);
       const s = slot.model.root.scale.x;

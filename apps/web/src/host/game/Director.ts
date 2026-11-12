@@ -100,9 +100,10 @@ export class Director {
   // ── Menu principal ──────────────────────────────────────
 
   private async lobby(): Promise<LobbyChoice> {
-    const stage = new ShowcaseStage();
+    // Ecrã inicial: a sala de estar (quem entra vai-se sentando no sofá, cadeirões…).
+    const stage = new ShowcaseStage({ room: true });
     this.engine.setStage(stage);
-    stage.view({ distance: 9.5, height: 2.6, orbitSpeed: 0, target: new THREE.Vector3(0, 1.3, -2.2) });
+    stage.view({ distance: 11.5, height: 3.6, orbitSpeed: 0, target: new THREE.Vector3(0, 1.6, -3.4) });
     this.conn.setLocked(false);
     this.menu.mode = 'lobby';
     this.hud.setRound(null);
