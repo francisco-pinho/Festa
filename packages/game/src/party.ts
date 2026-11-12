@@ -795,14 +795,33 @@ export function decideMinigameTeams(state: PartyState, rng: Rng): MinigameTeams 
   return { mode: 'teams', blue, red };
 }
 
-/** Dá o prémio do minijogo aos vencedores. */
-export function awardMinigame(state: PartyState, winners: string[]): Map<string, number> {
+/** Moedas por lugar nos minijogos de todos contra todos (como no Mario Party Superstars / Jamboree). */
+export const PLACE_PRIZES = [10, 3, 2, 0] as const;
+
+/**
+ * Dá o prémio do minijogo.
+ * - Sem `places` (equipas, 1 contra 3, ou quando só se sabe quem ganhou): cada vencedor leva 10.
+ * - Com `places` (todos contra todos): grupos do melhor para o pior; cada lugar paga
+ *   10 / 3 / 2 / 0 e quem empata partilha o lugar (ex.: dois em 2.º levam 3 cada).
+ */
+export function awardMinigame(state: PartyState, winners: string[], places?: string[][]): Map<string, number> {
   const awarded = new Map<string, number>();
-  for (const id of winners) {
+  const give = (id: string, amount: number) => {
+    if (amount <= 0) return;
     const p = getPlayer(state, id);
-    const got = addCoins(p, RULES.minigamePrize);
+    const got = addCoins(p, amount);
     p.stats.minigameCoins += got;
     awarded.set(id, got);
+  };
+  if (!places?.length) {
+    for (const id of winners) give(id, RULES.minigamePrize);
+    return awarded;
+  }
+  let rank = 0;
+  for (const group of places) {
+    const prize = PLACE_PRIZES[rank] ?? 0;
+    for (const id of group) give(id, prize);
+    rank += group.length;
   }
   return awarded;
 }

@@ -120,6 +120,8 @@ export class PartyFlow {
   private lastMinigame: string | null = null;
   /** Minijogos já jogados nesta festa (para não repetir enquanto houver outros). */
   private readonly playedMinigames = new Set<string>();
+  /** Lugares do último minijogo (grupos do melhor para o pior), para o prémio por lugar. */
+  private lastPlaces: string[][] | null = null;
   private mapOpen = false;
   /** Quem está a jogar agora (destacado no mapa dos telemóveis). */
   private activeId: string | null = null;
@@ -1313,20 +1315,38 @@ export class PartyFlow {
     this.stage.overview();
     await this.hud.banner('Minijogo!', { sub: MODE_LABEL[teams.mode], hold: 1.6, color: '#ffd23f' });
     const winners = await this.runMinigame(state.players, teams, null);
-    const awarded = awardMinigame(state, winners);
+    // Todos contra todos: paga por lugar (10/3/2/0). Equipas e 1 contra 3: 10 a cada vencedor.
+    const places = teams.mode === 'ffa' ? this.lastPlaces : null;
+    const awarded = awardMinigame(state, winners, places ?? undefined);
+    const placeOf = new Map<string, number>();
+    if (places) {
+      let rank = 1;
+      for (const g of places) {
+        for (const id of g) placeOf.set(id, rank);
+        rank += g.length;
+      }
+    }
     for (const id of winners) this.ctl.vibrate(this.seat(id), [80, 50, 80]);
     for (const p of state.players) {
       const win = winners.includes(p.id);
       this.ctl.setLayout(this.seat(p.id), {
         kind: 'info',
-        title: win ? `🏆 Ganhaste! +${awarded.get(p.id) ?? 0} 🪙` : winners.length ? 'Desta vez não… 😅' : 'Ninguém ganhou!',
+        title: win
+          ? `🏆 Ganhaste! +${awarded.get(p.id) ?? 0} 🪙`
+          : awarded.get(p.id)
+            ? `${placeOf.get(p.id) ?? ''}.º lugar: +${awarded.get(p.id)} 🪙`
+            : winners.length
+              ? 'Desta vez não…'
+              : 'Ninguém ganhou!',
         sub: 'Classificação depois do minijogo',
         stats: this.phoneStats(p.id),
         table: this.phoneTable(p.id, (o) => (winners.includes(o.id) ? '🏆' : undefined)),
         color: getCharacter(p.characterId).color,
       });
     }
-    const sorted = [...state.players].sort((a, b) => Number(winners.includes(b.id)) - Number(winners.includes(a.id)));
+    const sorted = [...state.players].sort(
+      (a, b) => Number(winners.includes(b.id)) - Number(winners.includes(a.id)) || (awarded.get(b.id) ?? 0) - (awarded.get(a.id) ?? 0),
+    );
     this.hud.panel(`
       <h1>${winners.length ? 'Vencedores!' : 'Ninguém ganhou!'}</h1>
       <div class="rows">${sorted
@@ -1334,7 +1354,7 @@ export class PartyFlow {
           const win = winners.includes(p.id);
           return `<div class="row ${win ? 'win' : ''}" style="animation-delay:${i * 0.07}s">
             <span>${win ? '🏆' : ''}</span><span class="dot" style="background:${getCharacter(p.characterId).color}"></span>
-            <span>${esc(p.name)}</span><span class="gain">${win ? `+${awarded.get(p.id) ?? 0} 🪙` : ''}</span><span>🪙 ${p.coins}</span></div>`;
+            <span>${esc(p.name)}</span><span class="gain">${awarded.get(p.id) ? `${placeOf.get(p.id) && !win ? `${placeOf.get(p.id)}.º · ` : ''}+${awarded.get(p.id)} 🪙` : ''}</span><span>🪙 ${p.coins}</span></div>`;
         })
         .join('')}</div>`);
     await this.wait(4);
@@ -1514,6 +1534,11 @@ export class PartyFlow {
     this.waitAll('Fim do minijogo!');
     const best = Math.max(0, ...roundWins.values());
     const winners = best > 0 ? players.filter((p) => roundWins.get(p.id) === best).map((p) => p.id) : [];
+    // Lugares (para o prémio por lugar): pelas rondas ganhas; num jogo de uma ronda só se sabe quem ganhou.
+    if (best > 0 && totalRounds > 1) {
+      const counts = [...new Set(players.map((p) => roundWins.get(p.id) ?? 0))].sort((a, b) => b - a);
+      this.lastPlaces = counts.map((c) => players.filter((p) => (roundWins.get(p.id) ?? 0) === c).map((p) => p.id));
+    } else this.lastPlaces = winners.length ? [winners] : null;
     sound.music('board');
     sound.play(winners.length ? 'cheer' : 'aww');
     this.engine.setStage(this.stage, false);

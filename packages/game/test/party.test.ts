@@ -146,6 +146,19 @@ describe('festa', () => {
     expect(teams.red).toHaveLength(3);
   });
 
+  it('prémio por lugar (10/3/2/0, empates partilham o lugar)', () => {
+    const s = party();
+    const ids = s.players.map((p) => p.id);
+    const before = s.players.map((p) => p.coins);
+    // 1.º sozinho, dois empatados em 2.º, último sem nada.
+    const got = awardMinigame(s, [ids[0]!], [[ids[0]!], [ids[1]!, ids[2]!], [ids[3]!]]);
+    expect(got.get(ids[0]!)).toBe(10);
+    expect(got.get(ids[1]!)).toBe(3);
+    expect(got.get(ids[2]!)).toBe(3);
+    expect(got.has(ids[3]!)).toBe(false);
+    expect(s.players[3]!.coins).toBe(before[3]);
+  });
+
   it('prémio do minijogo, estrelas bónus e classificação', () => {
     const s = party();
     awardMinigame(s, ['p1']);
