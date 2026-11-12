@@ -102,7 +102,7 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 - ⬜ Hammer Drop — martelo a cair: saltar no tempo certo
 - ⬜ Face Lift — montar a cara (puzzle)
 - ⬜ Piranha's Pursuit — fugir da planta
-- ⬜ Bobsled Run → ✅ Corrida de Bobsled
+- ✅ Bobsled Run → Corrida de Bobsled
 - ✅ Tug o' War → Cabo de Guerra
 - ⬜ Handcar Havoc — vagoneta a dois (equipa)
 - ⬜ Tipsy Tourney — virar quadros
