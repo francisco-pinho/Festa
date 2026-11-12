@@ -7,13 +7,38 @@
 import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import type { ButtonId } from '@festa/shared';
-import { disposeObject, mesh, textSprite, toon } from '../three/materials';
+import { disposeObject, mesh, textSprite, toon, toonUnique } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 
 type Dir = 'up' | 'down' | 'left' | 'right';
 const DIRS: Dir[] = ['up', 'down', 'left', 'right'];
-const ARROW: Record<Dir, string> = { up: '⬆️', down: '⬇️', left: '⬅️', right: '➡️' };
+const ARROW_COLOR: Record<Dir, string> = { up: '#4cd964', down: '#ff6b7a', left: '#3fa7ff', right: '#ffd23f' };
+/** Rotação (no plano do ecrã) para a seta apontar na direção. */
+const ARROW_ROT: Record<Dir, number> = { up: 0, left: Math.PI / 2, down: Math.PI, right: -Math.PI / 2 };
+
+/** Seta 3D (corpo + ponta) com contorno escuro, a apontar na direção escolhida. */
+function arrowMesh(d: Dir): THREE.Group {
+  const g = new THREE.Group();
+  const shape = new THREE.Shape();
+  shape.moveTo(-0.17, -0.5);
+  shape.lineTo(0.17, -0.5);
+  shape.lineTo(0.17, 0.05);
+  shape.lineTo(0.42, 0.05);
+  shape.lineTo(0, 0.55);
+  shape.lineTo(-0.42, 0.05);
+  shape.lineTo(-0.17, 0.05);
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.14, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04, bevelSegments: 2 });
+  geo.translate(0, 0, -0.07);
+  const color = ARROW_COLOR[d];
+  const body = mesh(geo, toonUnique(color, { emissive: color, emissiveIntensity: 0.35 }), { cast: false });
+  const outline = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: '#1d1433', side: THREE.BackSide }));
+  outline.scale.setScalar(1.12);
+  g.add(outline, body);
+  g.rotation.z = ARROW_ROT[d];
+  return g;
+}
 const TURNS = 5;
 const CHOOSE = 3.5;
 const REVEAL = 2.4;
@@ -27,7 +52,9 @@ class LookAwayRun extends RowMinigame {
   private phaseT = 0;
   private readonly picks = new Map<string, Dir>();
   private readonly botAt = new Map<string, number>();
-  private readonly marks: THREE.Sprite[] = [];
+  private readonly marks: THREE.Object3D[] = [];
+  /** Para onde cada um está a virar a cabeça (a pose aproxima-se suavemente). */
+  private readonly lookTarget = new Map<string, { hx: number; hy: number }>();
   private readonly timerBar: THREE.Mesh;
   private sign: THREE.Sprite | null = null;
 
@@ -53,7 +80,7 @@ class LookAwayRun extends RowMinigame {
     this.timerBar = mesh(new THREE.BoxGeometry(6, 0.18, 0.05), toon('#ffd23f'), { cast: false });
     this.timerBar.position.set(0, 4.6, -4.5);
     this.scene.add(this.timerBar);
-    this.camera.position.set(0, 4.6, 9.5);
+    this.camera.position.set(0, 6.4, 10);
     this.camera.lookAt(0, 1.6, -2);
     this.showSign('Escolhe para onde olhar!');
   }
@@ -85,10 +112,32 @@ class LookAwayRun extends RowMinigame {
   private look(r: Rower, d: Dir | null): void {
     const facingCamera = r === this.solo;
     const side = facingCamera ? -1 : 1;
-    const p = r.model.pose;
-    p.headX = d === 'up' ? -0.45 : d === 'down' ? 0.4 : 0;
-    p.headY = d === 'left' ? 0.85 * side : d === 'right' ? -0.85 * side : 0;
-    p.chestY = p.headY * 0.35;
+    this.lookTarget.set(r.seat.id, {
+      hx: d === 'up' ? -0.45 : d === 'down' ? 0.4 : 0,
+      hy: d === 'left' ? 0.85 * side : d === 'right' ? -0.85 * side : 0,
+    });
+  }
+
+  /** As cabeças viram suavemente; as setas aparecem com um pulo e flutuam. */
+  protected override animate(dt: number, time: number): void {
+    const k = Math.min(1, dt * 7);
+    for (const r of this.row) {
+      const t = this.lookTarget.get(r.seat.id);
+      if (!t) continue;
+      const p = r.model.pose;
+      p.headX += (t.hx - p.headX) * k;
+      p.headY += (t.hy - p.headY) * k;
+      p.chestY += (t.hy * 0.35 - p.chestY) * k;
+    }
+    for (const m of this.marks) {
+      const a = (m.userData.age = ((m.userData.age as number | undefined) ?? 0) + dt);
+      if (m.userData.baseY === undefined) m.userData.baseY = m.position.y;
+      const pop = Math.min(1, a / 0.3);
+      const c1 = 1.70158;
+      const s = 1 + (c1 + 1) * (pop - 1) ** 3 + c1 * (pop - 1) ** 2; // salto (backOut)
+      if (!(m as THREE.Sprite).isSprite) m.scale.setScalar(Math.max(0.01, s) * 0.85);
+      m.position.y = (m.userData.baseY as number) + Math.sin(time * 3 + m.position.x) * 0.08;
+    }
   }
 
   private clearMarks(): void {
@@ -166,7 +215,7 @@ class LookAwayRun extends RowMinigame {
     for (const r of players) {
       const d = this.picks.get(r.seat.id)!;
       this.look(r, d);
-      const m = textSprite(ARROW[d], { height: 1, color: '#ffffff' });
+      const m = arrowMesh(d);
       const pos = r.model.root.position;
       m.position.set(pos.x, pos.y + (r === this.solo ? 4 : 3.3), pos.z);
       this.scene.add(m);
