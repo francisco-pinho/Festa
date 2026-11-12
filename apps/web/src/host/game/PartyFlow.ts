@@ -117,6 +117,8 @@ export class PartyFlow {
   private state!: PartyState;
   private stage!: BoardStage;
   private lastMinigame: string | null = null;
+  /** Minijogos já jogados nesta festa (para não repetir enquanto houver outros). */
+  private readonly playedMinigames = new Set<string>();
   private mapOpen = false;
   /** Quem está a jogar agora (destacado no mapa dos telemóveis). */
   private activeId: string | null = null;
@@ -1303,8 +1305,9 @@ export class PartyFlow {
   private async runMinigame(players: PartyPlayer[], teams: MinigameTeams, title: string | null, duel = false): Promise<string[]> {
     const def =
       MINIGAMES.find((m) => m.id === this.d.forcedMinigame && m.modes.includes(teams.mode) && (duel || players.length === 2 || !m.duel)) ??
-      (duel ? pickDuel(this.rng, this.lastMinigame) : pickMinigame(teams.mode, this.rng, this.lastMinigame));
+      (duel ? pickDuel(this.rng, this.lastMinigame, this.playedMinigames) : pickMinigame(teams.mode, this.rng, this.lastMinigame, this.playedMinigames));
     this.lastMinigame = def.id;
+    this.playedMinigames.add(def.id);
     const teamOf = (id: string): MinigameSeat['team'] => (teams.mode === 'ffa' ? null : teams.blue.includes(id) ? 'blue' : 'red');
     const mgSeats: MinigameSeat[] = players.map((p) => ({ id: p.id, name: p.name, characterId: p.characterId, team: teamOf(p.id) }));
     const ids = new Set(players.map((p) => p.id));

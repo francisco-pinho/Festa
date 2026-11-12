@@ -169,11 +169,13 @@ export const Balloon: MinigameDef = {
   id: 'balao',
   rounds: 3,
   name: 'Balão Rebentão',
-  modes: ['ffa', 'teams'],
+  modes: ['ffa', 'teams', 'oneVsAll'],
   description: (mode) =>
     mode === 'ffa'
       ? 'Enche o balão com Ⓐ quando o marcador estiver na zona verde: bombada forte! Na vermelha quase não enche. Quem o rebentar primeiro ganha!'
-      : 'Cada equipa enche um balão gigante em conjunto: Ⓐ quando o marcador de cada um estiver no verde! A primeira a rebentá-lo ganha.',
+      : mode === 'oneVsAll'
+        ? 'Um contra todos: o solitário enche o seu balão sozinho, os outros enchem um balão gigante juntos (precisa de mais ar). Ⓐ no verde! Quem rebentar primeiro ganha.'
+        : 'Cada equipa enche um balão gigante em conjunto: Ⓐ quando o marcador de cada um estiver no verde! A primeira a rebentá-lo ganha.',
   controls: 'Ⓐ Bombear no verde',
   stick: false,
   buttons: [{ id: 'a', label: 'Bombear' }],
