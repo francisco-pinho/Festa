@@ -26,6 +26,10 @@ import { FallingTiles } from './FallingTiles';
 import { ShellSoccer } from './ShellSoccer';
 import { PizzaRush } from './PizzaRush';
 import { PhotoShoot } from './PhotoShoot';
+import { ConveyorBombs } from './ConveyorBombs';
+import { Pinball } from './Pinball';
+import { Bobsled } from './Bobsled';
+import { BeachVolley } from './BeachVolley';
 import type { MinigameDef } from './types';
 
 /** Para adicionar um minijogo: cria o ficheiro e acrescenta-o aqui. */
@@ -36,6 +40,7 @@ export const MINIGAMES: MinigameDef[] = [
   CountSheep, RightForce, WallHole, Fishing,
   MemoryCards, IceRace,
   FallingTiles, ShellSoccer, PizzaRush, PhotoShoot,
+  ConveyorBombs, Pinball, Bobsled, BeachVolley,
 ];
 
 /**
