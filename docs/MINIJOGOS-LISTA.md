@@ -12,8 +12,8 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 |---|---|---|
 | 0 (base) | ✅ | Chuva de Moedas, Empurra-Empurra (sumo), Apanhada, Saque Rápido, Cabo de Guerra, Pontaria |
 | 1 | ✅ | Chão de Cores, Bolas de Neve, Corda Saltitona, Diz o Maestro, Balão Rebentão, Batata Quente, Martelão (1 vs 3), Canoa a Pares (2 vs 2) |
-| 2 | ✅ em parte | ✅ Chuva de Meteoros, ✅ Olha para o Lado, ✅ Bombardeiro (1 vs 3) · ✅ Conta as Ovelhas, ✅ Força Certa, ✅ Parede com Buraco, ✅ Pesca de Baús · 🔜 Memória, Corrida no Gelo |
-| 3 | ⬜ | Plataformas que Caem, Bombas Sobe-Desce, Pizza Rápida, Fotografia Certa, Pinball, Corrida de Bobsled, Volei de Praia, Futebol de Carapaças |
+| 2 | ✅ | Chuva de Meteoros, Olha para o Lado, Bombardeiro (1 vs 3), Conta as Ovelhas, Força Certa, Parede com Buraco, Pesca de Baús, Memória, Corrida no Gelo |
+| 3 | 🔜 | Plataformas que Caem, Bombas Sobe-Desce, Pizza Rápida, Fotografia Certa, Pinball, Corrida de Bobsled, Volei de Praia, Futebol de Carapaças |
 | 4 | ⬜ | Escalada, Labirinto a Dois, Bolos em Série (equipa), Hamburguer Alto, Sombras, Diferenças, Puzzle, Carros de Choque |
 
 ---
@@ -24,7 +24,7 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 - ⬜ Catchy Tunes — apanhar notas que caem
 - ✅ Bubble Brawl → Empurra-Empurra
 - ⬜ Track & Yield — vagonetas: escolher o caminho certo
-- 🔜 Fun Run → Corrida no Gelo (corrida com obstáculos)
+- ✅ Fun Run → Corrida no Gelo
 - ✅ Cointagious → Apanhada
 - ⬜ Snow Ride — descida de trenó
 - 🔜 Picture This → Fotografia Certa (lote 3)
@@ -139,7 +139,7 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 - ⬜ Tidal Toss — apanhar moedas na maré
 - ⬜ Parasol Plummet — guarda-chuva a cair: apanhar moedas
 - ⬜ Etch n Catch — desenhar formas
-- 🔜 Messy Memory → Memória
+- ✅ Messy Memory → Memória
 - ⬜ Ticktock Hop — saltar o ponteiro do relógio
 - ⬜ Boulder Ball — rolar numa pedra (corrida)
 - ⬜ Picking Panic — apanhar moedas e evitar bombas
@@ -159,7 +159,7 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 
 **Do Mario Party 4** — ⬜ Money Belts, Paths of Peril, GOOOOOOOAL!!, Trace Race, Beach Volley Folly (Volei de Praia, lote 3), Booksquirm (✅ Parede com Buraco), Dungeon Duos, Revers-a-Bomb
 
-**Do Mario Party 5** — ⬜ Coney Island, Night Light Fright, ✅ Bill Blasters → Bombardeiro, Ice Hockey, Squared Away, 🔜 Later Skater → Corrida no Gelo, Dinger Derby, Pushy Penguins, Leaf Leap, Tube it or Lose It
+**Do Mario Party 5** — ⬜ Coney Island, Night Light Fright, ✅ Bill Blasters → Bombardeiro, Ice Hockey, Squared Away, ✅ Later Skater → Corrida no Gelo, Dinger Derby, Pushy Penguins, Leaf Leap, Tube it or Lose It
 
 **Do Mario Party 6** — ⬜ Burnstile, Rocky Road, ✅ Mass Meteor → Chuva de Meteoros, Dark 'n Crispy, Trap Ease Artist, Cashapult, Money Belt, Block Star, Pit Boss, What Goes Up…, Catch You Letter, Snow Whirled
 
@@ -190,7 +190,7 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 ## Super Mario Party Jamboree (nomes em espanhol)
 
 - ⬜ Peligro en el puente, Toads equilibristas, Tiovivo fulminante, Banderas planetarias, Emparedados, Camino modular, Batalla de luz, Frente frío, Magma mía, El rocaminó, Tira y… ¡canasta!, Huida pedregosa, Golf basculante, Escalada de luces, Equilibrio marino, Naves electrizantes, Minitriatlón, Excavación a la carrera, Las llaves del éxito, Pingüizadores al límite, Riquezas sobre hielo, Monedas balanceadas, Tesoros hundidos, Plataformas precarias, ¡Deja tu sello!, A salto de Hormigoides, Disparos al atardecer, Galletas en serie, Placas aplastantes, Golpe de intuición, Dianas moviditas, Caídas calculadas, Fantasmón al ataque, Pesca con jaula, Ingresos líquidos, La grúa, Robo a martillazos, Carrera pendular, Frutas en banda, Corte de primera, Carrera fluvial de Dorrie, Pulso mecanizado, A toda mecha, Ojo que voy, Taxi en dos ejes, Ruinas de fortuna, Lazo a los cofres, Pesca de precisión, Máquina de guantazos, La bolera de Rocomiro, Ascensor de Fuzzys, Carrera de canicas, Pulso para los objetos, Premio alineado, Curling de objetos, Premio en caída, Zumo en serie, Pase y remate, Dianas navegantes, La defensa del portón, Lavado de Chomp Cadenas, Intercambio de cartas, Quien fuera Floruga, Miradas soslayadas, Puzles en equipo, Topos Monty mecánicos, Rompebloques, Crujiente y tostado, El dedo empujador, Hiperautopista, Piezas en busca de orden, Cañones entre las nubes
-- ✅ Con la fuerza justa → Força Certa · 🔜 Parejas ocultas / Cartas gemelas → Memória · ✅ ¿Quien aparece más? → Conta as Ovelhas
+- ✅ Con la fuerza justa → Força Certa · ✅ Parejas ocultas / Cartas gemelas → Memória · ✅ ¿Quien aparece más? → Conta as Ovelhas
 - ⬜ Precisión fotográfica / Imágenes coincidentes → Fotografia Certa (lote 3) · Diferencias encubiertas → Diferenças (lote 4) · Sombras superpuestas → Sombras (lote 4) · Hamburguesería de altura → Hamburguer Alto (lote 4)
 - ✅ Bolazos de nieve → Bolas de Neve
 - ⬜ Cozinha em equipa: Potaje acompasado, Postre a cucharazos, Nata sincronizada, Unta conjunta, Tortitas en su punto, Bocatata, Imitación al curry, Brochetas al vuelo, Verduras a paladas

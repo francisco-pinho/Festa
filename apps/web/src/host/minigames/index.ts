@@ -21,6 +21,7 @@ import { RightForce } from './RightForce';
 import { WallHole } from './WallHole';
 import { Fishing } from './Fishing';
 import { MemoryCards } from './MemoryCards';
+import { IceRace } from './IceRace';
 import type { MinigameDef } from './types';
 
 /** Para adicionar um minijogo: cria o ficheiro e acrescenta-o aqui. */
@@ -29,7 +30,7 @@ export const MINIGAMES: MinigameDef[] = [
   ColorFloor, Snowballs, JumpRope, Maestro, Balloon, HotPotato, Hammer, Canoe,
   LookAway, Bomber, Meteors,
   CountSheep, RightForce, WallHole, Fishing,
-  MemoryCards,
+  MemoryCards, IceRace,
 ];
 
 /**
