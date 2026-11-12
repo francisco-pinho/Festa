@@ -184,13 +184,9 @@ class WallHoleRun extends ArenaMinigame {
         }
         // Empurrada para fora da plataforma: cai à água.
         if (Math.abs(this.across(a, w)) > HALF + 0.2) {
-          a.alive = false;
           this.carried.delete(a);
           this.outAt.set(a.seat.id, this.elapsed);
-          a.model.setAnim('fall');
-          a.model.setFaded(true);
-          sound.play('splash', { vol: 0.6 });
-          this.ctx.vibrate(a.seat.id, 300);
+          this.sink(a, 2.5);
         }
       }
       if (Math.abs(w.pos) > HALF + 3.5) {

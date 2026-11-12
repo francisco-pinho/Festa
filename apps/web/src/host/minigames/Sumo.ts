@@ -15,7 +15,6 @@ class SumoRun extends ArenaMinigame {
   protected readonly duration = 45;
   private radius = START_R;
   private readonly platform: THREE.Mesh;
-  private readonly falling = new Set<Actor>();
 
   constructor(ctx: MinigameContext) {
     super(ctx);
@@ -94,18 +93,8 @@ class SumoRun extends ArenaMinigame {
     for (const a of this.actors) {
       if (!a.alive) continue;
       if (Math.hypot(a.pos.x, a.pos.z) > this.radius + 0.2) {
-        a.alive = false;
-        this.falling.add(a);
-        a.model.setAnim('dizzy');
-        this.ctx.vibrate(a.seat.id, 300);
-      }
-    }
-    for (const a of this.falling) {
-      a.vel.y -= 25 * dt;
-      a.pos.addScaledVector(a.vel, dt);
-      if (a.pos.y < -6) {
-        a.model.root.visible = false;
-        this.falling.delete(a);
+        // Cai à lava (continua a cair mesmo que o jogo acabe logo a seguir).
+        this.sink(a, 2);
       }
     }
 

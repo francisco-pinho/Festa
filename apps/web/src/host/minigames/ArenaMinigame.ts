@@ -120,8 +120,73 @@ export abstract class ArenaMinigame implements MinigameRun {
     for (const a of this.actors) a.model.setAnim('idle');
   }
 
+  /** Quem caiu da plataforma: continua a cair (mesmo depois de o jogo acabar) até desaparecer na água/lava. */
+  private readonly sinking = new Set<Actor>();
+
+  /**
+   * Tira a personagem do jogo e fá-la cair da plataforma para a água (ou lava): salta um bocadinho
+   * para fora, cai, faz «splash» e desaparece.
+   */
+  protected sink(a: Actor, push = 3): void {
+    if (this.sinking.has(a)) return;
+    a.alive = false;
+    const out = new THREE.Vector3(a.pos.x, 0, a.pos.z);
+    if (out.lengthSq() < 0.01) out.set(1, 0, 0);
+    out.normalize();
+    a.vel.set(a.vel.x * 0.5 + out.x * push, 4, a.vel.z * 0.5 + out.z * push);
+    a.model.setAnim('fall');
+    this.ctx.vibrate(a.seat.id, 300);
+    this.sinking.add(a);
+  }
+
+  private updateSinking(dt: number): void {
+    const waterY = this.water.mesh.position.y;
+    for (const a of this.sinking) {
+      const wasAbove = a.pos.y > waterY;
+      a.vel.y -= 22 * dt;
+      // Dentro de água/lava trava muito.
+      if (!wasAbove) a.vel.multiplyScalar(1 - Math.min(1, dt * 4));
+      a.pos.addScaledVector(a.vel, dt);
+      if (wasAbove && a.pos.y <= waterY) {
+        sound.play('splash', { vol: 0.7 });
+        this.splash(a.pos.x, waterY, a.pos.z);
+      }
+      if (a.pos.y < waterY - 2.2) {
+        a.model.root.visible = false;
+        this.sinking.delete(a);
+      }
+    }
+    for (let i = this.splashes.length - 1; i >= 0; i--) {
+      const s = this.splashes[i]!;
+      s.t += dt;
+      const k = s.t / 0.6;
+      s.mesh.scale.setScalar(0.5 + k * 2.2);
+      (s.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.8 * (1 - k));
+      if (k >= 1) {
+        this.scene.remove(s.mesh);
+        s.mesh.geometry.dispose();
+        (s.mesh.material as THREE.Material).dispose();
+        this.splashes.splice(i, 1);
+      }
+    }
+  }
+
+  private readonly splashes: { mesh: THREE.Mesh; t: number }[] = [];
+
+  /** Anel de espuma onde alguém caiu. */
+  private splash(x: number, y: number, z: number): void {
+    const geo = new THREE.RingGeometry(0.4, 0.75, 28);
+    geo.rotateX(-Math.PI / 2);
+    const lava = (this.water.mesh.material as THREE.MeshStandardMaterial).color.r > 0.6;
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: lava ? '#ffb347' : '#ffffff', transparent: true, opacity: 0.8, depthWrite: false }));
+    m.position.set(x, y + 0.35, z);
+    this.scene.add(m);
+    this.splashes.push({ mesh: m, t: 0 });
+  }
+
   update(dt: number, time: number): void {
     this.water.update(time);
+    this.updateSinking(dt);
     if (this.running) {
       this.elapsed += dt;
       for (const a of this.actors) {
