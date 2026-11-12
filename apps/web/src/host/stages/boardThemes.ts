@@ -1362,11 +1362,14 @@ class CityTheme implements BoardTheme {
       o.rotation.y = Math.atan2(bx - ax, bz - az) + (key.includes('car') ? 0 : side > 0 ? Math.PI / 2 : -Math.PI / 2);
       this.group.add(o);
     });
-    // Candeeiros
+    // Candeeiros: ao lado das casas e altos (por cima das casas queimavam os dados, que flutuam ali perto).
     for (let i = 0; i < 6; i++) {
       const s = board.spaces[Math.floor((i / 6) * board.spaces.length)]!;
-      const lamp = new THREE.PointLight('#ffd9a0', 30, 18);
-      lamp.position.set(s.x, 5, s.z);
+      const lamp = new THREE.PointLight('#ffd9a0', 22, 22);
+      const away = new THREE.Vector2(s.x - (this.bounds.minX + this.bounds.maxX) / 2, s.z - (this.bounds.minZ + this.bounds.maxZ) / 2);
+      if (away.lengthSq() < 0.01) away.set(1, 0);
+      away.normalize().multiplyScalar(3.5);
+      lamp.position.set(s.x + away.x, 8, s.z + away.y);
       this.group.add(lamp);
     }
     scene.add(this.group);
