@@ -123,6 +123,28 @@ export class Hud {
     this.bannerEl.hidden = true;
   }
 
+  /**
+   * Título fixo no topo do ecrã (não tapa as personagens), até ser trocado ou escondido com `null`.
+   * Usado na cerimónia das estrelas bónus.
+   */
+  headline(text: string | null, opts: { sub?: string; color?: string } = {}): void {
+    let el = this.root.querySelector<HTMLElement>('.headline');
+    if (!el) {
+      el = document.createElement('div');
+      el.className = 'headline';
+      this.root.appendChild(el);
+    }
+    if (text === null) {
+      el.hidden = true;
+      return;
+    }
+    el.hidden = false;
+    el.innerHTML = `<div class="title" style="${opts.color ? `color:${opts.color}` : ''}">${esc(text)}</div>${opts.sub ? `<div class="sub">${esc(opts.sub)}</div>` : ''}`;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+  }
+
   /** Número/texto gigante (contagem decrescente, "FIM!"). */
   async big(text: string, hold = 0.8): Promise<void> {
     sound.play(/^\d+$/.test(text) ? 'beep' : text === 'FIM!' ? 'whistle' : 'go');

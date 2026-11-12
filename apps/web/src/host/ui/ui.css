@@ -1196,3 +1196,19 @@
 }
 .star-dist.pop { animation: star-dist-pop 0.4s cubic-bezier(.2, 1.6, .4, 1); }
 @keyframes star-dist-pop { from { transform: scale(0.5); opacity: 0; } }
+
+/* Título fixo no topo (cerimónia das estrelas bónus) */
+.headline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4vh;
+  text-align: center;
+  text-shadow: 0 0.5vh 0 var(--ink), 0 0 2vh rgba(0, 0, 0, 0.35);
+  -webkit-text-stroke: 0.22vh var(--ink);
+  pointer-events: none;
+}
+.headline .title { font-size: 7vh; font-weight: 900; }
+.headline .sub { font-size: 3vh; font-weight: 800; color: #fff; margin-top: 0.6vh; }
+.headline.show { animation: headline-in 0.45s cubic-bezier(.2, 1.5, .4, 1); }
+@keyframes headline-in { from { transform: translateY(-3vh) scale(0.85); opacity: 0; } }

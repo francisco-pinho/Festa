@@ -60,6 +60,7 @@ import {
   playersOnSpace,
   priceFor,
   ranking,
+  BONUS_POOL,
   SHOP_LABEL,
   splitDice,
   removeItem,
@@ -1559,28 +1560,60 @@ export class PartyFlow {
     const ceremony = new ShowcaseStage();
     this.engine.setStage(ceremony);
     ceremony.view({ distance: 11, height: 3.5, orbitSpeed: 0.05 });
+    // Com suspense: todos em palco, os números aparecem um a um, rufar de tambores e só depois
+    // a estrela desce para quem ganhou (os outros apagam-se). O título fica no topo.
+    const everyone = [...state.players];
+    const UNITS: Record<string, string> = { minigame: '🪙', rich: '🪙', shopper: '🪙', event: 'casas', unlucky: 'casas', blue: 'casas', walker: 'casas', stroll: 'casas', items: 'itens', duel: 'duelos' };
     for (const bonus of bonusStars(state, this.rng)) {
       const winners = bonus.winners.map((id) => getPlayer(state, id));
-      ceremony.setLineup(winners.map((w) => ({ key: w.id, characterId: w.characterId, label: w.name, labelColor: '#ffd23f' })));
-      await this.hud.banner(`⭐ ${bonus.title}`, { sub: bonus.description, hold: 2, color: '#ffd23f' });
-      // Estrelas a descer do céu até cada vencedor
+      const pool = BONUS_POOL.find((b) => b.id === bonus.id);
+      const shown = (p: PartyPlayer) => (bonus.id === 'stroll' ? p.stats.steps : (pool?.value(p) ?? 0));
+      ceremony.setLineup(everyone.map((p) => ({ key: p.id, characterId: p.characterId, label: p.name, labelColor: '#ffffff' })));
+      for (const p of everyone) {
+        ceremony.setFaded(p.id, false);
+        ceremony.setAnim(p.id, 'idle');
+      }
+      sound.play('banner');
+      this.hud.headline(`⭐ ${bonus.title}`, { sub: bonus.description, color: '#ffd23f' });
+      await this.wait(2.2);
+      // Os números de cada um, um de cada vez.
+      for (const p of everyone) {
+        ceremony.setLabel(p.id, '…', '#ffffff');
+        sound.play('tick');
+        await this.wait(0.55);
+        ceremony.setLabel(p.id, `${shown(p)} ${UNITS[bonus.id] ?? ''}`.trim(), '#ffd23f');
+        sound.play('beep', { vol: 0.4 });
+        await this.wait(0.65);
+      }
+      // Rufar: tiques cada vez mais depressa.
+      this.hud.headline(`⭐ ${bonus.title}`, { sub: 'E a estrela vai para…', color: '#ffd23f' });
+      for (let i = 0; i < 14; i++) {
+        sound.play('tick', { pitch: 1 + i * 0.04 });
+        await this.wait(0.22 - i * 0.012);
+      }
+      // Revelação: os outros apagam-se e a estrela desce para quem ganhou.
+      for (const p of everyone) if (!bonus.winners.includes(p.id)) ceremony.setFaded(p.id, true);
+      const spots = winners.map((w) => ceremony.positionOf(w.id) ?? new THREE.Vector3());
       const stars = winners.map(() => starMesh(0.7));
       stars.forEach((s) => ceremony.scene.add(s));
       await this.engine.tween(1.4, (k) => {
         stars.forEach((s, i) => {
-          const r = 8.5;
-          const n = winners.length;
-          const spread = Math.min(1.25, 0.15 + n * 0.11);
-          const a = n === 1 ? 0 : -spread / 2 + (i / (n - 1)) * spread;
-          s.position.set(Math.sin(a) * r, 12 - k * 9, -Math.cos(a) * r + 6);
+          const at = spots[i]!;
+          s.position.set(at.x, 12 - k * 8.5, at.z);
           s.rotation.y = k * 10;
         });
       });
       applyBonusStars(state, [bonus]);
-      for (const w of winners) ceremony.setAnim(w.id, 'cheer');
+      sound.play('win');
+      for (const w of winners) {
+        ceremony.setAnim(w.id, 'cheer');
+        ceremony.setLabel(w.id, `${w.name} +1 ⭐`, '#ffd23f');
+      }
       stars.forEach((s) => ceremony.scene.remove(s));
-      await this.hud.banner(winners.map((w) => w.name).join(', '), { sub: '+1 ⭐', hold: 1.8, color: '#ffffff' });
+      this.hud.headline(winners.map((w) => w.name).join(' e '), { sub: `${bonus.title} · +1 ⭐`, color: '#ffd23f' });
+      await this.wait(2.6);
     }
+    this.hud.headline(null);
     ceremony.dispose();
 
     const ranked = ranking(state);

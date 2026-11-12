@@ -96,6 +96,11 @@ export class ShowcaseStage implements Stage {
     slot.model.root.add(slot.label);
   }
 
+  /** Onde está a personagem (para a estrela descer até ela). */
+  positionOf(key: string): THREE.Vector3 | null {
+    return this.slots.get(key)?.model.root.position.clone() ?? null;
+  }
+
   setAnim(key: string, anim: CharacterAnim): void {
     this.slots.get(key)?.model.setAnim(anim);
   }
