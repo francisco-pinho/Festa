@@ -6,14 +6,17 @@
 import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
-import { PROPS } from '../three/props';
+import { PROPS, pickProp } from '../three/props';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
-import { ringDecor } from './scenery';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 
 const W = 11; // meia largura
 const TOP = -12;
 const BOTTOM = 12;
+/** Encosta da montanha atrás do campo: as bolas vêm lá de cima, de trás da crista. */
+const SLOPE_LEN = 30;
+const SLOPE_H = 14;
+const slopeY = (z: number) => (z >= TOP ? 0 : Math.min(SLOPE_LEN, TOP - z) * (SLOPE_H / SLOPE_LEN));
 
 interface Ball {
   mesh: THREE.Mesh;
@@ -41,6 +44,40 @@ class SnowballsRun extends ArenaMinigame {
     // Sem dash: Ⓐ salta.
     this.dashCooldownTime = 999;
     this.scene.background = new THREE.Color('#cfe6ff');
+    this.scene.fog = new THREE.Fog('#dfeaf5', 45, 120);
+    // Neve por todo o lado (tapa a água: nada flutua).
+    const field = mesh(new THREE.PlaneGeometry(220, 220), toon('#eef4fb'), { cast: false, receive: true });
+    field.rotation.x = -Math.PI / 2;
+    field.position.y = -0.03;
+    this.scene.add(field);
+    // Encosta a subir atrás do campo, com a crista lá em cima.
+    const slopeGeo = new THREE.PlaneGeometry(W * 2 + 30, Math.hypot(SLOPE_LEN, SLOPE_H), 1, 1);
+    const slope = mesh(slopeGeo, toon('#e4ecf7'), { cast: false, receive: true });
+    slope.rotation.x = -Math.PI / 2 + Math.atan2(SLOPE_H, SLOPE_LEN);
+    slope.position.set(0, SLOPE_H / 2, TOP - SLOPE_LEN / 2);
+    this.scene.add(slope);
+    const crest = mesh(new THREE.BoxGeometry(W * 2 + 30, 2, 8), toon('#eef4fb'), { cast: false, receive: true });
+    crest.position.set(0, SLOPE_H - 0.6, TOP - SLOPE_LEN - 3.5);
+    this.scene.add(crest);
+    // Montanhas com neve lá ao fundo
+    for (let i = 0; i < 7; i++) {
+      const h = 22 + ((i * 37) % 14);
+      const mtn = mesh(new THREE.ConeGeometry(14 + (i % 3) * 4, h, 7), toon('#8a95a8'), { cast: false });
+      mtn.position.set(-45 + i * 15, h / 2 + SLOPE_H - 4, TOP - SLOPE_LEN - 20 - (i % 2) * 10);
+      const cap = mesh(new THREE.ConeGeometry((14 + (i % 3) * 4) * 0.45, h * 0.45, 7), toon('#ffffff'), { cast: false });
+      cap.position.set(mtn.position.x, mtn.position.y + h * 0.28, mtn.position.z);
+      this.scene.add(mtn, cap);
+    }
+    // Pinheiros dos lados (no chão ou na encosta, nunca no ar)
+    for (let i = 0; i < 26; i++) {
+      const side = i % 2 ? 1 : -1;
+      const z = BOTTOM + 6 - (i / 26) * (BOTTOM - TOP + SLOPE_LEN + 6);
+      const x = side * (W + 3 + ((i * 7) % 9));
+      const tree = pickProp(PROPS.trees.filter((k) => /Pine/.test(k)), ctx.rng.next(), { height: 5 + ctx.rng.next() * 3 });
+      if (!tree) continue;
+      tree.position.set(x, slopeY(z), z);
+      this.scene.add(tree);
+    }
     const snow = mesh(new THREE.BoxGeometry(W * 2 + 2, 1, BOTTOM - TOP + 4), toon('#d3dfee'), { cast: false, receive: true });
     snow.position.set(0, -0.5, (TOP + BOTTOM) / 2);
     this.scene.add(snow);
@@ -49,7 +86,7 @@ class SnowballsRun extends ArenaMinigame {
       bank.position.set(side * (W + 1.2), 0.2, (TOP + BOTTOM) / 2);
       this.scene.add(bank);
     }
-    ringDecor(this.scene, ctx.rng, W + 10, 24, { trees: PROPS.trees.filter((k) => /Pine/.test(k)), props: PROPS.rocks });
+
     this.spawnActors(0, (_seat, i) => ({ pos: new THREE.Vector3((i - (ctx.seats.length - 1) / 2) * 2.2, 0, 6), facing: Math.PI }));
     this.camera.position.set(0, 18, 22);
     this.camera.lookAt(0, 0, 2);
@@ -97,15 +134,17 @@ class SnowballsRun extends ArenaMinigame {
     outline.scale.setScalar(1.07);
     m.add(outline);
     const x = (this.ctx.rng.next() * 2 - 1) * (W - r);
-    m.position.set(x, r, TOP);
+    // Nasce lá em cima, atrás da crista (fora do ecrã), e desce a encosta.
+    const z0 = TOP - SLOPE_LEN - 2;
+    m.position.set(x, r + slopeY(z0), z0);
     this.scene.add(m);
     const shadow = new THREE.Mesh(this.shadowGeo, this.shadowMat);
     shadow.rotation.x = -Math.PI / 2;
     shadow.scale.setScalar(r * 1.05);
-    shadow.position.set(x, 0.02, TOP);
+    shadow.position.set(x, 0.02 + slopeY(z0), z0);
     this.scene.add(shadow);
     const pace = 1 + this.elapsed / 25;
-    this.balls.push({ mesh: m, shadow, r, x, z: TOP, speed: (big ? 6 : 8) * pace });
+    this.balls.push({ mesh: m, shadow, r, x, z: z0, speed: (big ? 6 : 8) * pace });
   }
 
   protected step(dt: number): void {
@@ -123,9 +162,12 @@ class SnowballsRun extends ArenaMinigame {
     }
     for (let i = this.balls.length - 1; i >= 0; i--) {
       const b = this.balls[i]!;
-      b.z += b.speed * dt;
+      // Na encosta descem mais depressa.
+      b.z += b.speed * (b.z < TOP ? 1.35 : 1) * dt;
       b.mesh.position.z = b.z;
+      b.mesh.position.y = b.r + slopeY(b.z);
       b.shadow.position.z = b.z;
+      b.shadow.position.y = 0.02 + slopeY(b.z);
       b.mesh.rotation.x += (b.speed * dt) / b.r;
       for (const a of this.actors) {
         if (!a.alive) continue;
