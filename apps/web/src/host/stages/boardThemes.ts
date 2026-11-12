@@ -9,6 +9,7 @@ import { canvasTexture, mesh, textSprite, toon, toonUnique } from '../three/mate
 import { damp } from '../three/tweens';
 import { Clouds, Water, bush, palmTree, rock, setupSky } from './environment';
 import { PROPS, pickProp, prop } from '../three/props';
+import { addGrassField, pathTexture } from './realism';
 
 export interface BoardTheme {
   readonly group: THREE.Group;
@@ -43,6 +44,8 @@ export function createBoardTheme(board: Board, scene: THREE.Scene): BoardTheme {
     }
   })();
   extraDecor(board, theme);
+  // Relva em 3D por cima dos relvados (depois do cenário, para não nascer debaixo dos adereços).
+  addGrassField(board, theme.group, theme.bounds);
   return theme;
 }
 
@@ -177,13 +180,49 @@ function addPathStrips(board: Board, group: THREE.Group, style: (s: Space, t: Sp
       const dz = t.z - s.z;
       const dy = (t.y ?? 0) - (s.y ?? 0);
       const len = Math.hypot(dx, dz);
-      const strip = mesh(new THREE.BoxGeometry(st.width, st.height, Math.hypot(len, dy)), toon(st.color), { cast: false, receive: true });
+      const full = Math.hypot(len, dy);
+      // Terra batida/gravilha: textura que se repete a cada ~1,4 m (não estica nos troços compridos).
+      const tex = pathTexture().clone();
+      tex.needsUpdate = true;
+      tex.repeat.set(st.width / 1.4, full / 1.4);
+      const mat = toonUnique(st.color, { map: tex });
+      const strip = mesh(new THREE.BoxGeometry(st.width, st.height, full), mat, { cast: false, receive: true });
       strip.position.set(s.x + dx / 2, st.y + (s.y ?? 0) + dy / 2, s.z + dz / 2);
       strip.rotation.order = 'YXZ';
       strip.rotation.y = Math.atan2(dx, dz);
       strip.rotation.x = -Math.atan2(dy, len);
       group.add(strip);
+      // Borda gasta: uma faixa mais larga e mais escura por baixo (terra pisada à beira do caminho).
+      const edgeColor = new THREE.Color(st.color).multiplyScalar(0.72);
+      const edge = mesh(new THREE.BoxGeometry(st.width + 0.45, st.height * 0.6, full + 0.3), toonUnique(edgeColor.getStyle(), { map: tex }), { cast: false, receive: true });
+      edge.position.copy(strip.position);
+      edge.position.y -= st.height * 0.3;
+      edge.rotation.copy(strip.rotation);
+      group.add(edge);
     }
+}
+
+/** Espuma: manchas brancas irregulares (alfa), repetida ao longo da faixa da costa. */
+let foamTex: THREE.CanvasTexture | null = null;
+function foamTexture(): THREE.CanvasTexture {
+  if (foamTex) return foamTex;
+  foamTex = canvasTexture(256, (ctx, size) => {
+    ctx.clearRect(0, 0, size, size);
+    const rng = createRng(61);
+    for (let i = 0; i < 260; i++) {
+      const x = rng.next() * size;
+      const y = rng.next() * size;
+      const r = 3 + rng.next() * 14;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(255,255,255,0.9)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+  });
+  foamTex.wrapS = foamTex.wrapT = THREE.RepeatWrapping;
+  foamTex.repeat.set(0.25, 0.25);
+  return foamTex;
 }
 
 // ── Ilha ──────────────────────────────────────────────────
@@ -202,6 +241,8 @@ class IslandTheme implements BoardTheme {
   /** Barcos a balançar na água. */
   private readonly ships: THREE.Object3D[] = [];
   private leaves!: Particles;
+  private foam!: THREE.Mesh;
+  private foamMat!: THREE.MeshBasicMaterial;
 
   constructor(board: Board, scene: THREE.Scene) {
     setupSky(scene, { fog: [120, 320] });
@@ -234,6 +275,53 @@ class IslandTheme implements BoardTheme {
     };
     layer(a + 3, b + 3, 3, -0.25, '#f2d58b');
     layer(a, b, 3, 0, '#7ccf5b');
+
+    // Ponto do contorno da ilha (mesma forma das camadas) no ângulo `th`.
+    const outline = (aa: number, bb: number, th: number): [number, number] => {
+      const c = Math.cos(th);
+      const s = Math.sin(th);
+      const wobble = 1 + Math.sin(th * 5) * 0.03 + Math.sin(th * 11) * 0.015;
+      return [cx + aa * wobble * Math.sign(c) * Math.abs(c) ** (2 / 3), cz + bb * wobble * Math.sign(s) * Math.abs(s) ** (2 / 3)];
+    };
+    // Espuma onde a água bate na areia (uma faixa branca a pulsar com as ondas).
+    {
+      const outer = new THREE.Shape();
+      const hole = new THREE.Path();
+      for (let i = 0; i <= 160; i++) {
+        const th = (i / 160) * Math.PI * 2;
+        const [ox, oz] = outline(a + 4.6, b + 4.6, th);
+        const [ix, iz] = outline(a + 2.9, b + 2.9, th);
+        if (i === 0) {
+          outer.moveTo(ox, oz);
+          hole.moveTo(ix, iz);
+        } else {
+          outer.lineTo(ox, oz);
+          hole.lineTo(ix, iz);
+        }
+      }
+      outer.holes.push(hole);
+      const geo = new THREE.ShapeGeometry(outer, 1);
+      geo.rotateX(Math.PI / 2);
+      this.foamMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide, map: foamTexture() });
+      this.foam = new THREE.Mesh(geo, this.foamMat);
+      this.foam.renderOrder = 1;
+      this.group.add(this.foam);
+    }
+    // Pedras e seixos espalhados pela praia.
+    {
+      const rng = createRng(53);
+      for (let i = 0; i < 26; i++) {
+        const th = rng.next() * Math.PI * 2;
+        const k = 0.6 + rng.next() * 2;
+        const [x, z] = outline(a + k, b + k, th);
+        const big = rng.next() < 0.3;
+        const r = pickProp(PROPS.rocks, rng.next(), { height: big ? 0.8 + rng.next() * 0.9 : 0.25 + rng.next() * 0.3 }) ?? rock(rng);
+        r.position.set(x, -0.25, z);
+        r.rotation.y = rng.next() * Math.PI * 2;
+        r.userData.deco = true;
+        this.group.add(r);
+      }
+    }
 
     // Caminhos: areia em terra, tábuas na ponte
     addPathStrips(board, this.group, (s, t) => {
@@ -408,6 +496,11 @@ class IslandTheme implements BoardTheme {
     });
     this.leaves?.update(dt, time);
     this.water.update(time);
+    // A espuma acompanha o nível da água (maré) e vai e vem.
+    this.foam.position.y = this.water.mesh.position.y + 0.1;
+    this.foamMat.opacity = 0.32 + Math.sin(time * 1.3) * 0.12;
+    const tex = this.foamMat.map!;
+    tex.offset.x = time * 0.004;
     this.clouds.update(dt);
   }
 }
