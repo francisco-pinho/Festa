@@ -36,6 +36,10 @@ class MaestroRun extends RowMinigame {
   private phaseT = 0;
   private shown = -1;
   private arrow: THREE.Sprite | null = null;
+  /** Número do passo por baixo da seta («2/5»): mostra que é uma seta nova, mesmo repetida. */
+  private stepLabel: THREE.Sprite | null = null;
+  private arrowAge = 0;
+  private arrowBase = new THREE.Vector3(1, 1, 1);
   private round = 0;
 
   constructor(ctx: MinigameContext) {
@@ -84,15 +88,23 @@ class MaestroRun extends RowMinigame {
   }
 
   private showArrow(d: Dir | null): void {
-    if (this.arrow) {
-      this.scene.remove(this.arrow);
-      disposeObject(this.arrow);
-      this.arrow = null;
+    for (const o of [this.arrow, this.stepLabel]) {
+      if (!o) continue;
+      this.scene.remove(o);
+      disposeObject(o);
     }
+    this.arrow = null;
+    this.stepLabel = null;
     if (!d) return;
     this.arrow = textSprite(ARROW[d], { height: 2.4, color: COLOR[d] });
     this.arrow.position.set(0, 4.6, -3);
+    this.arrowBase.copy(this.arrow.scale);
+    this.arrow.scale.setScalar(0.01);
+    this.arrowAge = 0;
     this.scene.add(this.arrow);
+    this.stepLabel = textSprite(`${this.shown + 1}/${this.seq.length}`, { height: 0.6, color: '#ffffff', stroke: '#1d1433' });
+    this.stepLabel.position.set(0, 3.1, -3);
+    this.scene.add(this.stepLabel);
     this.maestro.setAnim(this.shown % 2 ? 'talk' : 'talk2');
     sound.play('beep', { pitch: 0.8 + DIRS.indexOf(d) * 0.15 });
   }
@@ -149,6 +161,10 @@ class MaestroRun extends RowMinigame {
         this.shown = i;
         this.showArrow(this.seq[i] ?? null);
       }
+      // Pequena pausa no fim de cada seta: duas setas iguais seguidas veem-se como duas.
+      const on = this.phaseT % this.beat < this.beat * 0.78;
+      if (this.arrow) this.arrow.visible = on;
+      if (this.stepLabel) this.stepLabel.visible = on;
       if (i >= this.seq.length) {
         this.phase = 'input';
         this.phaseT = 0;
@@ -196,6 +212,14 @@ class MaestroRun extends RowMinigame {
 
   protected override animate(dt: number): void {
     this.maestro.update(dt);
+    // Cada seta aparece com um «pop» (pequena → grande, com ressalto), mesmo que seja igual à anterior.
+    if (this.arrow) {
+      this.arrowAge += dt;
+      const k = Math.min(1, this.arrowAge / 0.28);
+      const c1 = 1.70158;
+      const pop = 1 + (c1 + 1) * (k - 1) ** 3 + c1 * (k - 1) ** 2;
+      this.arrow.scale.copy(this.arrowBase).multiplyScalar(Math.max(0.01, pop));
+    }
   }
 
   override dispose(): void {
