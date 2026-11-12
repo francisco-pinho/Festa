@@ -242,6 +242,13 @@ export interface ShotResult {
 }
 
 export const GOLF_PHYS = { gravity: 9.81, holeR: 0.3, holeMaxSpeed: 4.5 };
+/**
+ * Gravidade só para o voo: mais forte do que a real para a bola sair disparada e não «flutuar»
+ * (a velocidade de saída é calculada para cair à mesma distância). O vento e a curva são
+ * multiplicados pelo mesmo fator para o desvio final ser igual ao de antes.
+ */
+const FLIGHT_G = GOLF_PHYS.gravity * 2.2;
+const FLIGHT_ACC = FLIGHT_G / GOLF_PHYS.gravity;
 /** Desaceleração ao rolar em cada superfície. */
 export const DECEL: Record<Lie, number> = { green: 2.6, fairway: 5.5, rough: 13, bunker: 30, water: 30, out: 30 };
 const BOUNCE: Record<Lie, number> = { green: 0.22, fairway: 0.3, rough: 0.14, bunker: 0, water: 0, out: 0.2 };
@@ -280,7 +287,7 @@ export function simulateShot(hole: GolfHole, from: { x: number; z: number }, sho
     const spec = CLUBS[shot.club];
     const angle = ((spec.loft + shot.loft * 9) * Math.PI) / 180;
     const carry = spec.carry * power * reach;
-    const v = Math.sqrt((carry * GOLF_PHYS.gravity) / Math.sin(2 * angle));
+    const v = Math.sqrt((carry * FLIGHT_G) / Math.sin(2 * angle));
     vx = dir.x * Math.cos(angle) * v;
     vz = dir.z * Math.cos(angle) * v;
     vy = Math.sin(angle) * v;
@@ -295,9 +302,9 @@ export function simulateShot(hole: GolfHole, from: { x: number; z: number }, sho
   const hz = hole.hole.z;
   for (let t = dt; t < 16; t += dt) {
     if (flying) {
-      vx += (wind.x * 0.4 + side.x * curveAcc) * dt;
-      vz += (wind.z * 0.4 + side.z * curveAcc) * dt;
-      vy -= GOLF_PHYS.gravity * dt;
+      vx += (wind.x * 0.4 + side.x * curveAcc) * FLIGHT_ACC * dt;
+      vz += (wind.z * 0.4 + side.z * curveAcc) * FLIGHT_ACC * dt;
+      vy -= FLIGHT_G * dt;
       x += vx * dt;
       y += vy * dt;
       z += vz * dt;
@@ -312,7 +319,13 @@ export function simulateShot(hole: GolfHole, from: { x: number; z: number }, sho
       if (y <= ground) {
         y = ground;
         lie = lieAt(hole, x, z);
-        if (landT < 0) landT = t;
+        if (landT < 0) {
+          landT = t;
+          // Com o voo mais rápido, a bola chegava ao chão com mais velocidade e rolava demasiado:
+          // no 1.º toque volta à velocidade de antes (o rolar fica igual).
+          vx /= Math.sqrt(FLIGHT_ACC);
+          vz /= Math.sqrt(FLIGHT_ACC);
+        }
         if (lie === 'water' || lie === 'bunker') {
           samples.push({ t, x, y, z });
           break;
@@ -321,8 +334,9 @@ export function simulateShot(hole: GolfHole, from: { x: number; z: number }, sho
         let keep = KEEP[lie];
         if (!bounced && shot.club !== 'putter') {
           // Efeito no 1.º ressalto: topspin ganha, backspin trava e pode recuar.
+          // Backspin mais discreto: trava bastante, e só recua um pouco no green.
           if (shot.spin > 0) keep *= 1 + 0.6 * shot.spin;
-          else if (shot.spin < 0) keep = keep * (1 + shot.spin) + shot.spin * (lie === 'green' ? 0.22 : 0.06);
+          else if (shot.spin < 0) keep = keep * (1 + 0.55 * shot.spin) + shot.spin * (lie === 'green' ? 0.06 : 0);
         }
         bounced = true;
         vx *= keep;
