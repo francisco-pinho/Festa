@@ -46,6 +46,69 @@ MODELO (copia daqui...)
   AS MINHAS IDEIAS
 ==============================================================
 
+[ ] TÍTULO: Câmara pessoal ao lançar os dados
+    Tipo: tabuleiro / visual
+    Prioridade (alta / média / baixa): alta
+    Onde no jogo (que ecrã, minijogo, mapa...): tabuleiro, na vez de
+    cada jogador, quando vai lançar os dados
+
+    Como funciona:
+      A câmara foca só no jogador que vai lançar: baixa, perto e
+      atrás/à frente dele, com o dado grande a flutuar por cima da
+      cabeça e o caminho à frente a ver-se ao fundo (desfocado).
+      Os outros jogadores não aparecem (ou ficam fora de plano).
+
+    Controlos no telemóvel (botões, joystick, abanar...): os mesmos
+    (A ou abanar para lançar).
+
+    Como se ganha / o que acontece no fim: —
+
+    Inspirado em (jogo, vídeo, link, imagem...): Mario Party Jamboree
+    (imagens enviadas: Donkey Kong no kart com o dado por cima, câmara
+    atrás dele ao nível do chão).
+
+    Notas do Claude:
+
+[ ] TÍTULO: Câmara a seguir de perto enquanto anda as casas
+    Tipo: tabuleiro / visual
+    Prioridade (alta / média / baixa): alta
+    Onde no jogo (que ecrã, minijogo, mapa...): tabuleiro, enquanto o
+    jogador anda as casas depois de lançar
+
+    Como funciona:
+      A câmara segue o jogador mais de perto e mais baixa (vista de
+      3/4 por trás/lado), acompanhando o caminho, com o número de
+      casas que faltam grande por cima dele.
+
+    Controlos no telemóvel (botões, joystick, abanar...): —
+
+    Como se ganha / o que acontece no fim: —
+
+    Inspirado em (jogo, vídeo, link, imagem...): Mario Party Jamboree
+    (imagem do deserto: Donkey Kong a andar nos carris com o «6» por
+    cima, câmara próxima).
+
+    Notas do Claude:
+
+[ ] TÍTULO: Melhorar a animação de andar no tabuleiro
+    Tipo: personagem / visual
+    Prioridade (alta / média / baixa): alta
+    Onde no jogo (que ecrã, minijogo, mapa...): tabuleiro (andar casa
+    a casa)
+
+    Como funciona:
+      A animação de andar entre casas deve parecer mais natural e
+      com mais vida (passos/corrida a sério, saltinho em cada casa,
+      virar suavemente nas curvas).
+
+    Controlos no telemóvel (botões, joystick, abanar...): —
+
+    Como se ganha / o que acontece no fim: —
+
+    Inspirado em (jogo, vídeo, link, imagem...): Mario Party Jamboree.
+
+    Notas do Claude:
+
 [ ] TÍTULO:
     Tipo:
     Prioridade (alta / média / baixa):
