@@ -171,13 +171,28 @@ export class GameMenu {
         : this.screen === 'settings'
           ? `Os bots ${BOT_LEVELS.map((l) => l.label).join(' · ')}: mais precisos e rápidos nos níveis altos.`
           : 'Esc ou + no comando para continuar';
+    // No mesmo ecrã do menu, só atualiza a seleção e os textos (sem refazer o cartão,
+    // que voltava a fazer a animação de abrir a cada mudança).
+    const items = this.items();
+    const buttons = this.el.querySelectorAll<HTMLButtonElement>('.menu-item');
+    if (this.el.dataset.screen === this.screen && buttons.length === items.length) {
+      buttons.forEach((btn, i) => {
+        btn.classList.toggle('sel', i === this.selected);
+        if (btn.dataset.label !== items[i]!.label) {
+          btn.dataset.label = items[i]!.label;
+          btn.textContent = items[i]!.label;
+        }
+      });
+      return;
+    }
+    this.el.dataset.screen = this.screen;
     this.el.innerHTML = `
       <div class="menu-card">
         <h1>${title}</h1>
         <p class="menu-sub">${esc(sub)}</p>
         <div class="menu-items">
           ${this.items()
-            .map((it, i) => `<button class="menu-item ${i === this.selected ? 'sel' : ''}" data-i="${i}">${esc(it.label)}</button>`)
+            .map((it, i) => `<button class="menu-item ${i === this.selected ? 'sel' : ''}" data-i="${i}" data-label="${esc(it.label)}">${esc(it.label)}</button>`)
             .join('')}
         </div>
         <p class="menu-keys">✚ escolher · Ⓐ confirmar · Ⓑ ou + fechar (no PC: setas, Enter, Esc)</p>
