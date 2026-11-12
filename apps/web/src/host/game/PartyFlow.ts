@@ -121,6 +121,9 @@ export class PartyFlow {
   /** Quem está a jogar agora (destacado no mapa dos telemóveis). */
   private activeId: string | null = null;
   /** Telemóveis que estão a mostrar o mapa (e com que mensagem): atualizam-se a cada casa. */
+  /** Apostas do duelo a decorrer (quem está de fora → em quem apostou) e se ainda estão abertas. */
+  private duelBets: Map<string, string> | null = null;
+  private betsOpen = false;
   private readonly boardWatchers = new Map<string, string>();
 
   constructor(private readonly d: PartyDeps) {}
@@ -1020,8 +1023,10 @@ export class PartyFlow {
     const teams: MinigameTeams = { mode: 'ffa', blue: [a.id, b.id], red: [] };
     // Quem está de fora aposta no telemóvel (os bots apostam ao acaso).
     const bets = new Map<string, string>();
+    this.duelBets = bets;
+    this.betsOpen = true;
     const offBets = this.d.hub.events.on('choice', ({ player, id }) => {
-      if (!id.startsWith('bet:') || player.id === a.id || player.id === b.id || bets.has(player.id)) return;
+      if (!this.betsOpen || !id.startsWith('bet:') || player.id === a.id || player.id === b.id || bets.has(player.id)) return;
       if (this.state.players.some((p) => p.id === player.id)) bets.set(player.id, id.slice(4));
     });
     for (const p of this.state.players) if (p.isBot && p.id !== a.id && p.id !== b.id) bets.set(p.id, this.rng.next() < 0.5 ? a.id : b.id);
@@ -1030,6 +1035,8 @@ export class PartyFlow {
       winners = await this.runMinigame([a, b], teams, title, true);
     } finally {
       offBets();
+      this.duelBets = null;
+      this.betsOpen = false;
     }
     if (winners.length === 1) {
       const right = [...bets].filter(([, pick]) => pick === winners[0]).map(([id]) => getPlayer(this.state, id));
@@ -1329,6 +1336,24 @@ export class PartyFlow {
     ];
     await Promise.all([this.wait(3), narrator.say(intro)]);
     this.hud.panel(null);
+    // As apostas fecham antes de o jogo começar: quem está de fora vê em quem apostou.
+    if (duel && this.betsOpen) {
+      this.betsOpen = false;
+      for (const s of this.d.seats) {
+        if (ids.has(s.id)) continue;
+        const pick = this.duelBets?.get(s.id);
+        const who = players.find((p) => p.id === pick);
+        this.ctl.setLayout(s, {
+          kind: 'info',
+          title: `A ver: ${def.name}`,
+          sub: who ? `🔒 Apostas fechadas · apostaste em ${who.name}` : '🔒 Apostas fechadas · não apostaste',
+          stats: this.phoneStats(s.id),
+          ask: who ? { prompt: 'A tua aposta', options: [{ id: `bet:${who.id}`, label: who.name, color: getCharacter(who.characterId).color }], chosen: `bet:${who.id}` } : undefined,
+          table: this.phoneTable(s.id),
+          color: getCharacter(s.characterId).color,
+        });
+      }
+    }
 
     const ctx: MinigameContext = {
       engine: this.engine,

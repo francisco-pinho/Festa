@@ -85,6 +85,8 @@ export class BoxingStage extends SportStage {
   private readonly records = new Map<string, FighterRecord>();
   /** Apostas de quem está a ver: espectador → lutador em quem apostou. */
   private readonly bets = new Map<string, string>();
+  /** As apostas fecham quando o combate começa (primeira ronda). */
+  private betsOpen = false;
   private readonly betHits = new Map<string, number>();
   private offBets: (() => void) | null = null;
   private fight: [Fighter, Fighter] | null = null;
@@ -131,6 +133,16 @@ export class BoxingStage extends SportStage {
   protected override phoneAsk(seat: Seat) {
     if (!this.fight || this.fight.some((f) => f.seat.id === seat.id)) return undefined;
     const bet = this.bets.get(seat.id);
+    if (!this.betsOpen) {
+      // Depois de começar o combate já não se aposta: mostra só a aposta feita.
+      const f = this.fight.find((x) => x.seat.id === bet);
+      if (!f) return undefined;
+      return {
+        prompt: '🔒 Apostas fechadas · a tua aposta',
+        options: [{ id: `bet:${f.seat.id}`, label: f.seat.name, color: getCharacter(f.seat.characterId).color }],
+        chosen: `bet:${f.seat.id}`,
+      };
+    }
     return {
       prompt: 'Quem ganha este combate?',
       options: this.fight.map((f) => ({ id: `bet:${f.seat.id}`, label: f.seat.name, color: getCharacter(f.seat.characterId).color })),
@@ -140,7 +152,7 @@ export class BoxingStage extends SportStage {
 
   async play(): Promise<SportStanding[]> {
     this.offBets = this.ctx.hub.events.on('choice', ({ player, id }) => {
-      if (!id.startsWith('bet:') || !this.fight || this.fight.some((f) => f.seat.id === player.id)) return;
+      if (!this.betsOpen || !id.startsWith('bet:') || !this.fight || this.fight.some((f) => f.seat.id === player.id)) return;
       if (!this.bets.has(player.id)) this.bets.set(player.id, id.slice(4));
     });
     // Socos com os botões: A alterna jab/direto, X gancho, Y uppercut (B segura a defesa).
@@ -186,6 +198,7 @@ export class BoxingStage extends SportStage {
     const fa = this.makeFighter(a, -1);
     const fb = this.makeFighter(b, 1);
     this.fight = [fa, fb];
+    this.betsOpen = true;
     this.ctx.hud.setScoreboard(null);
     this.showFightHud(fa, fb);
     for (const p of this.players) {
@@ -216,6 +229,10 @@ export class BoxingStage extends SportStage {
       this.resetPositions();
       await this.walkTo([fa, fb], START_GAP, 0.6);
       await this.ctx.hud.banner(`Ronda ${this.round}`, { hold: 1 });
+      if (this.betsOpen) {
+        this.betsOpen = false;
+        this.refreshWaiting();
+      }
       this.ringBell();
       await this.ctx.hud.big('LUTA!', 0.7);
       this.refTarget.set(0, FLOOR, -2.4);
