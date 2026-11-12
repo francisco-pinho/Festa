@@ -124,8 +124,35 @@ export class Director {
         </div>
       </div>
       <div class="lobby-cards" id="cards"></div>
-      <div class="lobby-help" id="help"></div>`;
+      <div class="lobby-help" id="help"></div>
+      <button class="lobby-quit" id="lobby-quit" hidden>🚪 Sair do jogo</button>`;
     document.getElementById('ui')!.appendChild(ui);
+
+    // Sair logo no ecrã inicial (só na app de computador): carrega duas vezes para confirmar.
+    {
+      const app = (window as unknown as { festaDesktop?: { quit(): Promise<void> } }).festaDesktop;
+      const quitBtn = ui.querySelector<HTMLButtonElement>('#lobby-quit')!;
+      if (app) {
+        quitBtn.hidden = false;
+        let armed = 0;
+        quitBtn.addEventListener('click', () => {
+          if (Date.now() - armed < 4000) {
+            quitBtn.textContent = '👋 Até à próxima!';
+            void app.quit();
+            return;
+          }
+          armed = Date.now();
+          quitBtn.textContent = '🚪 Carrega outra vez para sair';
+          quitBtn.classList.add('armed');
+          setTimeout(() => {
+            if (Date.now() - armed >= 4000) {
+              quitBtn.textContent = '🚪 Sair do jogo';
+              quitBtn.classList.remove('armed');
+            }
+          }, 4100);
+        });
+      }
+    }
 
     const renderRoom = async () => {
       const code = this.conn.roomCode;

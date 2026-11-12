@@ -1124,3 +1124,24 @@
   min-width: 0;
   max-width: 30vw;
 }
+
+/* Botão «Sair do jogo» no ecrã inicial (canto superior direito) */
+.lobby-quit {
+  position: absolute;
+  right: 1.5vw;
+  top: calc(2.5vh + env(safe-area-inset-top, 0px));
+  z-index: 5;
+  border: 0;
+  border-radius: 14px;
+  padding: 1vh 1.2vw;
+  background: var(--panel);
+  color: #fff;
+  font: inherit;
+  font-weight: bold;
+  font-size: clamp(14px, 1.9vh, 22px);
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 0.4vh 0 rgba(0, 0, 0, 0.3);
+}
+.lobby-quit:hover { filter: brightness(1.2); }
+.lobby-quit.armed { background: #ff3b5c; }
