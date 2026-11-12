@@ -346,6 +346,12 @@ export class PartyFlow {
     return state;
   }
 
+  /** Casas que faltam até à estrela, pelo caminho mais curto (com portões e alavancas como estão). */
+  private starDistance(p: PartyPlayer): number | null {
+    const d = distancesTo(this.state.board, this.state.starSpaceId, this.state.flags).get(p.spaceId);
+    return d === undefined || !Number.isFinite(d) ? null : d;
+  }
+
   private toggleMap(): void {
     this.mapOpen = !this.mapOpen;
     this.stage.showMap(this.mapOpen, this.state.players.map((p) => ({ id: p.id, name: p.name })));
@@ -502,6 +508,8 @@ export class PartyFlow {
     if (crowded) await this.stage.spotlight(p.id);
     await this.hud.banner(`Vez de ${p.name}!`, { sub: p.slowDice ? '🐌 Dados preguiçosos: só 1 a 3' : undefined, hold: 1.1 });
     this.stage.faceCamera(p.id);
+    // Quanto falta para a estrela (fica até lançar os dados).
+    this.hud.setStarDistance(this.starDistance(p));
 
     // Antes de lançar: itens e mapa
     const plan = await this.beforeRoll(p);
@@ -547,6 +555,7 @@ export class PartyFlow {
       total += plan.bonus;
       this.stage.floatText(p.id, `⚡ +${plan.bonus}`, '#ffd23f');
     }
+    this.hud.setStarDistance(null);
     await this.stage.collapseDice(p.id, total);
     if (crowded) await this.stage.spotlight(null);
     this.ctl.setLayout(seat, { kind: 'wait', message: `Andas ${total} casas!` });
@@ -622,7 +631,7 @@ export class PartyFlow {
       const itemExtras = usedItem ? [] : p.items.map((i, idx) => ({ id: `item:${idx}:${i}`, label: `${ITEMS[i].emoji} ${ITEMS[i].name}`, color: '#ff6fb5' }));
       const layout: DiceLayout = {
         kind: 'dice',
-        prompt: usedItem || !p.items.length ? 'Lança os dados!' : 'Usa um item ou lança os dados!',
+        prompt: `${usedItem || !p.items.length ? 'Lança os dados!' : 'Usa um item ou lança os dados!'} · ⭐ a ${this.starDistance(p) ?? '?'} casas`,
         label: 'Lançar!',
         extras: [{ id: 'map', label: this.mapOpen ? '🗺️ Fechar mapa' : '🗺️ Ver mapa' }, ...itemExtras],
       };

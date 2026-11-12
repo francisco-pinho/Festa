@@ -42,6 +42,7 @@ export class Hud {
     this.root = document.getElementById('ui')!;
     this.root.innerHTML = `
       <div class="round" hidden></div>
+      <div class="star-dist" hidden></div>
       <div class="scoreboard"></div>
       <div class="banner" hidden></div>
       <div class="big" hidden></div>
@@ -57,6 +58,20 @@ export class Hud {
     this.hintEl = q('.hint');
     this.statusEl = q('.status');
     this.bigEl = q('.big');
+  }
+
+  /** Quanto falta para a estrela (antes de lançar os dados). `null` esconde. */
+  setStarDistance(steps: number | null): void {
+    const el = this.root.querySelector<HTMLElement>('.star-dist')!;
+    if (steps === null) {
+      el.hidden = true;
+      return;
+    }
+    el.innerHTML = steps === 0 ? '<b>⭐</b> Estás na estrela!' : `<b>${steps}</b> ${steps === 1 ? 'casa' : 'casas'} até à ⭐`;
+    el.hidden = false;
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
   }
 
   setRound(text: string | null): void {
