@@ -16,6 +16,10 @@ import { Snowballs } from './Snowballs';
 import { Bomber } from './Bomber';
 import { LookAway } from './LookAway';
 import { Meteors } from './Meteors';
+import { CountSheep } from './CountSheep';
+import { RightForce } from './RightForce';
+import { WallHole } from './WallHole';
+import { Fishing } from './Fishing';
 import type { MinigameDef } from './types';
 
 /** Para adicionar um minijogo: cria o ficheiro e acrescenta-o aqui. */
@@ -23,6 +27,7 @@ export const MINIGAMES: MinigameDef[] = [
   CoinShower, Sumo, Tag, QuickDraw, TugOfWar, Marksman,
   ColorFloor, Snowballs, JumpRope, Maestro, Balloon, HotPotato, Hammer, Canoe,
   LookAway, Bomber, Meteors,
+  CountSheep, RightForce, WallHole, Fishing,
 ];
 
 /**
