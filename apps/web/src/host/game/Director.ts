@@ -27,6 +27,7 @@ import type { GameMenu } from '../ui/GameMenu';
 import { BOT_LEVELS, settings } from './Settings';
 import { BotPad, SeatControl, type Seat } from './Seats';
 import { PartyFlow } from './PartyFlow';
+import { creditsHtml } from '../ui/credits';
 
 type LobbyChoice = { mode: 'party'; rounds: number; boardId: string } | { mode: 'sports'; sport: SportDef };
 
@@ -348,6 +349,7 @@ export class Director {
           { id: 'party', label: '🎲 Festa', sub: 'Tabuleiro, estrelas, itens e minijogos' },
           { id: 'sports', label: '🏆 Desportos', sub: 'Bowling, ténis, golfe, boxe e basebol' },
           { id: 'settings', label: '⚙️ Definições' },
+          { id: 'credits', label: '📜 Créditos' },
           { id: 'quit', label: '🚪 Sair do jogo' },
         ],
       };
@@ -357,6 +359,12 @@ export class Director {
       else if (pickMode === 'sports') {
         const sport = await this.pickSport(leader);
         if (sport) choice = { mode: 'sports', sport };
+      } else if (pickMode === 'credits') {
+        this.hud.panel(creditsHtml());
+        this.hud.panelElement().classList.add('compact');
+        await this.menus.ask({ player: leader, keyboard: true, corner: true, title: 'Créditos', options: [{ id: 'back', label: '↩ Voltar' }], cancel: 'back' });
+        this.hud.panelElement().classList.remove('compact');
+        this.hud.panel(null);
       } else if (pickMode === 'settings') {
         this.menu.show('settings');
         while (this.menu.isOpen) await this.engine.wait(0.2);

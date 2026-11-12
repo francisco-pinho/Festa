@@ -293,6 +293,9 @@ export class PartyFlow {
     );
     const state = this.state;
     await loadProps(THEME_PROPS[board.theme] ?? []);
+    // Música do tabuleiro (cada mapa tem a sua).
+    sound.boardTheme = board.theme;
+    sound.music('board');
     this.stage = new BoardStage(this.engine, board, this.d.seats);
     this.engine.setStage(this.stage);
     this.stage.setFlags(state.flags);

@@ -59,7 +59,25 @@ const SONGS: Record<Track, Song> = {
   finale: { bpm: 96, chords: [60, 64, 65, 67], scale: [0, 2, 4, 5, 7, 9, 11], lead: 'triangle', drums: true },
 };
 
+/**
+ * Música gravada (Kevin MacLeod, incompetech.com, CC BY 4.0 — ver Créditos): uma por tabuleiro,
+ * várias para os minijogos (vão alternando), desportos, ecrã inicial e fim. Se um ficheiro falhar,
+ * toca a música sintetizada (SONGS).
+ */
+const BOARD_MUSIC: Record<string, string> = { island: 'ilha', volcano: 'vulcao', castle: 'castelo', park: 'parque', city: 'cidade' };
+const MINIGAME_MUSIC = ['minijogo1', 'minijogo2', 'minijogo3', 'minijogo4', 'minijogo5'];
+/** Jingles (Kenney, CC0) para momentos especiais, em vez dos sons sintetizados. */
+const JINGLES: Partial<Record<string, string>> = { win: 'jingles_SAX07', star: 'jingles_STEEL07' };
+const asset = (path: string) => `${import.meta.env.BASE_URL}${path}`;
+
 class SoundEngine {
+  /** Tema do tabuleiro (escolhe a música do tabuleiro). */
+  boardTheme = 'island';
+  private minigameTurn = Math.floor(Math.random() * MINIGAME_MUSIC.length);
+  private fileKey: string | null = null;
+  private fileAudio: HTMLAudioElement | null = null;
+  private fileBus: GainNode | null = null;
+  private readonly jingleCache = new Map<string, HTMLAudioElement>();
   private ctx: AudioContext | null = null;
   private master!: GainNode;
   private sfxBus!: GainNode;
@@ -125,6 +143,7 @@ class SoundEngine {
     if (!this.ctx) return;
     this.sfxBus.gain.value = settings.value.sfxVolume * 0.9;
     this.musicBus.gain.setTargetAtTime(settings.value.musicVolume * 0.32 * (this.ducked ? 0.3 : 1), this.ctx.currentTime, 0.15);
+    this.fileBus?.gain.setTargetAtTime(settings.value.musicVolume * 0.7 * (this.ducked ? 0.35 : 1), this.ctx.currentTime, 0.15);
   }
 
   // ── Blocos de som ───────────────────────────────────────
@@ -171,6 +190,20 @@ class SoundEngine {
 
   play(name: Sfx, opts: { vol?: number; pitch?: number } = {}): void {
     if (!this.ctx || this.ctx.state !== 'running' || settings.value.sfxVolume <= 0) return;
+    // Jingles gravados para os momentos especiais.
+    const jingle = JINGLES[name];
+    if (jingle) {
+      let base = this.jingleCache.get(jingle);
+      if (!base) {
+        base = new Audio(asset(`jingles/${jingle}.ogg`));
+        base.preload = 'auto';
+        this.jingleCache.set(jingle, base);
+      }
+      const a = base.cloneNode(true) as HTMLAudioElement;
+      a.volume = Math.min(1, settings.value.sfxVolume * 0.8 * (opts.vol ?? 1));
+      void a.play().catch(() => undefined);
+      return;
+    }
     const v = opts.vol ?? 1;
     const p = opts.pitch ?? 1;
     const t = this.ctx.currentTime;
@@ -280,14 +313,80 @@ class SoundEngine {
   music(track: Track | null): void {
     this.wantTrack = track;
     if (!this.ctx || this.ctx.state !== 'running') return;
-    if (track === this.track) return;
+    // Ficheiro a tocar para esta faixa (o tabuleiro depende do tema; os minijogos vão alternando).
+    const key = !track
+      ? null
+      : track === 'board'
+        ? (BOARD_MUSIC[this.boardTheme] ?? 'ilha')
+        : track === 'minigame'
+          ? this.track === 'minigame' && this.fileKey
+            ? this.fileKey
+            : MINIGAME_MUSIC[this.minigameTurn++ % MINIGAME_MUSIC.length]!
+          : { lobby: 'lobby', sports: 'desportos', finale: 'final' }[track]!;
+    if (track === this.track && key === this.fileKey) return;
     this.track = track;
     window.clearInterval(this.timer);
-    if (!track) return;
+    this.playFile(key);
+    if (!track || key) return;
+    this.startSynth(track);
+  }
+
+  /** Toca um ficheiro de música em ciclo, com transição suave. Se falhar, volta à sintetizada. */
+  private playFile(key: string | null): void {
+    const ctx = this.ctx!;
+    const old = this.fileAudio;
+    if (old) {
+      // Desvanece a anterior.
+      const g = old.volume;
+      let k = 0;
+      const id = window.setInterval(() => {
+        k += 0.1;
+        old.volume = Math.max(0, g * (1 - k));
+        if (k >= 1) {
+          window.clearInterval(id);
+          old.pause();
+          old.src = '';
+        }
+      }, 60);
+    }
+    this.fileAudio = null;
+    this.fileKey = key;
+    if (!key) return;
+    if (!this.fileBus) {
+      this.fileBus = ctx.createGain();
+      this.fileBus.connect(this.master);
+      this.applyVolumes();
+    }
+    const a = new Audio(asset(`music/${key}.mp3`));
+    a.loop = true;
+    a.crossOrigin = 'anonymous';
+    ctx.createMediaElementSource(a).connect(this.fileBus);
+    a.volume = 0;
+    const fadeIn = () => {
+      let k = 0;
+      const id = window.setInterval(() => {
+        k += 0.08;
+        a.volume = Math.min(1, k);
+        if (k >= 1 || this.fileAudio !== a) window.clearInterval(id);
+      }, 60);
+    };
+    a.addEventListener('error', () => {
+      if (this.fileAudio !== a) return;
+      this.fileAudio = null;
+      this.fileKey = null;
+      if (this.track) this.startSynth(this.track);
+    });
+    void a.play().then(fadeIn, () => undefined);
+    this.fileAudio = a;
+  }
+
+  /** Música sintetizada (só se a gravada não estiver disponível). */
+  private startSynth(track: Track): void {
+    window.clearInterval(this.timer);
     this.seed = [...track].reduce((a, c) => a + c.charCodeAt(0), 7);
     this.melody = this.makeMelody(SONGS[track]);
     this.beat = 0;
-    this.nextBeat = this.ctx.currentTime + 0.1;
+    this.nextBeat = this.ctx!.currentTime + 0.1;
     this.timer = window.setInterval(() => this.schedule(), 50);
   }
 
