@@ -5,7 +5,7 @@
  */
 import { sound } from '../audio/Sound';
 import * as THREE from 'three';
-import { mesh, toon } from '../three/materials';
+import { mesh, toon, toonUnique } from '../three/materials';
 import { PROPS } from '../three/props';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import { ringDecor } from './scenery';
@@ -17,6 +17,7 @@ const BOTTOM = 12;
 
 interface Ball {
   mesh: THREE.Mesh;
+  shadow: THREE.Mesh;
   r: number;
   x: number;
   z: number;
@@ -29,6 +30,10 @@ class SnowballsRun extends ArenaMinigame {
   private nextBall = 1.2;
   private readonly jump = new Map<string, number>();
   private readonly ballGeo = new THREE.IcosahedronGeometry(1, 2);
+  /** Contorno escuro (face de trás, um pouco maior) e sombra no chão: as bolas veem-se bem na neve. */
+  private readonly outlineMat = new THREE.MeshBasicMaterial({ color: '#1d3557', side: THREE.BackSide });
+  private readonly shadowGeo = new THREE.CircleGeometry(1, 24);
+  private readonly shadowMat = new THREE.MeshBasicMaterial({ color: '#1d3557', transparent: true, opacity: 0.35, depthWrite: false });
   private readonly outAt = new Map<string, number>();
 
   constructor(ctx: MinigameContext) {
@@ -36,7 +41,7 @@ class SnowballsRun extends ArenaMinigame {
     // Sem dash: Ⓐ salta.
     this.dashCooldownTime = 999;
     this.scene.background = new THREE.Color('#cfe6ff');
-    const snow = mesh(new THREE.BoxGeometry(W * 2 + 2, 1, BOTTOM - TOP + 4), toon('#f4f8ff'), { cast: false, receive: true });
+    const snow = mesh(new THREE.BoxGeometry(W * 2 + 2, 1, BOTTOM - TOP + 4), toon('#d3dfee'), { cast: false, receive: true });
     snow.position.set(0, -0.5, (TOP + BOTTOM) / 2);
     this.scene.add(snow);
     for (const side of [-1, 1]) {
@@ -85,13 +90,22 @@ class SnowballsRun extends ArenaMinigame {
   private spawnBall(): void {
     const big = this.ctx.rng.next() < 0.55;
     const r = big ? 1.5 + this.ctx.rng.next() * 0.6 : 0.55;
-    const m = mesh(this.ballGeo, toon('#ffffff'));
+    // As pequenas (que se podem saltar) são azuladas; as grandes brancas.
+    const m = mesh(this.ballGeo, toonUnique(big ? '#ffffff' : '#9fd3ff', { emissive: big ? '#ffffff' : '#9fd3ff', emissiveIntensity: 0.12 }));
     m.scale.setScalar(r);
+    const outline = new THREE.Mesh(this.ballGeo, this.outlineMat);
+    outline.scale.setScalar(1.07);
+    m.add(outline);
     const x = (this.ctx.rng.next() * 2 - 1) * (W - r);
     m.position.set(x, r, TOP);
     this.scene.add(m);
+    const shadow = new THREE.Mesh(this.shadowGeo, this.shadowMat);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.scale.setScalar(r * 1.05);
+    shadow.position.set(x, 0.02, TOP);
+    this.scene.add(shadow);
     const pace = 1 + this.elapsed / 25;
-    this.balls.push({ mesh: m, r, x, z: TOP, speed: (big ? 6 : 8) * pace });
+    this.balls.push({ mesh: m, shadow, r, x, z: TOP, speed: (big ? 6 : 8) * pace });
   }
 
   protected step(dt: number): void {
@@ -111,6 +125,7 @@ class SnowballsRun extends ArenaMinigame {
       const b = this.balls[i]!;
       b.z += b.speed * dt;
       b.mesh.position.z = b.z;
+      b.shadow.position.z = b.z;
       b.mesh.rotation.x += (b.speed * dt) / b.r;
       for (const a of this.actors) {
         if (!a.alive) continue;
@@ -126,7 +141,8 @@ class SnowballsRun extends ArenaMinigame {
         }
       }
       if (b.z > BOTTOM + 3) {
-        this.scene.remove(b.mesh);
+        this.scene.remove(b.mesh, b.shadow);
+        (b.mesh.material as THREE.Material).dispose();
         this.balls.splice(i, 1);
       }
     }
@@ -154,6 +170,9 @@ class SnowballsRun extends ArenaMinigame {
 
   override dispose(): void {
     this.ballGeo.dispose();
+    this.shadowGeo.dispose();
+    this.outlineMat.dispose();
+    this.shadowMat.dispose();
     super.dispose();
   }
 }
@@ -163,7 +182,7 @@ export const Snowballs: MinigameDef = {
   rounds: 2,
   name: 'Bolas de Neve',
   modes: ['ffa', 'teams'],
-  description: () => 'Bolas de neve gigantes rolam colina abaixo! Foge das grandes para o lado e salta as pequenas com Ⓐ. Quem for apanhado sai.',
+  description: () => 'Bolas de neve gigantes rolam colina abaixo! Foge das grandes para o lado e salta as pequenas (azuis) com Ⓐ. Quem for apanhado sai.',
   controls: '🕹️ Mover · Ⓐ Saltar',
   stick: true,
   buttons: [{ id: 'a', label: 'Saltar' }],
