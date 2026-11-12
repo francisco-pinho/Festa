@@ -8,8 +8,10 @@ import { mesh, toon } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 
-const JUMP = 0.55; // duração do salto (s)
-const R = 1.9; // raio da volta da corda
+const JUMP = 0.62; // duração do salto (s)
+const JUMP_H = 1.6; // altura do salto
+const R = 3.3; // raio da volta da corda (no meio)
+const HAND_Y = 3.4; // altura a que a corda está presa nos postes
 
 class JumpRopeRun extends RowMinigame {
   protected readonly duration = 45;
@@ -17,21 +19,30 @@ class JumpRopeRun extends RowMinigame {
   private speed = 3.2; // rad/s
   private passes = 0;
   private readonly rope: THREE.Mesh;
+  private readonly ropeCurve: THREE.CatmullRomCurve3;
+  private readonly ropePts: THREE.Vector3[];
   private readonly air = new Map<string, number>();
   private readonly botPlan = new Map<string, number>();
   private readonly half: number;
 
   constructor(ctx: MinigameContext) {
     super(ctx, { spacing: 1.9 });
-    this.half = this.row.length * 0.95 + 1.6;
+    // A corda é bem mais comprida do que a fila: todos ficam na parte do meio, onde ela bate no chão.
+    this.half = (this.row.length * 1.9) / 2 / 0.55 + 1;
     for (const side of [-1, 1]) {
-      const post = mesh(new THREE.CylinderGeometry(0.12, 0.15, 2.4, 10), toon('#8b5a2b'));
-      post.position.set(side * this.half, 1.2, 0);
-      this.scene.add(post);
+      const post = mesh(new THREE.CylinderGeometry(0.16, 0.2, HAND_Y + 0.4, 10), toon('#8b5a2b'));
+      post.position.set(side * this.half, (HAND_Y + 0.4) / 2, 0);
+      const knob = mesh(new THREE.SphereGeometry(0.28, 12, 10), toon('#ff6fb5'));
+      knob.position.set(side * this.half, HAND_Y, 0);
+      this.scene.add(post, knob);
     }
-    this.rope = mesh(new THREE.CylinderGeometry(0.06, 0.06, this.half * 2, 8), toon('#ff6fb5'));
-    this.rope.rotation.z = Math.PI / 2;
+    // Corda a sério: uma curva presa nos postes que roda (o meio vai lá abaixo, as pontas ficam paradas).
+    this.ropePts = Array.from({ length: 25 }, () => new THREE.Vector3());
+    this.ropeCurve = new THREE.CatmullRomCurve3(this.ropePts);
+    this.rope = mesh(new THREE.TubeGeometry(this.ropeCurve, 48, 0.07, 6), toon('#ff6fb5'));
     this.scene.add(this.rope);
+    this.camera.position.set(0, 5.5, this.half * 1.25 + 4);
+    this.camera.lookAt(0, 2, 0);
     for (const r of this.row) this.air.set(r.seat.id, 0);
   }
 
@@ -61,7 +72,7 @@ class JumpRopeRun extends RowMinigame {
       if (this.pressed(r, 'a')) this.jump(r);
       const t = Math.max(0, (this.air.get(r.seat.id) ?? 0) - dt);
       this.air.set(r.seat.id, t);
-      r.model.root.position.y = t > 0 ? Math.sin((1 - t / JUMP) * Math.PI) * 0.9 : 0;
+      r.model.root.position.y = t > 0 ? Math.sin((1 - t / JUMP) * Math.PI) * JUMP_H : 0;
       if (t === 0 && r.model.anim === 'jump') r.model.setAnim('idle');
     }
     if (crossed) {
@@ -99,9 +110,20 @@ class JumpRopeRun extends RowMinigame {
   }
 
   protected override animate(): void {
-    // A corda gira à volta do eixo x, à altura das mãos dos postes.
-    this.rope.position.set(0, 1.95 + Math.cos(this.angle) * R * 0.95, Math.sin(this.angle) * R * 0.6);
-    this.rope.position.y = Math.max(0.06, this.rope.position.y);
+    // Cada ponto da corda roda à volta do eixo entre os postes; quanto mais ao meio, maior a volta
+    // (curva como uma corda real). No chão achata um pouco em vez de o atravessar.
+    const n = this.ropePts.length;
+    const lag = 0.18; // o meio vai ligeiramente atrás das pontas (a corda «arrasta»)
+    for (let i = 0; i < n; i++) {
+      const u = i / (n - 1);
+      const bulge = Math.sin(u * Math.PI) ** 0.3; // mais «cheia» no meio: rasa o chão em toda a fila
+      const a = this.angle - lag * bulge;
+      const y = HAND_Y + Math.cos(a) * R * bulge;
+      this.ropePts[i]!.set(-this.half + u * this.half * 2, Math.max(0.07, y), Math.sin(a) * R * 0.7 * bulge);
+    }
+    this.ropeCurve.updateArcLengths();
+    this.rope.geometry.dispose();
+    this.rope.geometry = new THREE.TubeGeometry(this.ropeCurve, 48, 0.07, 6);
   }
 }
 
