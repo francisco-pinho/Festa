@@ -11,6 +11,7 @@
  */
 import { app, BrowserWindow, ipcMain, Menu, session, shell } from 'electron';
 import { join } from 'node:path';
+import { appendFileSync } from 'node:fs';
 import { startServer, type FestaServerHandle } from '../../server/src/app';
 import { findCloudflared, openTunnel, type Tunnel } from '../../server/src/tunnel';
 
@@ -57,6 +58,21 @@ function createWindow(port: number): BrowserWindow {
     if (input.type === 'keyDown' && input.key === 'F11') {
       w.setFullScreen(!w.isFullScreen());
       event.preventDefault();
+    }
+    // F5: recomeça o jogo (recarrega a página), como no browser.
+    if (input.type === 'keyDown' && input.key === 'F5') {
+      w.webContents.reload();
+      event.preventDefault();
+    }
+  });
+  // Erros do jogo ficam guardados em festa-erros.log (na pasta de dados da app), para os poder enviar.
+  w.webContents.on('console-message', (event) => {
+    const e = event as unknown as { level: number | string; message: string; sourceId?: string; lineNumber?: number };
+    if (e.level !== 3 && e.level !== 'error') return;
+    try {
+      appendFileSync(join(app.getPath('userData'), 'festa-erros.log'), `[${new Date().toISOString()}] ${e.message} (${e.sourceId ?? ''}:${e.lineNumber ?? ''})\n`);
+    } catch {
+      /* sem disco: ignora */
     }
   });
   // Links externos abrem no browser normal.

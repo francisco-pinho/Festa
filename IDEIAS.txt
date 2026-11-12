@@ -135,12 +135,12 @@ MODELO (copia daqui...)
     Notas do Claude:
       Feito: a câmara está do lado da água, de frente para eles.
 
-[ ] TÍTULO:
-    Tipo:
-    Prioridade (alta / média / baixa):
-    Onde no jogo (que ecrã, minijogo, mapa...):
+[ ] TÍTULO: adicionar física mais realista nos tacos de golf
+    Tipo: física mini jogo
+    Prioridade (média ):
+    Onde no jogo (que ecrã, minijogo, mapa...): golf
 
-    Como funciona:
+    Como funciona: quando o jogador bate na bola, ela sai lentamente em vez de ser como uma batida real numa bola, o backspin também está demasiado evidente
 
 
     Controlos no telemóvel (botões, joystick, abanar...):
@@ -151,4 +151,19 @@ MODELO (copia daqui...)
 
     Notas do Claude:
 
+[ ] TÍTULO: avançar repetição 
+    Tipo: menus
+    Prioridade ( baixa):
+    Onde no jogo (que ecrã, minijogo, mapa...): ecrã de repetição
+
+    Como funciona: deve existir maneira de avançar o ecrã de repetição dos jogos 
+
+
+    Controlos no telemóvel (botões, joystick, abanar...): no botão -
+
+    Como se ganha / o que acontece no fim: avança a cutscene
+
+    Inspirado em (jogo, vídeo, link, imagem...):
+
+    Notas do Claude:
 

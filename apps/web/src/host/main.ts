@@ -74,7 +74,13 @@ const main = ready.then(() => testParty
   : director.run());
 main.catch((err: unknown) => {
   console.error(err);
-  hud.panel(`<h1>Ups!</h1><p>Algo correu mal. Recarrega a página (F5).</p>`);
+  const msg = err instanceof Error ? `${err.message}\n${(err.stack ?? '').split('\n').slice(1, 4).join('\n')}` : String(err);
+  const safe = msg.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!);
+  hud.panel(`<h1>Ups!</h1><p>Algo correu mal. Carrega em <b>Recomeçar</b> (ou F5) para voltar ao início.</p>
+    <p><button class="err-restart">Recomeçar</button></p>
+    <pre class="err-detail">${safe}</pre>
+    <p class="err-hint">Tira uma fotografia a isto e envia-a, para se corrigir.</p>`);
+  hud.panelElement().querySelector('.err-restart')?.addEventListener('click', () => location.reload());
 });
 
 // Em desenvolvimento: acesso pela consola do browser para depurar (window.festa).
