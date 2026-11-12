@@ -81,7 +81,7 @@ export function themeScenery(
   rng: Rng,
   theme: Theme | undefined,
   radius: number,
-  opts: { center?: THREE.Vector3; water?: boolean; count?: number } = {},
+  opts: { center?: THREE.Vector3; water?: boolean; count?: number; behind?: boolean } = {},
 ): void {
   const lk = look(theme ?? 'island');
   const c = opts.center ?? new THREE.Vector3();
@@ -101,7 +101,8 @@ export function themeScenery(
   }
   const place = (keys: readonly string[], n: number, r0: number, r1: number, h: [number, number]) => {
     for (let i = 0; i < n; i++) {
-      const a = (i / n) * Math.PI * 2 + rng.next() * 0.3;
+      // `behind`: só atrás e dos lados (a câmara está à frente, em +Z, e não pode ficar tapada).
+      const a = opts.behind ? Math.PI * 0.92 + (i / n) * Math.PI * 1.16 + rng.next() * 0.1 : (i / n) * Math.PI * 2 + rng.next() * 0.3;
       const o = pickProp(keys, rng.next(), { height: h[0] + rng.next() * (h[1] - h[0]) });
       if (!o) continue;
       const r = r0 + rng.next() * (r1 - r0);
@@ -115,6 +116,11 @@ export function themeScenery(
   place(lk.big, Math.round(count * 0.8), inner + 5, inner + 11, [4, 7.5]);
   // Fundo fechado: muitas coisas altas lá atrás.
   place(lk.back, 30, inner + 16, inner + 24, lk.backH);
+}
+
+/** Cor do chão do tema (para minijogos que fazem o seu próprio chão). */
+export function themeGround(theme: Theme | undefined): string {
+  return look(theme ?? 'island').ground;
 }
 
 /** Água do minijogo com o tema: no vulcão passa a lava. */

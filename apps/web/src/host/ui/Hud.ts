@@ -111,7 +111,8 @@ export class Hud {
 
   /** Faixa grande a meio do ecrã durante `hold` segundos. */
   async banner(text: string, opts: { sub?: string; hold?: number; color?: string } = {}): Promise<void> {
-    sound.play(opts.color === '#ffd23f' ? 'win' : 'banner');
+    // Fim de ronda/jogo: apito (não se confunde com os jingles de prémio).
+    sound.play(/^fim/i.test(text) ? 'whistle' : opts.color === '#ffd23f' ? 'win' : 'banner');
     this.bannerEl.innerHTML = `<div class="title" style="${opts.color ? `color:${opts.color}` : ''}">${esc(text)}</div>${
       opts.sub ? `<div class="sub">${esc(opts.sub)}</div>` : ''
     }`;
