@@ -4,7 +4,7 @@ import { Marksman } from './Marksman';
 import { QuickDraw } from './QuickDraw';
 import { Sumo } from './Sumo';
 import { Tag } from './Tag';
-import { TugOfWar } from './TugOfWar';
+import { TugOfWar, TugOfWarTeams } from './TugOfWar';
 import { Balloon } from './Balloon';
 import { Canoe } from './Canoe';
 import { ColorFloor } from './ColorFloor';
@@ -34,7 +34,7 @@ import type { MinigameDef } from './types';
 
 /** Para adicionar um minijogo: cria o ficheiro e acrescenta-o aqui. */
 export const MINIGAMES: MinigameDef[] = [
-  CoinShower, Sumo, Tag, QuickDraw, TugOfWar, Marksman,
+  CoinShower, Sumo, Tag, QuickDraw, TugOfWar, TugOfWarTeams, Marksman,
   ColorFloor, Snowballs, JumpRope, Maestro, Balloon, HotPotato, Hammer, Canoe,
   LookAway, Bomber, Meteors,
   CountSheep, RightForce, WallHole, Fishing,

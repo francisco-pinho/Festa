@@ -16,7 +16,7 @@ const ROPE_R = 0.09;
 
 /** Textura de corda entrançada: fios em diagonal, castanho-claro com sombras. */
 let ropeTex: THREE.CanvasTexture | null = null;
-function ropeTexture(): THREE.CanvasTexture {
+export function ropeTexture(): THREE.CanvasTexture {
   if (ropeTex) return ropeTex;
   const c = document.createElement('canvas');
   c.width = 64;
