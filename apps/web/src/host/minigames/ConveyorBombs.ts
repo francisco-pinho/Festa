@@ -10,6 +10,7 @@ import { disposeObject, mesh, textSprite, toon, toonUnique } from '../three/mate
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { rankBy } from './rank';
+import { explode } from '../three/explosion';
 
 const LEN = 9; // comprimento da passadeira
 const LIVES = 3;
@@ -211,7 +212,7 @@ class ConveyorRun extends RowMinigame {
     this.scene.remove(b.obj);
     disposeObject(b.obj);
     this.bombs.splice(this.bombs.indexOf(b), 1);
-    sound.play('firework');
+    explode(this.scene, b.obj.position.clone(), 0.9);
     l.lives--;
     this.showHearts(l);
     this.float('💥', l.r.x, 2.4, '#ff8c1a', 1.1, 1.6);

@@ -11,6 +11,7 @@ import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { rankBy } from './rank';
 import { themeScenery } from './scenery';
+import { explode } from '../three/explosion';
 
 const ARENA_R = 12;
 const GRAVITY = 18;
@@ -181,8 +182,8 @@ class CoinShowerRun extends ArenaMinigame {
   }
 
   private explode(it: Falling): void {
-    sound.play('punch', { pitch: 0.6 });
     const p = it.obj.position;
+    explode(this.scene, new THREE.Vector3(p.x, 0.5, p.z), 1.2);
     for (const a of this.actors) {
       const d = Math.hypot(a.pos.x - p.x, a.pos.z - p.z);
       if (d > 2.2) continue;

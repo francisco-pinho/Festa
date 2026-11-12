@@ -10,6 +10,7 @@ import { mesh, toon, toonUnique } from '../three/materials';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import { ringDecor } from './scenery';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { explode } from '../three/explosion';
 
 const R = 11;
 const TOWER_Z = -15;
@@ -134,7 +135,7 @@ class BomberRun extends ArenaMinigame {
   private explode(b: Bomb): void {
     this.scene.remove(b.ball, b.warn);
     (b.warn.material as THREE.Material).dispose();
-    sound.play('firework');
+    explode(this.scene, new THREE.Vector3(b.x, 0.5, b.z), 1.1);
     const flash = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 12), new THREE.MeshBasicMaterial({ color: '#ffb347', transparent: true, opacity: 0.85, depthWrite: false }));
     flash.position.set(b.x, 0.4, b.z);
     this.scene.add(flash);

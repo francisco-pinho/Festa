@@ -34,7 +34,10 @@ export type Sfx =
   | 'win'
   | 'lose'
   | 'tick'
-  | 'banner';
+  | 'banner'
+  | 'boom'
+  | 'coinBig'
+  | 'countdown';
 
 export type Track = 'lobby' | 'board' | 'minigame' | 'sports' | 'finale';
 
@@ -291,6 +294,24 @@ class SoundEngine {
         this.tone(1200, 0.5, { type: 'sine', vol: 0.05 * v, to: 3000 });
         this.hiss(0.7, { vol: 0.35 * v, filter: 'lowpass', freq: 3000, at: t + 0.45 });
         this.tone(80, 0.4, { vol: 0.4 * v, to: 40, at: t + 0.45 });
+        break;
+      case 'boom':
+        // Explosão a sério: estrondo grave, rebentamento de ruído que escurece e um ribombar.
+        this.tone(95 * p, 0.55, { type: 'sine', vol: 0.55 * v, to: 32 });
+        this.tone(55 * p, 0.9, { type: 'triangle', vol: 0.35 * v, to: 25, at: t + 0.03 });
+        this.hiss(0.5, { vol: 0.6 * v, filter: 'lowpass', freq: 4200, to: 300, attack: 0.002 });
+        this.hiss(1.4, { vol: 0.28 * v, filter: 'lowpass', freq: 700, to: 90, at: t + 0.08, attack: 0.05 });
+        this.hiss(0.25, { vol: 0.2 * v, filter: 'highpass', freq: 2500, at: t + 0.01 });
+        break;
+      case 'coinBig':
+        // Moeda especial: arpejo a SUBIR (soa a coisa boa).
+        [72, 76, 79, 84, 88].forEach((n, i) => this.tone(NOTE(n) * p, i === 4 ? 0.35 : 0.1, { type: 'square', vol: 0.09 * v, at: t + i * 0.055 }));
+        this.tone(NOTE(96) * p, 0.4, { type: 'sine', vol: 0.06 * v, at: t + 0.28 });
+        break;
+      case 'countdown':
+        // Contagem final (5, 4, 3…): bip curto e seco; no último o tom sobe.
+        this.tone(880 * p, 0.12, { type: 'square', vol: 0.12 * v });
+        this.tone(440 * p, 0.12, { type: 'sine', vol: 0.08 * v });
         break;
       case 'beep':
         this.tone(660 * p, 0.14, { type: 'square', vol: 0.12 * v });

@@ -9,6 +9,7 @@ import { mesh, toon, toonUnique } from '../three/materials';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import { ringDecor } from './scenery';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { explode } from '../three/explosion';
 
 const R = 10;
 
@@ -101,7 +102,7 @@ class MeteorsRun extends ArenaMinigame {
     this.scene.remove(m.rock, m.warn);
     (m.rock.material as THREE.Material).dispose();
     (m.warn.material as THREE.Material).dispose();
-    sound.play('firework', { vol: 0.7 });
+    explode(this.scene, new THREE.Vector3(m.x, 0.5, m.z), m.r * 0.6);
     const flash = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), new THREE.MeshBasicMaterial({ color: '#ff8c3a', transparent: true, opacity: 0.85, depthWrite: false }));
     flash.position.set(m.x, 0.3, m.z);
     this.scene.add(flash);

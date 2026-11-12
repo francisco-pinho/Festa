@@ -15,6 +15,7 @@ import { mesh, toon, toonUnique } from '../three/materials';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { themeScenery } from './scenery';
+import { explode } from '../three/explosion';
 
 interface Pillar {
   x: number;
@@ -278,7 +279,7 @@ class TagRun extends ArenaMinigame {
   private explode(mine: Mine): void {
     this.scene.remove(mine.group);
     this.mines.splice(this.mines.indexOf(mine), 1);
-    sound.play('firework');
+    explode(this.scene, new THREE.Vector3(mine.x, 0.4, mine.z), 1);
     const flash = new THREE.Mesh(
       new THREE.SphereGeometry(1, 20, 12),
       new THREE.MeshBasicMaterial({ color: '#ffb347', transparent: true, opacity: 0.85, depthWrite: false }),

@@ -8,6 +8,7 @@ import { mesh, toon, toonUnique } from '../three/materials';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import { ringDecor } from './scenery';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { explode } from '../three/explosion';
 
 const R = 9;
 
@@ -99,7 +100,7 @@ class HotPotatoRun extends ArenaMinigame {
         this.falling.add(out);
         out.model.setAnim('fall');
         this.ctx.vibrate(out.seat.id, 400);
-        sound.play('firework');
+        explode(this.scene, this.bomb.getWorldPosition(new THREE.Vector3()), 1.3);
         this.holder = null;
         this.bomb.visible = false;
         const alive = this.actors.filter((x) => x.alive);
