@@ -57,6 +57,8 @@ export abstract class ArenaMinigame implements MinigameRun {
     const n = this.ctx.seats.length;
     this.ctx.seats.forEach((seat, i) => {
       const model = new CharacterModel(getCharacter(seat.characterId));
+      // Como no tabuleiro: contorno e anel no chão com a cor de cada jogador (em equipas, o anel é o da equipa).
+      model.setHighlight(getCharacter(seat.characterId).color, 0.5, !(seat.team && this.ctx.mode !== 'ffa'));
       const a = (i / n) * Math.PI * 2;
       const actor: Actor = {
         seat,

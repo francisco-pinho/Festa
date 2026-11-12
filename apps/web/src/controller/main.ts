@@ -407,11 +407,26 @@ function openSensorSheet(): void {
         ${sensors.supported && !sensors.active ? '<button class="primary" id="s-enable">Ativar sensores</button>' : ''}
         ${sensors.active ? '<button class="primary" id="s-cal">Calibrar abanão (3 s)</button>' : ''}
         <p class="sheet-meter" ${sensors.active ? '' : 'hidden'}><span id="s-bar"></span></p>
+        <button id="s-vib">📳 Testar vibração</button>
+        <p class="sheet-vib" id="s-vib-msg" hidden></p>
         <button id="s-close">Fechar</button>
       </div>`;
     sheet.querySelector('#s-enable')?.addEventListener('click', async () => {
       await sensors.enable();
       render();
+    });
+    // Diagnóstico: diz se o browser deixa vibrar (para perceber porque é que os botões não vibram).
+    sheet.querySelector('#s-vib')?.addEventListener('click', () => {
+      const msg = sheet.querySelector<HTMLElement>('#s-vib-msg')!;
+      msg.hidden = false;
+      if (typeof navigator.vibrate !== 'function') {
+        msg.textContent = 'Este browser não deixa vibrar (no iPhone só funciona com iOS 18 ou mais recente, ao carregar nos botões).';
+        return;
+      }
+      const ok = navigator.vibrate([200, 100, 200]);
+      msg.textContent = ok
+        ? 'Devia ter vibrado duas vezes. Se não sentiste nada, vê nas definições do telemóvel se a vibração (e a vibração ao tocar) está ligada e se não estás em modo silencioso/não incomodar.'
+        : 'O browser bloqueou a vibração. Experimenta tocar uma vez no ecrã e carregar outra vez.';
     });
     sheet.querySelector('#s-cal')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget as HTMLButtonElement;

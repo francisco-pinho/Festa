@@ -47,6 +47,8 @@ export abstract class RowMinigame implements MinigameRun {
     const n = ctx.seats.length;
     ctx.seats.forEach((seat, i) => {
       const model = new CharacterModel(getCharacter(seat.characterId));
+      // Como no tabuleiro: contorno e anel no chão com a cor de cada jogador (em equipas, o anel é o da equipa).
+      model.setHighlight(getCharacter(seat.characterId).color, 0.5, !(seat.team && this.ctx.mode !== 'ffa'));
       const x = (i - (n - 1) / 2) * spacing;
       model.root.position.set(x, 0, 0);
       model.faceYaw(0, true);

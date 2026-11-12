@@ -1268,6 +1268,7 @@ class CityTheme implements BoardTheme {
           if (b) {
             b.position.set(px, 0, pz);
             b.rotation.y = Math.floor(rng.next() * 4) * (Math.PI / 2);
+            b.userData.deco = true; // fica transparente se tapar uma personagem
             this.group.add(b);
             continue;
           }
@@ -1280,14 +1281,16 @@ class CityTheme implements BoardTheme {
         const mat = toonUnique('#ffffff', { map: tex, emissive: '#ffffff', emissiveMap: tex, emissiveIntensity: 0.55 });
         const bld = mesh(new THREE.BoxGeometry(4.2, h, 4.2), mat, { receive: true });
         bld.position.set(px, h / 2, pz);
+        bld.userData.deco = true; // fica transparente se tapar uma personagem
         this.group.add(bld);
         if (rng.next() < 0.3) {
           const color = ['#ff3bd4', '#3fd0ff', '#ffd23f', '#4cd964'][Math.floor(rng.next() * 4)]!;
           const nm = toonUnique(color, { emissive: color, emissiveIntensity: 1.2 });
           this.neon.push(nm);
           const sign = mesh(new THREE.BoxGeometry(3, 0.5, 0.15), nm, { cast: false });
-          sign.position.set(px, h + 0.5, pz + 2.1);
-          this.group.add(sign);
+          // O letreiro vai com o prédio (fica transparente com ele).
+          sign.position.set(0, h / 2 + 0.5, 2.1);
+          bld.add(sign);
         }
       }
     }

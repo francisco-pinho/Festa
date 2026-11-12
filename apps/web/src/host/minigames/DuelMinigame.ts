@@ -38,6 +38,8 @@ export abstract class DuelMinigame implements MinigameRun {
     ctx.seats.slice(0, 2).forEach((seat, i) => {
       const side = (i === 0 ? -1 : 1) as -1 | 1;
       const model = new CharacterModel(getCharacter(seat.characterId));
+      // Como no tabuleiro: contorno e anel no chão com a cor de cada jogador (em equipas, o anel é o da equipa).
+      model.setHighlight(getCharacter(seat.characterId).color, 0.5, !(seat.team && this.ctx.mode !== 'ffa'));
       model.root.position.set(side * spacing, 0, 0);
       model.faceYaw(opts.faceCamera ? 0 : side === -1 ? Math.PI / 2 : -Math.PI / 2, true);
       const label = textSprite(seat.name, { height: 0.45, color: '#ffffff', stroke: '#1d1433' });
