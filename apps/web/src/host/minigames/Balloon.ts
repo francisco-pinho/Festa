@@ -2,6 +2,7 @@
  * «Balão Rebentão»: enche o balão com a bomba de ar, mas no tempo certo! Ao lado de cada um há um
  * medidor com um marcador a subir e a descer: Ⓐ na zona verde dá uma bombada forte, na amarela
  * média e na vermelha quase nada (e entre bombadas há uma pausa, por isso carregar à toa não serve).
+ * Também se pode abanar o telemóvel: cada abanão é uma bombada (quanto mais abanas, mais enche).
  * O primeiro a rebentar o balão ganha. Em equipas, cada equipa enche um balão gigante em conjunto.
  */
 import { sound } from '../audio/Sound';
@@ -145,12 +146,12 @@ class BalloonRun extends RowMinigame {
         }
       } else press = this.pressed(r, 'a');
       if (!press || g.cooldown > 0) continue;
-      g.cooldown = 0.3;
+      g.cooldown = 0.25;
       const lv = level(g);
       // A cada bombada o marcador muda de velocidade (para não ficar sempre igual).
       g.speed = 2.4 + this.ctx.rng.next() * 3.2;
       const zone = lv >= GREEN ? 'verde' : lv >= YELLOW ? 'amarela' : 'vermelha';
-      const pumps = zone === 'verde' ? 3 : zone === 'amarela' ? 1.5 : 0.4;
+      const pumps = zone === 'verde' ? 3 : zone === 'amarela' ? 1.6 : 0.8;
       if (zone === 'verde') this.float('✨', r.x + 1, 2.6, '#4cd964', 0.5);
       this.ctx.vibrate(r.seat.id, zone === 'verde' ? 40 : 15);
       b.air += pumps;
@@ -196,12 +197,13 @@ export const Balloon: MinigameDef = {
   modes: ['ffa', 'teams', 'oneVsAll'],
   description: (mode) =>
     mode === 'ffa'
-      ? 'Enche o balão com Ⓐ quando o marcador estiver na zona verde: bombada forte! Na vermelha quase não enche. Quem o rebentar primeiro ganha!'
+      ? 'Abana o telemóvel (ou carrega em Ⓐ) para encher o balão: quanto mais abanas, mais enche! Se a bombada calhar com o marcador na zona verde, vale a dobrar. Quem o rebentar primeiro ganha!'
       : mode === 'oneVsAll'
-        ? 'Um contra todos: o solitário enche o seu balão sozinho, os outros enchem um balão gigante juntos (precisa de mais ar). Ⓐ no verde! Quem rebentar primeiro ganha.'
-        : 'Cada equipa enche um balão gigante em conjunto: Ⓐ quando o marcador de cada um estiver no verde! A primeira a rebentá-lo ganha.',
-  controls: 'Ⓐ Bombear no verde',
+        ? 'Um contra todos: o solitário enche o seu balão sozinho, os outros enchem um balão gigante juntos (precisa de mais ar). Abana o telemóvel (ou Ⓐ), de preferência no verde! Quem rebentar primeiro ganha.'
+        : 'Cada equipa enche um balão gigante em conjunto: abanem os telemóveis (ou Ⓐ), melhor ainda com o marcador no verde! A primeira a rebentá-lo ganha.',
+  controls: '📳 Abanar o telemóvel = bombear · Ⓐ Bombear · Verde vale mais',
   stick: false,
   buttons: [{ id: 'a', label: 'Bombear' }],
+  shake: true,
   create: (ctx) => new BalloonRun(ctx),
 };

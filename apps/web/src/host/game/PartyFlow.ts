@@ -1477,6 +1477,7 @@ export class PartyFlow {
           kind: 'gamepad',
           stick: def.stick,
           buttons: def.buttons,
+          shake: def.shake,
           hint: teams.mode === 'ffa' ? def.name : `${def.name} · equipa ${teamOf(s.id) === 'blue' ? '🔵 azul' : '🔴 vermelha'}`,
         });
     }

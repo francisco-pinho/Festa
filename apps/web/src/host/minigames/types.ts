@@ -69,6 +69,8 @@ export interface MinigameDef {
   /** Joystick, cruz direcional ('dpad', ex.: memória de setas) ou nada. */
   stick: boolean | 'dpad';
   buttons: { id: 'a' | 'b'; label: string }[];
+  /** Abanar o telemóvel conta como Ⓐ. */
+  shake?: boolean;
   /** Rondas (melhor de N; por omissão 1). Os jogos curtos têm várias para não acabarem num instante. */
   rounds?: number;
   create(ctx: MinigameContext): MinigameRun;
