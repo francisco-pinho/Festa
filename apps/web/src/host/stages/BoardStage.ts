@@ -14,6 +14,7 @@ import { starMesh } from './environment';
 import { createBoardTheme, rideCurve, type BoardTheme } from './boardThemes';
 import { BoardObjects } from './boardObjects';
 import { prop } from '../three/props';
+import { drawIcon, iconFor } from '../../common/icons';
 
 const TILE_R = 1.15;
 const TILE_TOP = 0.32;
@@ -1273,7 +1274,9 @@ export class BoardStage implements Stage {
           ctx.font = `bold ${s.type === 'start' ? 56 : 72}px ${FONT}`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(style.symbol, size / 2, size / 2 + 4);
+          const icon = iconFor(style.symbol);
+          if (icon) drawIcon(ctx, icon, size * 0.2, size * 0.2, size * 0.6);
+          else ctx.fillText(style.symbol, size / 2, size / 2 + 4);
         }),
       });
       const tile = mesh(new THREE.CylinderGeometry(TILE_R, TILE_R * 1.05, 0.3, 28), [side.get(s.type)!, top, side.get(s.type)!], {

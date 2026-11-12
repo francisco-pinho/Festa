@@ -1,4 +1,8 @@
 import { connection, hub } from './services';
+import { installIconSwap } from '../common/icons';
+
+// Emojis dos textos passam a ícones desenhados (em todo o ecrã grande).
+installIconSwap(document.body);
 import { Engine } from './three/Engine';
 import { Hud } from './ui/Hud';
 import { Director } from './game/Director';

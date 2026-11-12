@@ -1,5 +1,6 @@
 /** Materiais com aspeto "cartoon" (toon shading) partilhados por todo o jogo. */
 import * as THREE from 'three';
+import { drawIcon, splitRich } from '../../common/icons';
 
 let gradient: THREE.DataTexture | null = null;
 
@@ -66,18 +67,31 @@ export function textSprite(
   const fontPx = 96;
   const font = `${opts.bold === false ? '' : 'bold '}${fontPx}px ${FONT}`;
   ctx.font = font;
-  const w = Math.ceil(ctx.measureText(text).width) + 40;
+  // Emojis conhecidos são desenhados como ícones (sem emojis no ecrã).
+  const parts = splitRich(text);
+  const iconSize = fontPx * 1.08;
+  const widthOf = (p: { text?: string; icon?: string }) => (p.icon ? iconSize + 6 : ctx.measureText(p.text ?? '').width);
+  const w = Math.ceil(parts.reduce((s, p) => s + widthOf(p), 0)) + 40;
   canvas.width = w;
   canvas.height = fontPx + 40;
   ctx.font = font;
-  ctx.textAlign = 'center';
+  ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
   ctx.lineWidth = 14;
-  ctx.strokeStyle = opts.stroke ?? '#1b1033';
-  ctx.strokeText(text, w / 2, canvas.height / 2);
-  ctx.fillStyle = opts.color ?? '#ffffff';
-  ctx.fillText(text, w / 2, canvas.height / 2);
+  let x = 20;
+  const cy = canvas.height / 2;
+  for (const p of parts) {
+    if (p.icon) {
+      drawIcon(ctx, p.icon, x + 3, cy - iconSize / 2, iconSize);
+    } else if (p.text) {
+      ctx.strokeStyle = opts.stroke ?? '#1b1033';
+      ctx.strokeText(p.text, x, cy);
+      ctx.fillStyle = opts.color ?? '#ffffff';
+      ctx.fillText(p.text, x, cy);
+    }
+    x += widthOf(p);
+  }
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true }));

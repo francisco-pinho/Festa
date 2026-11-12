@@ -21,6 +21,10 @@ import { renderInfo, statsHtml } from './infoview';
 import { sensors } from './sensors';
 import { ScreenViewer } from '../common/screenViewer';
 import { hapticPattern } from './haptics';
+import { installIconSwap } from '../common/icons';
+
+// Emojis dos textos passam a ícones desenhados (em todo o comando).
+installIconSwap(document.body);
 
 const SESSION_KEY = 'festa.session';
 const NAME_KEY = 'festa.name';

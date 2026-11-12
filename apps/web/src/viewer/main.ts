@@ -4,6 +4,9 @@
  */
 import { ROOM_CODE_LENGTH } from '@festa/shared';
 import { ScreenViewer, type ViewerStatus } from '../common/screenViewer';
+import { installIconSwap } from '../common/icons';
+
+installIconSwap(document.body);
 
 const style = document.createElement('style');
 style.textContent = `

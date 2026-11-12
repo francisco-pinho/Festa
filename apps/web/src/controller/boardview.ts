@@ -8,6 +8,7 @@ import type { ControllerLayout } from '@festa/shared';
 import type { ButtonId, ControllerInput } from '@festa/shared';
 import { statsHtml } from './infoview';
 import { haptic } from './haptics';
+import { iconFor, iconPaths } from '../common/icons';
 
 type Send = (input: ControllerInput) => void;
 
@@ -108,7 +109,14 @@ function renderBoardInner(view: HTMLElement, l: BoardLayout): void {
   const dots = l.spaces
     .map(([x, z, c]) => {
       const sym = l.symbols?.[c];
-      return `<circle cx="${x}" cy="${z}" r="1.15" fill="${l.palette[c] ?? '#2f7dff'}"/>${sym ? `<text class="bv-sym" x="${x}" y="${z + 0.55}">${esc(sym)}</text>` : ''}`;
+      // Símbolo da casa: ícone desenhado (se houver) ou o texto.
+      const icon = sym ? iconFor(sym) : undefined;
+      const symHtml = icon
+        ? `<svg x="${x - 0.8}" y="${z - 0.8}" width="1.6" height="1.6" viewBox="0 0 24 24">${iconPaths(icon)}</svg>`
+        : sym
+          ? `<text class="bv-sym" x="${x}" y="${z + 0.55}">${esc(sym)}</text>`
+          : '';
+      return `<circle cx="${x}" cy="${z}" r="1.15" fill="${l.palette[c] ?? '#2f7dff'}"/>${symHtml}`;
     })
     .join('');
   const star = l.star ? `<text class="bv-star" transform="translate(${l.star[0]} ${l.star[1] - 1.2})">⭐</text>` : '';
