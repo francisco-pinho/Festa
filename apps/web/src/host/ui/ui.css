@@ -1244,3 +1244,20 @@
 .credits h2 { color: var(--gold); margin: 1.6vh 0 0.6vh; font-size: 2.6vh; }
 .credits p { margin: 0.4vh 0; font-size: 1.9vh; line-height: 1.4; }
 .credits small { color: #b9a9e8; }
+
+/* Explicação do minijogo: os controlos, grandes, um por linha */
+.controls-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1vh 1.2vw;
+  margin: 1.6vh 0 0.6vh;
+}
+.controls-list .ctrl {
+  padding: 1vh 1.6vw;
+  border-radius: 1.4vh;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 210, 63, 0.6);
+  font-size: 2.8vh;
+  font-weight: 800;
+}

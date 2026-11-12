@@ -90,7 +90,7 @@ import { starMesh } from '../stages/environment';
 import { Hud, esc, type ScoreEntry } from '../ui/Hud';
 import type { GameMenu } from '../ui/GameMenu';
 import { MINIGAMES, MODE_LABEL, pickDuel, pickMinigame } from '../minigames';
-import type { MinigameContext, MinigameSeat } from '../minigames/types';
+import type { MinigameContext, MinigameDef, MinigameSeat } from '../minigames/types';
 import type { DiceLayout, Seat, SeatControl } from './Seats';
 import { settings } from './Settings';
 
@@ -1395,8 +1395,13 @@ export class PartyFlow {
       <h1>${esc(def.name)}</h1>
       <h2>${players.length === 2 ? '1 contra 1' : MODE_LABEL[teams.mode]}</h2>
       ${teamsHtml}
-      <p>${esc(def.description(teams.mode))}</p>
-      <p><span class="controls">${esc(def.controls)}</span></p>
+      ${settings.value.narrator ? '' : `<p>${esc(def.description(teams.mode))}</p>`}
+      <div class="controls-list">${def.controls
+        .split('·')
+        .map((c) => c.trim())
+        .filter(Boolean)
+        .map((c) => `<div class="ctrl">${esc(c)}</div>`)
+        .join('')}</div>
       <div class="timerbar"><div style="animation-duration:${INTRO}s"></div></div>`);
     for (const s of this.d.seats) {
       if (!ids.has(s.id))
@@ -1472,6 +1477,7 @@ export class PartyFlow {
       return new Set(top.map((p) => (teams.mode === 'ffa' ? p.id : teamOf(p.id)))).size > 1;
     };
     const MAX_TIEBREAKS = 2;
+    await this.practice(def, ctx);
     for (let round = 1; round <= totalRounds || (totalRounds > 1 && round <= totalRounds + MAX_TIEBREAKS && tied()); round++) {
       const tiebreak = round > totalRounds;
       for (const s of this.d.seats) s.botPad.reset();
@@ -1692,6 +1698,43 @@ export class PartyFlow {
     }
     const names = winners.map((w) => getPlayer(this.state, w).name);
     await this.hud.banner(names.length ? `Ganhou: ${names.join(', ')}` : 'Ninguém ganhou', { sub: def.name, hold: 2, color: '#ffd23f' });
+  }
+
+  /**
+   * Treino (como no Mario Party): antes de contar, o minijogo corre uns segundos a fingir para todos
+   * experimentarem os comandos. Acaba ao fim de 12 s, quando alguém carregar em − (ou Enter/Espaço
+   * no PC) ou se o minijogo acabar sozinho. Nada do que acontece conta.
+   */
+  private async practice(def: MinigameDef, ctx: MinigameContext): Promise<void> {
+    const humans = ctx.seats.filter((s) => !ctx.isBot(s.id));
+    if (!humans.length) return; // só bots: não há nada para treinar
+    for (const s of this.d.seats) s.botPad.reset();
+    this.d.hub.clearPresses();
+    const run = def.create({ ...ctx, round: 1, rounds: 1 });
+    this.engine.setStage(run, false);
+    let skip = false;
+    const off = this.d.hub.events.on('press', ({ button }) => {
+      if (button === 'minus') skip = true;
+    });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Enter' || e.code === 'Space') skip = true;
+    };
+    window.addEventListener('keydown', onKey);
+    this.hud.setRound('🏋️ TREINO · − para começar a sério');
+    void this.hud.big('Treino!', 0.9);
+    run.start();
+    const LIMIT = 12;
+    let t = 0;
+    while (!skip && !run.finished && t < LIMIT) {
+      await this.wait(0.2);
+      t += 0.2;
+      this.hud.setRound(`🏋️ TREINO · ${Math.ceil(LIMIT - t)} s · − para começar a sério`);
+    }
+    off();
+    window.removeEventListener('keydown', onKey);
+    run.dispose();
+    this.hud.setRound(null);
+    await this.hud.banner('Agora a sério!', { hold: 1.1, color: '#ffd23f' });
   }
 
   /** Desenvolvimento: duelos seguidos entre os dois primeiros jogadores. */

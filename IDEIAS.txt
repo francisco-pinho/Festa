@@ -259,7 +259,7 @@ em andamento ou com dúvidas.)
     Prioridade (alta / média / baixa): alta
     Onde no jogo (que ecrã, minijogo, mapa...): durante o jogo
 
-    Como funciona: a ordem de lançar os dados pode ser definida pela ordem do último minijogo. no início lançam os dados como agora mas depois 
+    Como funciona: a ordem de lançar os dados pode ser definida pela ordem do último minijogo. no início lançam os dados como agora mas depois a ordem de jogada fica definida pelo desempenho no último minijogo. para isso tens que adaptadar todos os minijogos para ter 1º 2º 3º e 4º lugar
 
 
     Controlos no telemóvel (botões, joystick, abanar...):
@@ -272,12 +272,12 @@ em andamento ou com dúvidas.)
 
     Notas do Claude:
 
-[ ] TÍTULO:
-    Tipo:
-    Prioridade (alta / média / baixa):
-    Onde no jogo (que ecrã, minijogo, mapa...):
+[ ] TÍTULO: batata quente 
+    Tipo: correções
+    Prioridade (alta / média / baixa): média
+    Onde no jogo (que ecrã, minijogo, mapa...): mini jogo batata quente 
 
-    Como funciona:
+    Como funciona: melhora o mapa e a bomba, devia ter uma explosão mais realista e também ser mais explícito quando vai expludir. a bomba pode pulsar na cor e no tamanho também. para passar a bomba devia ter que se carregar num botão para passar a bomba para o outro jogador
 
 
     Controlos no telemóvel (botões, joystick, abanar...):
