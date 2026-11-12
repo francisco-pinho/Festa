@@ -64,6 +64,11 @@ export class GolfStage extends SportStage {
   private readonly landRing: THREE.Mesh;
   private landLabel: THREE.Sprite | null = null;
   private readonly club3d: THREE.Group;
+  /** Taco agarrado com as duas mãos: o «ombro» (inclinado para a bola) e o braço que roda no swing. */
+  private readonly clubShoulder = new THREE.Group();
+  private readonly clubArm = new THREE.Group();
+  private readonly gripL = new THREE.Object3D();
+  private readonly gripR = new THREE.Object3D();
   private readonly caddie: CharacterModel;
   private caddieBubble: THREE.Sprite | null = null;
   private readonly course: GolfHole[];
@@ -98,12 +103,23 @@ export class GolfStage extends SportStage {
     this.scene.add(this.landRing);
 
     // Taco de golfe (vai para a mão de quem joga).
+    // O taco desce do «ombro» até à bola; as mãos agarram o punho (IK dos braços).
     this.club3d = new THREE.Group();
-    const shaft = mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.1, 8), toon('#c0c6d0'));
-    shaft.position.y = -0.45;
-    const head = mesh(new THREE.BoxGeometry(0.1, 0.08, 0.2), toon('#4a4f58'));
-    head.position.set(0, -1.0, 0.06);
-    this.club3d.add(shaft, head);
+    const grip = mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.26, 8), toon('#2b2440'));
+    grip.position.y = -0.42;
+    const shaft = mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.82, 8), toon('#c0c6d0'));
+    shaft.position.y = -0.94;
+    const head = mesh(new THREE.BoxGeometry(0.22, 0.09, 0.1), toon('#4a4f58'));
+    head.position.set(-0.07, -1.33, 0);
+    this.club3d.add(grip, shaft, head);
+    this.gripL.position.y = -0.34;
+    this.gripR.position.y = -0.47;
+    this.club3d.add(this.gripL, this.gripR);
+    this.clubArm.add(this.club3d);
+    this.clubShoulder.add(this.clubArm);
+    // Inclinado para a frente (para a bola, que está à frente e um pouco para o lado do alvo).
+    this.clubShoulder.position.set(0, 1.12, 0.22);
+    this.clubShoulder.rotation.x = -0.48;
 
     // Caddie
     const used = new Set(ctx.players.map((p) => p.characterId));
@@ -192,10 +208,11 @@ export class GolfStage extends SportStage {
 
     const m = this.model(g.seat.id);
     for (const other of this.models.values()) other.root.visible = other === m;
-    this.club3d.removeFromParent();
-    this.club3d.scale.setScalar(1);
-    this.club3d.position.set(0, 0, 0);
-    m.attach(this.club3d, 'right');
+    // Taco nas duas mãos, pousado atrás da bola.
+    this.clubShoulder.removeFromParent();
+    m.root.add(this.clubShoulder);
+    this.setSwing(m, 0);
+    m.reach(this.gripL, this.gripR);
     m.setAnim('idle');
     this.aiming = g;
     this.aimLocked = false;
@@ -240,16 +257,23 @@ export class GolfStage extends SportStage {
       spin: Math.sign(swing.spin),
     };
     if (swing.power > 1) this.say('Força máxima!');
-    m.setAnim('batSwing');
-    sound.play('whoosh', { vol: 0.6 });
-    void this.wait(0.3).then(() => sound.play('ball', { pitch: this.club === 'putter' ? 0.6 : 1.1 }));
-    await this.wait(0.35);
+    // Swing a sério: para trás, desce, bate na bola e acaba por cima do outro ombro.
+    const putt = this.club === 'putter';
+    const back = putt ? 0.45 + swing.power * 0.25 : 1.4 + Math.min(1, swing.power) * 1.2;
+    await this.tween(putt ? 0.4 : 0.45, (k) => this.setSwing(m, back * Math.sin((k * Math.PI) / 2)));
+    sound.play('whoosh', { vol: putt ? 0.25 : 0.6 });
+    await this.tween(putt ? 0.18 : 0.14, (k) => this.setSwing(m, back * (1 - k * k)));
+    sound.play('ball', { pitch: putt ? 0.6 : 1.1 });
+    const finish = putt ? -back * 0.8 : -2.4;
+    void this.tween(putt ? 0.3 : 0.4, (k) => this.setSwing(m, finish * Math.sin((k * Math.PI) / 2)));
     g.strokes++;
     const prev = g.pos.clone();
     const result = simulateShot(this.hole, { x: g.pos.x, z: g.pos.y }, shot, { x: this.wind.x, z: this.wind.y });
     await this.animateShot(g, result, shot);
     m.setAnim('idle');
-    this.club3d.removeFromParent();
+    m.reach(null, null);
+    m.pose.chestY = 0;
+    this.clubShoulder.removeFromParent();
 
     if (result.holed) {
       sound.play('ball', { pitch: 0.5 });
@@ -294,6 +318,16 @@ export class GolfStage extends SportStage {
    * Tacada com botões: X/Y mudam de taco, A começa o medidor (no ecrã grande) e A/X/Y param-no
    * (normal, topspin, backspin). Com o medidor a andar, o joystick dá curva e altura.
    */
+  /**
+   * Posição do swing: 0 = pousado atrás da bola, positivo = para trás (lado contrário ao alvo),
+   * negativo = acabamento para o lado do alvo. O tronco roda com o taco.
+   */
+  private setSwing(m: CharacterModel, a: number): void {
+    // −0.16: a cabeça do taco fica atrás da bola, que está ligeiramente para o lado do alvo.
+    this.clubArm.rotation.z = -0.16 + a;
+    m.pose.chestY = -a * 0.28;
+  }
+
   private meterSwing(g: GolferState, clubs: Club[], dist: number, lie: Lie, tip: string, botShot: Shot | null): Promise<{ power: number; dir: number; spin: number; loft: number }> {
     const seat = g.seat;
     const aimLayout = () => {
