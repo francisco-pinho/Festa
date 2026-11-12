@@ -15,7 +15,10 @@ import { ANIM_SPEEDS, BOT_LEVELS, GRAPHICS_LEVELS, VOLUMES, settings } from '../
 import { sound } from '../audio/Sound';
 import { esc } from './Hud';
 
-type Screen = 'main' | 'settings' | 'confirm';
+type Screen = 'main' | 'settings' | 'confirm' | 'quit';
+
+/** Na app de computador: fecha a janela (o mesmo que «Sair do jogo» do menu principal). */
+const desktopApp = (window as unknown as { festaDesktop?: { quit(): Promise<void> } }).festaDesktop;
 export type MenuMode = 'off' | 'lobby' | 'game';
 
 interface Item {
@@ -105,6 +108,12 @@ export class GameMenu {
 
   private items(): Item[] {
     const s = settings.value;
+    if (this.screen === 'quit') {
+      return [
+        { label: '🚪 Sim, fechar o jogo', run: () => void desktopApp?.quit() },
+        { label: '↩ Não', run: () => this.goto(this.mode === 'lobby' ? 'settings' : 'main') },
+      ];
+    }
     if (this.screen === 'confirm') {
       return [
         { label: '✅ Sim, sair para o lobby', run: () => location.reload() },
@@ -133,6 +142,7 @@ export class GameMenu {
             settings.set('graphics', GRAPHICS_LEVELS[(i + 1) % GRAPHICS_LEVELS.length]!.id);
           },
         },
+        ...(desktopApp && this.mode === 'lobby' ? [{ label: '🚪 Fechar o jogo', run: () => this.goto('quit') }] : []),
         { label: this.mode === 'lobby' ? '✔ Fechar' : '↩ Voltar', run: () => (this.mode === 'lobby' ? this.close() : this.goto('main')) },
       ];
     }
@@ -140,6 +150,7 @@ export class GameMenu {
       { label: '▶ Continuar', run: () => this.close() },
       { label: '⚙️ Definições', run: () => this.goto('settings') },
       { label: '🚪 Sair para o lobby', run: () => this.goto('confirm') },
+      ...(desktopApp ? [{ label: '❌ Fechar o jogo', run: () => this.goto('quit') }] : []),
     ];
   }
 
@@ -150,7 +161,7 @@ export class GameMenu {
   }
 
   private render(): void {
-    const title = this.screen === 'settings' ? '⚙️ Definições' : this.screen === 'confirm' ? 'Sair do jogo?' : '⏸ Pausa';
+    const title = this.screen === 'settings' ? '⚙️ Definições' : this.screen === 'confirm' ? 'Sair do jogo?' : this.screen === 'quit' ? 'Fechar o jogo?' : '⏸ Pausa';
     const sub =
       this.screen === 'confirm'
         ? 'O jogo atual acaba. Os jogadores continuam na sala.'
