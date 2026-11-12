@@ -964,25 +964,17 @@ export class PartyFlow {
     const sale = state.saleShopId === shop.id;
     const stock = SHOP_STOCK[shop.kind].map((item) => ({ item, price: priceFor(item, shop.kind, sale) }));
     const full = p.items.length >= 3;
-    this.hud.panel(`
-      <h1>${shop.kind === 'luxo' ? '💎' : '🛒'} ${esc(shop.name)}</h1>
-      <h2>${esc(SHOP_LABEL[shop.kind])}${sale ? ' · 💥 SALDOS: metade do preço!' : ''} · ${esc(p.name)} tem ${p.coins} 🪙${full ? ' · inventário cheio' : ''}</h2>
-      <div class="shop-items">${stock
-        .map(({ item, price }) => {
-          const def = ITEMS[item];
-          const ok = !full && p.coins >= price;
-          const base = priceFor(item, shop.kind, false);
-          return `<div class="shop-item ${ok ? '' : 'no'}"><span class="emoji">${def.emoji}</span><span class="nm">${esc(def.name)}</span>
-            <span class="ds">${esc(def.description)}</span><span class="pr">${sale ? `<span class="old">${base}</span>` : ''}${price} 🪙</span></div>`;
-        })
-        .join('')}</div>`);
+    // Um só menu (no ecrã grande e no comando): nome, preço e o que faz cada item.
     const options = stock.map(({ item, price }) => ({
       id: `buy:${item}`,
-      label: `${ITEMS[item].emoji} ${ITEMS[item].name} · ${price}🪙`,
+      label: `${ITEMS[item].emoji} ${ITEMS[item].name} · ${sale ? `${price}🪙 (era ${priceFor(item, shop.kind, false)})` : `${price}🪙`}`,
+      sub: ITEMS[item].description,
       disabled: full || p.coins < price,
     }));
+    const icon = shop.kind === 'luxo' ? '💎' : '🛒';
+    const extra = sale ? ' · 💥 SALDOS: metade do preço!' : full ? ' · inventário cheio' : '';
     const choice = await this.ctl.decide(seat, {
-      layout: { kind: 'choices', prompt: `${shop.name} · tens ${p.coins} 🪙`, columns: 2, options: [...options, { id: 'buy:none', label: '🚪 Sair da loja', disabled: false }] },
+      layout: { kind: 'choices', prompt: `${icon} ${shop.name} · tens ${p.coins} 🪙${extra}`, columns: 2, options: [...options, { id: 'buy:none', label: '🚪 Sair da loja', disabled: false }] },
       valid: ['buy:none', ...options.filter((o) => !o.disabled).map((o) => o.id)],
       bot: () => {
         const pick = botChooseBuy(state, p, stock, this.rng);
