@@ -13,7 +13,9 @@ export function ringDecor(scene: THREE.Scene, rng: Rng, radius: number, count = 
     ring.receiveShadow = true;
     scene.add(ring);
   }
-  const props = opts.props ?? [...PROPS.plants, ...PROPS.fantasyProps.slice(0, 8)];
+  // Sem baús, montes de moedas nem caixotes: pareciam objetos do jogo (e confundiam).
+  const looksLikeItem = /Chest|Coin|Crate/i;
+  const props = opts.props ?? [...PROPS.plants, ...PROPS.fantasyProps.filter((k) => !looksLikeItem.test(k)).slice(0, 10)];
   for (let i = 0; i < count; i++) {
     const a = (i / count) * Math.PI * 2 + rng.next() * 0.2;
     const big = i % 2 === 0;
