@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { mesh, toonUnique } from '../three/materials';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { themeScenery } from './scenery';
 
 const HEX = 1.05; // raio de cada hexágono
 const RADIUS = 8.6;
@@ -53,6 +54,8 @@ class FallingTilesRun extends ArenaMinigame {
         this.scene.add(m);
         this.tiles.push({ x, z, mesh: m, mat, crack: -1, fallen: false, drop: 0 });
       }
+    // Cenário com o tema do mapa à volta (com chão por baixo).
+    themeScenery(this.scene, ctx.rng, ctx.theme, RADIUS + 1, { water: true });
     this.spawnActors(5);
     this.camera.position.set(0, 21, 17);
     this.camera.lookAt(0, 0, 0.5);

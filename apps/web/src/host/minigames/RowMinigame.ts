@@ -65,7 +65,7 @@ export abstract class RowMinigame implements MinigameRun {
       this.scene.add(model.root);
       this.row.push({ seat, model, x, alive: true });
     });
-    if (opts.decor !== false) ringDecor(this.scene, ctx.rng, Math.max(10, (n * spacing) / 2 + 6));
+    if (opts.decor !== false) ringDecor(this.scene, ctx.rng, Math.max(10, (n * spacing) / 2 + 6), 26, { theme: ctx.theme });
     const width = n * spacing;
     this.camera.position.set(0, 4.2, Math.max(9, width * 0.95));
     this.camera.lookAt(0, 1.3, 0);

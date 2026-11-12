@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
 import { ArenaMinigame, TEAM_COLORS, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { themeScenery } from './scenery';
 
 const HX = 11; // meio comprimento do campo
 const HZ = 6.5; // meia largura
@@ -88,6 +89,8 @@ class ShellSoccerRun extends ArenaMinigame {
     }
     this.ball.add(shell, rim, under);
     this.scene.add(this.ball);
+    // Cenário com o tema do mapa à volta (com chão por baixo).
+    themeScenery(this.scene, ctx.rng, ctx.theme, HX + 2.5, { water: false });
     this.spawnActors(4);
     this.kickoff();
     this.camera.position.set(0, 20, 15);

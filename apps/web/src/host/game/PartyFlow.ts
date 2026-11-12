@@ -95,6 +95,7 @@ import type { DiceLayout, Seat, SeatControl } from './Seats';
 import { settings } from './Settings';
 import { rankBy, rankWinners } from '../minigames/rank';
 import { ResultsStage } from '../stages/ResultsStage';
+import type { Theme } from '../minigames/scenery';
 
 const PATH_COLORS = ['#ffd23f', '#3fd0ff', '#ff6fb5'];
 /** Moedas para quem acerta no vencedor de um duelo (apostas no telemóvel). */
@@ -1515,6 +1516,7 @@ export class PartyFlow {
       isBot: (id) => this.ctl.needsBot(this.seat(id)),
       vibrate: (id, ms) => this.ctl.vibrate(this.seat(id), ms),
       botSkill: settings.botSkill,
+      theme: this.state.board.theme as Theme,
     };
     this.boardWatchers.clear();
     await loadProps(MINIGAME_PROPS);

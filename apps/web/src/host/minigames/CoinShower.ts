@@ -10,6 +10,7 @@ import { coinMaterials, glowTexture } from '../three/coinArt';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { rankBy } from './rank';
+import { themeScenery } from './scenery';
 
 const ARENA_R = 12;
 const GRAVITY = 18;
@@ -42,6 +43,8 @@ class CoinShowerRun extends ArenaMinigame {
     const rim = mesh(new THREE.TorusGeometry(ARENA_R + 0.6, 0.35, 8, 64), toon('#f2d58b'));
     rim.rotation.x = Math.PI / 2;
     this.scene.add(ground, rim);
+    // Cenário com o tema do mapa à volta (com chão por baixo).
+    themeScenery(this.scene, ctx.rng, ctx.theme, ARENA_R + 1, { water: true });
     this.spawnActors(5);
     for (const s of ctx.seats) this.score.set(s.id, 0);
   }

@@ -61,7 +61,7 @@ class ColorFloorRun extends ArenaMinigame {
     this.bar = mesh(new THREE.BoxGeometry(8, 0.35, 0.2), toonUnique('#ffffff', { emissive: '#ffffff', emissiveIntensity: 0.4 }), { cast: false });
     this.bar.position.set(0, 3.2, -HALF - 1);
     this.scene.add(this.bar);
-    ringDecor(this.scene, ctx.rng, HALF + 9, 22, { ground: '#7ccf5b' });
+    ringDecor(this.scene, ctx.rng, HALF + 9, 22, { ground: '#000', theme: ctx.theme });
     this.spawnActors(3.5);
     // Mergulho (Ⓐ): mais longo e mais rápido do que o arranque normal, e empurra quem apanhar.
     this.dashBoost = 2.9;

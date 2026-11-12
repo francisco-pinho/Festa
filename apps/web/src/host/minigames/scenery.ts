@@ -1,29 +1,155 @@
-/** Cenário à volta dos minijogos: um anel de árvores, plantas e adereços (modelos detalhados, se estiverem carregados). */
+/**
+ * Cenário à volta dos minijogos, com o tema do mapa onde se está a jogar (ilha, vulcão, castelo,
+ * parque, cidade). Três anéis: adereços pequenos junto à zona de jogo, coisas grandes mais atrás
+ * e um «fundo» alto e fechado (montanhas, prédios, torres…) para não se ver o infinito.
+ * Há sempre chão debaixo do cenário: nada flutua na água.
+ */
 import * as THREE from 'three';
 import type { Rng } from '@festa/game';
 import { PROPS, pickProp } from '../three/props';
 
-export function ringDecor(scene: THREE.Scene, rng: Rng, radius: number, count = 26, opts: { props?: readonly string[]; trees?: readonly string[]; ground?: string } = {}): void {
-  const trees = opts.trees ?? PROPS.trees;
-  // Minijogos rodeados de água: uma faixa de terra para o cenário não flutuar.
-  if (opts.ground) {
-    const ring = new THREE.Mesh(new THREE.RingGeometry(radius - 1, radius + 16, 64), new THREE.MeshToonMaterial({ color: opts.ground }));
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = -0.02;
-    ring.receiveShadow = true;
-    scene.add(ring);
+export type Theme = 'island' | 'volcano' | 'castle' | 'park' | 'city';
+
+interface Look {
+  ground: string;
+  /** Faixa junto à zona de jogo (areia, pedra…), opcional. */
+  rim?: string;
+  small: readonly string[];
+  big: readonly string[];
+  back: readonly string[];
+  /** Altura das coisas do fundo. */
+  backH: [number, number];
+}
+
+const noItems = (k: string) => !/chest|Chest|Coin|Crate|crate/.test(k);
+
+function look(theme: Theme): Look {
+  switch (theme) {
+    case 'volcano':
+      return {
+        ground: '#5a4038',
+        rim: '#3a2a26',
+        small: [...PROPS.rocks, ...PROPS.pebbles, ...PROPS.deadTrees.slice(0, 2)],
+        big: [...PROPS.tallRocks, ...PROPS.deadTrees],
+        back: [...PROPS.mountains, ...PROPS.tallRocks],
+        backH: [12, 20],
+      };
+    case 'castle':
+      return {
+        ground: '#5f9a48',
+        rim: '#8a8478',
+        small: [...PROPS.graveyard, ...PROPS.fences, ...PROPS.spooky.filter((k) => /pumpkin|lantern|candle/.test(k))],
+        big: [...PROPS.deadTrees, ...PROPS.medievalNature.filter((k) => /tree/.test(k))],
+        back: [...PROPS.medieval, ...PROPS.medievalNature.filter((k) => /mountain|hills/.test(k))],
+        backH: [9, 15],
+      };
+    case 'park':
+      return {
+        ground: '#7ccf5b',
+        small: PROPS.park.filter((k) => /flowers|bench|trash/.test(k)).concat(PROPS.plants),
+        big: [...PROPS.park.filter((k) => /tree|stall/.test(k)), ...PROPS.trees],
+        back: [...PROPS.park.filter((k) => /entrance|station|train/.test(k)), ...PROPS.minigolf.filter((k) => /windmill|castle/.test(k)), ...PROPS.trees],
+        backH: [8, 13],
+      };
+    case 'city':
+      return {
+        ground: '#8d8aa0',
+        rim: '#6e6a80',
+        small: [...PROPS.street, ...PROPS.plants.slice(0, 4)],
+        big: [...PROPS.cars, ...PROPS.trees.slice(0, 5)],
+        back: PROPS.buildings,
+        backH: [12, 22],
+      };
+    default:
+      return {
+        ground: '#7ccf5b',
+        rim: '#f2d58b',
+        small: [...PROPS.plants, ...PROPS.beach.filter(noItems), ...PROPS.sandRocks],
+        big: [...PROPS.palms, ...PROPS.trees],
+        back: [...PROPS.palms, ...PROPS.trees, ...PROPS.tallRocks],
+        backH: [8, 13],
+      };
   }
-  // Sem baús, montes de moedas nem caixotes: pareciam objetos do jogo (e confundiam).
-  const looksLikeItem = /Chest|Coin|Crate/i;
-  const props = opts.props ?? [...PROPS.plants, ...PROPS.fantasyProps.filter((k) => !looksLikeItem.test(k)).slice(0, 10)];
-  for (let i = 0; i < count; i++) {
-    const a = (i / count) * Math.PI * 2 + rng.next() * 0.2;
-    const big = i % 2 === 0;
-    const o = big ? pickProp(trees, rng.next(), { height: 5 + rng.next() * 3 }) : pickProp(props, rng.next(), { height: 0.9 + rng.next() * 1 });
-    if (!o) continue;
-    const r = radius + (big ? 4 + rng.next() * 6 : rng.next() * 3);
-    o.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
-    o.rotation.y = rng.next() * Math.PI * 2;
-    scene.add(o);
+}
+
+/**
+ * Monta o cenário à volta de uma zona de jogo de raio `radius` (centrada em `center`).
+ * `water` = há água à volta da zona de jogo: o chão começa um pouco mais longe (deixa ver a água).
+ */
+export function themeScenery(
+  scene: THREE.Scene,
+  rng: Rng,
+  theme: Theme | undefined,
+  radius: number,
+  opts: { center?: THREE.Vector3; water?: boolean; count?: number } = {},
+): void {
+  const lk = look(theme ?? 'island');
+  const c = opts.center ?? new THREE.Vector3();
+  const inner = radius + (opts.water ? 3 : 0.5);
+  // Chão (anel) debaixo de todo o cenário: nada fica a flutuar.
+  const ground = new THREE.Mesh(new THREE.RingGeometry(inner, radius + 40, 72, 1), new THREE.MeshToonMaterial({ color: lk.ground }));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.set(c.x, -0.02, c.z);
+  ground.receiveShadow = true;
+  scene.add(ground);
+  if (lk.rim) {
+    const rim = new THREE.Mesh(new THREE.RingGeometry(inner, inner + 2.2, 72, 1), new THREE.MeshToonMaterial({ color: lk.rim }));
+    rim.rotation.x = -Math.PI / 2;
+    rim.position.set(c.x, -0.01, c.z);
+    rim.receiveShadow = true;
+    scene.add(rim);
   }
+  const place = (keys: readonly string[], n: number, r0: number, r1: number, h: [number, number]) => {
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + rng.next() * 0.3;
+      const o = pickProp(keys, rng.next(), { height: h[0] + rng.next() * (h[1] - h[0]) });
+      if (!o) continue;
+      const r = r0 + rng.next() * (r1 - r0);
+      o.position.set(c.x + Math.cos(a) * r, 0, c.z + Math.sin(a) * r);
+      o.rotation.y = rng.next() * Math.PI * 2;
+      scene.add(o);
+    }
+  };
+  const count = opts.count ?? 24;
+  place(lk.small, count, inner + 0.5, inner + 3.5, [0.7, 1.6]);
+  place(lk.big, Math.round(count * 0.8), inner + 5, inner + 11, [4, 7.5]);
+  // Fundo fechado: muitas coisas altas lá atrás.
+  place(lk.back, 30, inner + 16, inner + 24, lk.backH);
+}
+
+/** Água do minijogo com o tema: no vulcão passa a lava. */
+export function themeWater(water: THREE.Mesh, theme: Theme | undefined): void {
+  if (theme !== 'volcano') return;
+  const m = water.material as THREE.MeshStandardMaterial;
+  m.color.set('#ff5a1f');
+  m.emissive = new THREE.Color('#b32400');
+}
+
+/**
+ * Compatibilidade: o anel de cenário antigo. Com `theme`, usa o cenário do tema;
+ * sem tema, é o da ilha.
+ */
+export function ringDecor(scene: THREE.Scene, rng: Rng, radius: number, count = 26, opts: { props?: readonly string[]; trees?: readonly string[]; ground?: string; theme?: Theme } = {}): void {
+  if (opts.props || opts.trees) {
+    // Cenário escolhido pelo minijogo (ex.: só pinheiros e pedras na neve).
+    const trees = opts.trees ?? PROPS.trees;
+    const props = opts.props ?? PROPS.plants;
+    const ground = new THREE.Mesh(new THREE.RingGeometry(radius - 1, radius + 40, 64), new THREE.MeshToonMaterial({ color: opts.ground ?? '#f4f8ff' }));
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.02;
+    ground.receiveShadow = true;
+    scene.add(ground);
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + rng.next() * 0.2;
+      const big = i % 2 === 0;
+      const o = big ? pickProp(trees, rng.next(), { height: 5 + rng.next() * 3 }) : pickProp(props, rng.next(), { height: 0.9 + rng.next() * 1 });
+      if (!o) continue;
+      const r = radius + (big ? 4 + rng.next() * 6 : rng.next() * 3);
+      o.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+      o.rotation.y = rng.next() * Math.PI * 2;
+      scene.add(o);
+    }
+    return;
+  }
+  themeScenery(scene, rng, opts.theme, radius - 1, { count, water: !!opts.ground });
 }

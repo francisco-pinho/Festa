@@ -38,7 +38,7 @@ class HammerRun extends ArenaMinigame {
       crate.position.set(o.x, crate instanceof THREE.Mesh ? 0.7 : 0, o.z);
       this.scene.add(crate);
     }
-    ringDecor(this.scene, ctx.rng, HALF + 5, 24, { ground: '#7ccf5b' });
+    ringDecor(this.scene, ctx.rng, HALF + 5, 24, { ground: '#000', theme: ctx.theme });
     this.spawnActors(8, (seat) => (seat.team === 'blue' ? { radius: 1, mass: 4, speed: 7.2 } : { speed: 7.2 }));
     this.giant = this.actors.find((a) => a.seat.team === 'blue');
     // Martelo

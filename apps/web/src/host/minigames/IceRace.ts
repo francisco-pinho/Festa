@@ -9,6 +9,7 @@ import { mesh, toon, toonUnique } from '../three/materials';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { rankBy } from './rank';
+import { themeScenery } from './scenery';
 
 /** Elipses da pista: parede de fora, ilha do meio e a linha central (para os bots). */
 const OUT = { a: 14, b: 8.5 };
@@ -89,6 +90,8 @@ class IceRaceRun extends ArenaMinigame {
         this.scene.add(sq);
       }
     }
+    // Cenário com o tema do mapa à volta (com chão por baixo).
+    themeScenery(this.scene, ctx.rng, ctx.theme, OUT.a + 1, { water: false });
     this.spawnActors(3, () => ({ speed: 8.5, radius: 0.55 }));
     const n = this.actors.length;
     this.actors.forEach((a, i) => {

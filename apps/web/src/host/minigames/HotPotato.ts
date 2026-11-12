@@ -25,7 +25,7 @@ class HotPotatoRun extends ArenaMinigame {
     const floor = mesh(new THREE.CylinderGeometry(R, R + 0.4, 1, 48), toon('#c9a26b'), { receive: true });
     floor.position.y = -0.5;
     this.scene.add(floor);
-    ringDecor(this.scene, ctx.rng, R + 6, 24, { ground: '#7ccf5b' });
+    ringDecor(this.scene, ctx.rng, R + 6, 24, { ground: '#000', theme: ctx.theme });
     this.bomb = new THREE.Group();
     const body = mesh(new THREE.SphereGeometry(0.45, 18, 14), toon('#22202b'));
     const cap = mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.2, 10), toon('#6b6f78'));

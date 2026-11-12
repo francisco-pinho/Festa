@@ -11,6 +11,7 @@ import { damp } from '../three/tweens';
 import { Water, setupSky } from '../stages/environment';
 import type { MinigameContext, MinigameRun, MinigameScore, MinigameSeat } from './types';
 import { rankSurvival } from './rank';
+import { themeWater } from './scenery';
 
 export interface Actor {
   seat: MinigameSeat;
@@ -49,6 +50,7 @@ export abstract class ArenaMinigame implements MinigameRun {
   constructor(protected readonly ctx: MinigameContext) {
     setupSky(this.scene, { fog: [70, 200] });
     this.scene.add(this.water.mesh);
+    themeWater(this.water.mesh, ctx.theme);
     this.camera.position.set(0, 22, 20);
     this.camera.lookAt(0, 0, 1.5);
   }

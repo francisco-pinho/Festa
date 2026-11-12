@@ -54,7 +54,7 @@ class BomberRun extends ArenaMinigame {
     const top = mesh(new THREE.CylinderGeometry(2, 1.7, 0.5, 16), toon('#5d4037'));
     top.position.set(0, TOWER_H - 0.25, TOWER_Z);
     this.scene.add(tower, top);
-    ringDecor(this.scene, ctx.rng, R + 4, 22, { ground: '#8fd16a' });
+    ringDecor(this.scene, ctx.rng, R + 4, 22, { ground: '#000', theme: ctx.theme });
     // Mira
     this.cross = new THREE.Group();
     const ring = mesh(new THREE.TorusGeometry(0.9, 0.09, 8, 32), toonUnique('#ff3b5c', { emissive: '#ff3b5c', emissiveIntensity: 0.6 }), { cast: false });

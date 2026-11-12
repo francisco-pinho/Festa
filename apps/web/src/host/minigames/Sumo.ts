@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { themeScenery } from './scenery';
 
 const START_R = 10;
 const END_R = 4.5;
@@ -33,6 +34,10 @@ class SumoRun extends ArenaMinigame {
     (this.water.mesh.material as THREE.MeshStandardMaterial).color.set('#ff5a1f');
     (this.water.mesh.material as THREE.MeshStandardMaterial).emissive = new THREE.Color('#b32400');
     this.setRadius(START_R);
+
+    // Cenário com o tema do mapa à volta (com chão por baixo).
+
+    themeScenery(this.scene, ctx.rng, ctx.theme, START_R + 1, { water: true });
 
     this.spawnActors(6, (seat) =>
       ctx.mode === 'oneVsAll' && seat.team === 'blue'

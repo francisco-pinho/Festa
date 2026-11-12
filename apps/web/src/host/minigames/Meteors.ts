@@ -37,7 +37,7 @@ class MeteorsRun extends ArenaMinigame {
     const floor = mesh(new THREE.CylinderGeometry(R + 1, R + 1.6, 1, 48), toon('#7ccf5b'), { cast: false, receive: true });
     floor.position.y = -0.5;
     this.scene.add(floor);
-    ringDecor(this.scene, ctx.rng, R + 4, 22, { ground: '#8fd16a' });
+    ringDecor(this.scene, ctx.rng, R + 4, 22, { ground: '#000', theme: ctx.theme });
     this.scene.background = new THREE.Color('#ffb48a'); // céu ao fim da tarde
     this.spawnActors(5);
     this.camera.position.set(0, 21, 17);

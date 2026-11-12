@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { themeScenery } from './scenery';
 
 const HALF = 8;
 const THICK = 0.8;
@@ -48,6 +49,8 @@ class WallHoleRun extends ArenaMinigame {
         tile.position.set(i, 0.01, j);
         this.scene.add(tile);
       }
+    // Cenário com o tema do mapa à volta (com chão por baixo).
+    themeScenery(this.scene, ctx.rng, ctx.theme, HALF * 1.45, { water: true });
     this.spawnActors(3);
     this.camera.position.set(0, 19, 15);
     this.camera.lookAt(0, 0, 0.5);

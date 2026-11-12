@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { themeScenery } from './scenery';
 
 interface Pillar {
   x: number;
@@ -179,6 +180,10 @@ class TagRun extends ArenaMinigame {
       this.scene.add(g);
       this.sweeper = g;
     }
+
+    // Cenário com o tema do mapa à volta (com chão por baixo).
+
+    themeScenery(this.scene, ctx.rng, ctx.theme, HALF * 1.45, { water: false });
 
     this.spawnActors(9, (seat) => (seat.team === 'blue' ? { speed: 8.6, radius: 0.7 } : { speed: 7.4 }));
     const chaser = this.actors.find((a) => a.seat.team === 'blue');

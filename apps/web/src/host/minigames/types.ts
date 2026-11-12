@@ -2,6 +2,7 @@ import type { MinigameMode, Rng } from '@festa/game';
 import type { Stage } from '../three/Engine';
 import type { Engine } from '../three/Engine';
 import type { BotPad, PadInput } from '../game/Seats';
+import type { Theme } from './scenery';
 
 export interface MinigameSeat {
   id: string;
@@ -24,6 +25,8 @@ export interface MinigameContext {
   botPad(id: string): BotPad;
   isBot(id: string): boolean;
   vibrate(id: string, ms: number): void;
+  /** Tema do mapa onde se está a jogar (o cenário do minijogo segue-o). */
+  theme?: Theme;
   /** Ronda atual (1, 2, …) e total de rondas: os minijogos podem ficar mais difíceis a cada ronda. */
   round?: number;
   rounds?: number;
