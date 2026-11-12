@@ -3,6 +3,7 @@
  * estatísticas pessoais em cartões, classificação ao vivo e, às vezes, uma aposta.
  */
 import type { ControllerInput, ControllerLayout } from '@festa/shared';
+import { haptic } from './haptics';
 
 type InfoLayout = Extract<ControllerLayout, { kind: 'info' }>;
 export type Stats = NonNullable<InfoLayout['stats']>;
@@ -50,7 +51,7 @@ export function renderInfo(view: HTMLElement, l: InfoLayout, send: (input: Contr
         o.disabled = true;
         o.classList.toggle('on', o === b);
       });
-      navigator.vibrate?.(30);
+      haptic(30);
     }),
   );
 }

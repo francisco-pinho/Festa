@@ -21,7 +21,7 @@ export interface ChoicesLayout {
   columns?: number;
 }
 
-/** Lançar dados: A lança (ou abanar); − mapa; X abre os itens no ecrã grande. */
+/** Lançar dados: A lança (ou abanar); Ⓨ mapa inteiro; X abre os itens no ecrã grande. */
 export interface DiceLayout {
   kind: 'dice';
   prompt: string;
@@ -169,7 +169,7 @@ export class SeatControl {
           sub: '…ou abana o telemóvel!',
           stick: 'none',
           shake: true,
-          buttons: { a: l.label, x: items.length ? `Itens (${items.length})` : undefined, minus: map ? 'Mapa' : undefined, plus: 'Menu' },
+          buttons: { a: l.label, x: items.length ? `Itens (${items.length})` : undefined, y: map ? (map.label.includes('Fechar') ? 'Fechar mapa' : 'Mapa') : undefined, plus: 'Menu' },
         });
       }
       case 'gamepad': {
@@ -269,7 +269,7 @@ export class SeatControl {
     });
   }
 
-  /** Dados: A lança (ou abanar), − abre o mapa, X mostra os itens no ecrã grande. */
+  /** Dados: A lança (ou abanar), Ⓨ abre o mapa inteiro, X mostra os itens no ecrã grande. */
   private dice(seat: Seat, l: DiceLayout, opts: DecideOptions): Promise<string> {
     const items = (l.extras ?? []).filter((x) => x.id !== 'map');
     const hasMap = !!l.extras?.some((x) => x.id === 'map');
@@ -285,7 +285,7 @@ export class SeatControl {
       const off = this.hub.events.on('press', ({ player, button }) => {
         if (player.id !== seat.id || inMenu || done || this.menus.blocked) return;
         if (button === 'a' && opts.valid.includes('roll')) finish('roll');
-        else if (button === 'minus' && hasMap) finish('map');
+        else if ((button === 'y' || button === 'minus') && hasMap) finish('map'); // Ⓨ (ou −): ver o tabuleiro inteiro
         else if (button === 'x' && items.length) {
           inMenu = true;
           this.setLayout(seat, { kind: 'choices', prompt: 'Escolhe um item', options: [] });

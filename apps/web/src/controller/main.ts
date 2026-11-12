@@ -20,6 +20,7 @@ import { renderBoard } from './boardview';
 import { renderInfo, statsHtml } from './infoview';
 import { sensors } from './sensors';
 import { ScreenViewer } from '../common/screenViewer';
+import { hapticPattern } from './haptics';
 
 const SESSION_KEY = 'festa.session';
 const NAME_KEY = 'festa.name';
@@ -177,7 +178,7 @@ socket.on('controller:message', (msg) => {
       renderLayout();
       break;
     case 'vibrate':
-      navigator.vibrate?.(msg.pattern);
+      hapticPattern(msg.pattern);
       break;
     case 'toast':
       showToast(msg.text);
@@ -417,7 +418,7 @@ function openSensorSheet(): void {
       btn.disabled = true;
       btn.textContent = '📳 Abana o telemóvel agora!';
       await sensors.calibrate(3);
-      navigator.vibrate?.(80);
+      hapticPattern(80);
       render();
     });
     sheet.querySelector('#s-close')?.addEventListener('click', closeSheet);

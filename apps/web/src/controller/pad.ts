@@ -11,6 +11,7 @@ import type { ButtonId, ControllerInput, PadLayout } from '@festa/shared';
 import { capture, createJoystick } from './joystick';
 import { GestureTracker, swipeToSwing, touchPunch } from './motion';
 import { sensors } from './sensors';
+import { haptic, hapticPattern } from './haptics';
 
 type Send = (input: ControllerInput, volatile?: boolean) => void;
 type Face = 'a' | 'b' | 'x' | 'y' | 'plus' | 'minus';
@@ -49,9 +50,9 @@ export function renderPad(view: HTMLElement, l: PadLayout, send: Send, stickSend
     </div>`;
 
   // ── Botões ──────────────────────────────────────────────
-  // Sensação de botão a sério: um «clique» ao carregar e um mais leve ao largar.
+  // Sensação de botão a sério: um toque ao carregar (ver haptics.ts: Android e iPhone).
   const press = (button: ButtonId, pressed: boolean) => {
-    navigator.vibrate?.(pressed ? 18 : 8);
+    if (pressed) haptic(30);
     send({ t: 'button', button, pressed });
   };
   const holdListeners = new Set<(down: boolean) => void>();
@@ -81,7 +82,7 @@ export function renderPad(view: HTMLElement, l: PadLayout, send: Send, stickSend
   let atEdge = false;
   const stickHaptic = (x: number, y: number) => {
     const edge = Math.hypot(x, y) > 0.92;
-    if (edge && !atEdge) navigator.vibrate?.(8);
+    if (edge && !atEdge) haptic(25);
     atEdge = edge;
     stickSend(x, y);
   };
@@ -96,7 +97,7 @@ export function renderPad(view: HTMLElement, l: PadLayout, send: Send, stickSend
         sensors.onShake(() => {
           press('a', true);
           press('a', false);
-          navigator.vibrate?.([30, 30, 60]);
+          hapticPattern([30, 30, 60]);
         }),
       );
     };
@@ -120,7 +121,7 @@ export function renderPad(view: HTMLElement, l: PadLayout, send: Send, stickSend
     let hand: 'left' | 'right' = 'right';
     const emit = (s: Omit<Extract<ControllerInput, { t: 'swing' }>, 't' | 'hand'>) => {
       if (motion.action === 'punch') hand = hand === 'right' ? 'left' : 'right';
-      navigator.vibrate?.(Math.round(20 + s.power * 60));
+      hapticPattern(Math.round(25 + s.power * 60));
       mz.classList.remove('hit');
       void mz.offsetWidth;
       mz.classList.add('hit');
