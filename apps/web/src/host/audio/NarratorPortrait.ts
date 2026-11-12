@@ -20,6 +20,9 @@ export class NarratorPortrait {
   private beat = 0;
   private excited = 0;
   private t = 0;
+  /** Próximo gesto com os braços enquanto fala. */
+  private gestureIn = 0;
+  private gestureFlip = false;
   talking = false;
 
   constructor(readonly canvas: HTMLCanvasElement) {
@@ -82,6 +85,18 @@ export class NarratorPortrait {
   line(text: string): void {
     this.talking = true;
     this.excited = /!\s*$/.test(text) ? 1 : 0;
+    // Frase com «!»: festeja; senão começa com um gesto de explicar.
+    if (this.excited && Math.random() < 0.6) {
+      this.model.setAnim('cheer');
+      this.gestureIn = 1.1;
+    } else this.gesture();
+  }
+
+  /** Gesto com os braços (dois tipos, alternados). */
+  private gesture(): void {
+    this.gestureFlip = !this.gestureFlip;
+    this.model.setAnim(this.gestureFlip ? 'talk' : 'talk2');
+    this.gestureIn = 2.2 + Math.random() * 1.3;
   }
 
   /** Cada palavra: dá um impulso suave ao movimento da cabeça (sem safanões). */
@@ -105,6 +120,10 @@ export class NarratorPortrait {
     this.excited *= Math.exp(-dt * 0.8);
     const e = this.energy;
     const t = this.t;
+    // Enquanto fala vai gesticulando; quando acaba volta ao repouso.
+    this.gestureIn -= dt;
+    if (this.talking && this.gestureIn <= 0) this.gesture();
+    if (!this.talking && this.model.anim !== 'idle' && this.gestureIn <= 0) this.model.setAnim('idle');
     const pose = this.model.pose;
     pose.headX = e * (0.05 * Math.sin(t * 5.2) + 0.07 * this.beat) - 0.04 * e;
     pose.headY = e * 0.1 * Math.sin(t * 1.3);

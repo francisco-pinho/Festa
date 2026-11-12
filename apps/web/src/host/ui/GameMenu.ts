@@ -123,7 +123,10 @@ export class GameMenu {
     if (this.screen === 'settings') {
       const speed = ANIM_SPEEDS.find((a) => a.value === s.animSpeed) ?? ANIM_SPEEDS[0]!;
       return [
-        { label: `🤖 Dificuldade dos bots: ${settings.botLevelLabel}`, run: () => settings.cycleBotLevel() },
+        // A dificuldade dos bots só se escolhe antes de começar (a meio do jogo fica bloqueada).
+        this.mode === 'lobby'
+          ? { label: `🤖 Dificuldade dos bots: ${settings.botLevelLabel}`, run: () => settings.cycleBotLevel() }
+          : { label: `🔒 Dificuldade dos bots: ${settings.botLevelLabel} (só antes de começar)`, run: () => undefined },
         {
           label: `⏩ Velocidade das animações: ${speed.label}`,
           run: () => {

@@ -1035,6 +1035,18 @@
   box-shadow: 0 0.8vh 2vh #0007;
 }
 @keyframes nar-talk { to { transform: translateY(-0.6vh) rotate(-4deg); } }
+.nar-avatar { animation: nar-avatar-in 0.45s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes nar-avatar-in { from { transform: scale(0.4) rotate(-12deg); opacity: 0; } }
+/* Balão: entra com «pop» a partir do lado da personagem; pulinho a cada frase nova */
+.nar-box { transform-origin: 0% 85%; }
+.nar-box.pop { animation: nar-pop 0.42s cubic-bezier(.2, 1.7, .45, 1) both; animation-delay: 0.12s; }
+.nar-box.bump { animation: nar-bump 0.3s ease-out; }
+@keyframes nar-pop { from { transform: scale(0.2); opacity: 0; } }
+@keyframes nar-bump { 40% { transform: scale(1.035) translateY(-0.4vh); } }
+/* Texto letra a letra */
+.nar-word { display: inline-block; white-space: nowrap; }
+.nar-ch { display: inline-block; opacity: 0; animation: nar-ch 0.22s ease-out forwards; }
+@keyframes nar-ch { from { opacity: 0; transform: translateY(0.6vh) scale(0.8); } to { opacity: 1; transform: none; } }
 .nar-box {
   position: relative;
   background: #fffdf3;

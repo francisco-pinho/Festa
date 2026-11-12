@@ -55,9 +55,16 @@ class NarratorEngine {
         resolve();
       };
     });
+    const box = el.querySelector<HTMLElement>('.nar-box')!;
+    let first = true;
     for (const line of lines) {
       if (skipped) break;
-      text.textContent = line;
+      typeLine(text, line);
+      // Balão: entra com «pop» na primeira frase e dá um pequeno pulo a cada frase nova.
+      box.classList.remove('pop', 'bump');
+      void box.offsetWidth;
+      box.classList.add(first ? 'pop' : 'bump');
+      first = false;
       this.portrait?.line(line);
       await Promise.race([this.speak(line), skipPromise]);
       if (!skipped) await Promise.race([wait(250), skipPromise]);
@@ -74,6 +81,34 @@ class NarratorEngine {
     const readTime = 1200 + line.split(/\s+/).length * 300;
     const words = setInterval(() => this.portrait?.word(), 260);
     return wait(readTime).then(() => clearInterval(words));
+  }
+}
+
+/**
+ * Escreve a frase letra a letra (cada letra sobe e aparece, como se fosse dita).
+ * As palavras ficam inteiras numa linha (não se partem a meio).
+ */
+function typeLine(p: HTMLElement, line: string): void {
+  p.textContent = '';
+  let i = 0;
+  const STEP = 22; // ms por letra
+  for (const word of line.split(/(\s+)/)) {
+    if (/^\s+$/.test(word)) {
+      p.append(word);
+      i += word.length;
+      continue;
+    }
+    const w = document.createElement('span');
+    w.className = 'nar-word';
+    for (const ch of word) {
+      const c = document.createElement('span');
+      c.className = 'nar-ch';
+      c.textContent = ch;
+      c.style.animationDelay = `${i * STEP}ms`;
+      w.append(c);
+      i++;
+    }
+    p.append(w);
   }
 }
 
