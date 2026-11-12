@@ -22,6 +22,10 @@ import { WallHole } from './WallHole';
 import { Fishing } from './Fishing';
 import { MemoryCards } from './MemoryCards';
 import { IceRace } from './IceRace';
+import { FallingTiles } from './FallingTiles';
+import { ShellSoccer } from './ShellSoccer';
+import { PizzaRush } from './PizzaRush';
+import { PhotoShoot } from './PhotoShoot';
 import type { MinigameDef } from './types';
 
 /** Para adicionar um minijogo: cria o ficheiro e acrescenta-o aqui. */
@@ -31,6 +35,7 @@ export const MINIGAMES: MinigameDef[] = [
   LookAway, Bomber, Meteors,
   CountSheep, RightForce, WallHole, Fishing,
   MemoryCards, IceRace,
+  FallingTiles, ShellSoccer, PizzaRush, PhotoShoot,
 ];
 
 /**

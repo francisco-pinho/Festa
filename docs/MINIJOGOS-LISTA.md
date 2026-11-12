@@ -13,7 +13,7 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 | 0 (base) | ✅ | Chuva de Moedas, Empurra-Empurra (sumo), Apanhada, Saque Rápido, Cabo de Guerra, Pontaria |
 | 1 | ✅ | Chão de Cores, Bolas de Neve, Corda Saltitona, Diz o Maestro, Balão Rebentão, Batata Quente, Martelão (1 vs 3), Canoa a Pares (2 vs 2) |
 | 2 | ✅ | Chuva de Meteoros, Olha para o Lado, Bombardeiro (1 vs 3), Conta as Ovelhas, Força Certa, Parede com Buraco, Pesca de Baús, Memória, Corrida no Gelo |
-| 3 | 🔜 | Plataformas que Caem, Bombas Sobe-Desce, Pizza Rápida, Fotografia Certa, Pinball, Corrida de Bobsled, Volei de Praia, Futebol de Carapaças |
+| 3 | ✅ em parte | ✅ Plataformas que Caem, ✅ Pizza Rápida, ✅ Fotografia Certa, ✅ Futebol de Carapaças · 🔜 Bombas Sobe-Desce, Pinball, Corrida de Bobsled, Volei de Praia |
 | 4 | ⬜ | Escalada, Labirinto a Dois, Bolos em Série (equipa), Hamburguer Alto, Sombras, Diferenças, Puzzle, Carros de Choque |
 
 ---
@@ -27,7 +27,7 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 - ✅ Fun Run → Corrida no Gelo
 - ✅ Cointagious → Apanhada
 - ⬜ Snow Ride — descida de trenó
-- 🔜 Picture This → Fotografia Certa (lote 3)
+- ✅ Picture This → Fotografia Certa
 - ⬜ Ghost in the Hall — corredor com portas: escolher a certa
 - ⬜ Big Dripper — apanhar gotas com um balde
 - ✅ Target Tag → Pontaria
@@ -154,7 +154,7 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 - ⬜ Bounce n Trounce — saltar em cima dos outros
 - ⬜ Motor Rooter — corrida de motas
 - ⬜ Mush Pit — empurrar para fora
-- 🔜 Eatsa Pizza → Pizza Rápida (lote 3)
+- ✅ Eatsa Pizza → Pizza Rápida
 - ✅ Snowball Summit → Bolas de Neve
 
 **Do Mario Party 4** — ⬜ Money Belts, Paths of Peril, GOOOOOOOAL!!, Trace Race, Beach Volley Folly (Volei de Praia, lote 3), Booksquirm (✅ Parede com Buraco), Dungeon Duos, Revers-a-Bomb
@@ -167,7 +167,7 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 
 **Do Mario Party 8** — ⬜ Winner or Dinner, Paint Misbehavin
 
-**Do Mario Party 9** — ✅ Goomba Spotting → Conta as Ovelhas · ⬜ Tackle Takedown, Manor of Escape, Shell Soccer (Futebol de Carapaças, lote 3)
+**Do Mario Party 9** — ✅ Goomba Spotting → Conta as Ovelhas · ⬜ Tackle Takedown, Manor of Escape, Shell Soccer (✅ Futebol de Carapaças)
 
 **Do Mario Party 10** — ⬜ Skewer Scurry, Flash Forward · ✅ Rapid River Race → Canoa a Pares
 
@@ -175,7 +175,7 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 
 ## Mario Party 9
 
-**Todos contra todos** — ⬜ Buddy Bounce, Logger Heads, Pinball Fall (Pinball, lote 3), Launch Break, Goomba Village, Speeding Bullets, Pianta Pool, Chain Event, Skyjinks, Skipping Class, Mecha Choice, Jigsaw Jumble, Growing Up, Upward Mobility, Ring Leader, Smash Compactor, Peak Precision, 10 to Win, Tuber Tug, Card Smarts, Toad and Go Seek, Polar Extreme, Goomba Bowling, Tumble Temple, Twist Ending, Manor of Escape, Player Conveyor, Ballistic Beach, Bumper Bubbles, Flinger Painting, Bomb Barge, Don't Look (✅ ≈ Olha para o Lado), Snow Go, Piranha Patch, Plunder Ground, Pier Pressure, Billistics, Pit or Platter, Thwomper Room, Urn It, Goomba Spotting (✅ Conta as Ovelhas), Magma Mayhem (Plataformas que Caem, lote 3), Pizza Me Mario, Fungi Frenzy
+**Todos contra todos** — ⬜ Buddy Bounce, Logger Heads, Pinball Fall (Pinball, lote 3), Launch Break, Goomba Village, Speeding Bullets, Pianta Pool, Chain Event, Skyjinks, Skipping Class, Mecha Choice, Jigsaw Jumble, Growing Up, Upward Mobility, Ring Leader, Smash Compactor, Peak Precision, 10 to Win, Tuber Tug, Card Smarts, Toad and Go Seek, Polar Extreme, Goomba Bowling, Tumble Temple, Twist Ending, Manor of Escape, Player Conveyor, Ballistic Beach, Bumper Bubbles, Flinger Painting, Bomb Barge, Don't Look (✅ ≈ Olha para o Lado), Snow Go, Piranha Patch, Plunder Ground, Pier Pressure, Billistics, Pit or Platter, Thwomper Room, Urn It, Goomba Spotting (✅ Conta as Ovelhas), Magma Mayhem (✅ Plataformas que Caem), Pizza Me Mario, Fungi Frenzy
 
 **1 contra rivais** — ⬜ Ruins Rumble, Hazard Hold, Tackle Takedown, Weird Wheels, Spike-n-Span, Hole Hogs, Pix Fix, Mob Sleds, Block and Roll, Line in the Sand
 
@@ -191,7 +191,7 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 
 - ⬜ Peligro en el puente, Toads equilibristas, Tiovivo fulminante, Banderas planetarias, Emparedados, Camino modular, Batalla de luz, Frente frío, Magma mía, El rocaminó, Tira y… ¡canasta!, Huida pedregosa, Golf basculante, Escalada de luces, Equilibrio marino, Naves electrizantes, Minitriatlón, Excavación a la carrera, Las llaves del éxito, Pingüizadores al límite, Riquezas sobre hielo, Monedas balanceadas, Tesoros hundidos, Plataformas precarias, ¡Deja tu sello!, A salto de Hormigoides, Disparos al atardecer, Galletas en serie, Placas aplastantes, Golpe de intuición, Dianas moviditas, Caídas calculadas, Fantasmón al ataque, Pesca con jaula, Ingresos líquidos, La grúa, Robo a martillazos, Carrera pendular, Frutas en banda, Corte de primera, Carrera fluvial de Dorrie, Pulso mecanizado, A toda mecha, Ojo que voy, Taxi en dos ejes, Ruinas de fortuna, Lazo a los cofres, Pesca de precisión, Máquina de guantazos, La bolera de Rocomiro, Ascensor de Fuzzys, Carrera de canicas, Pulso para los objetos, Premio alineado, Curling de objetos, Premio en caída, Zumo en serie, Pase y remate, Dianas navegantes, La defensa del portón, Lavado de Chomp Cadenas, Intercambio de cartas, Quien fuera Floruga, Miradas soslayadas, Puzles en equipo, Topos Monty mecánicos, Rompebloques, Crujiente y tostado, El dedo empujador, Hiperautopista, Piezas en busca de orden, Cañones entre las nubes
 - ✅ Con la fuerza justa → Força Certa · ✅ Parejas ocultas / Cartas gemelas → Memória · ✅ ¿Quien aparece más? → Conta as Ovelhas
-- ⬜ Precisión fotográfica / Imágenes coincidentes → Fotografia Certa (lote 3) · Diferencias encubiertas → Diferenças (lote 4) · Sombras superpuestas → Sombras (lote 4) · Hamburguesería de altura → Hamburguer Alto (lote 4)
+- ⬜ ✅ Precisión fotográfica / Imágenes coincidentes → Fotografia Certa · Diferencias encubiertas → Diferenças (lote 4) · Sombras superpuestas → Sombras (lote 4) · Hamburguesería de altura → Hamburguer Alto (lote 4)
 - ✅ Bolazos de nieve → Bolas de Neve
 - ⬜ Cozinha em equipa: Potaje acompasado, Postre a cucharazos, Nata sincronizada, Unta conjunta, Tortitas en su punto, Bocatata, Imitación al curry, Brochetas al vuelo, Verduras a paladas
 - ⬜ Desafios «Contra…» (sobreviver): Contra el fuego, Contra las bolas de hierro, Contra las explosiones, Contra los Bill Balas, Contra las caídas
