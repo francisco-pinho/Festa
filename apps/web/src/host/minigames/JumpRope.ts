@@ -4,7 +4,7 @@
  */
 import { sound } from '../audio/Sound';
 import * as THREE from 'three';
-import { mesh, toon } from '../three/materials';
+import { mesh, toon, toonUnique } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 
@@ -12,6 +12,34 @@ const JUMP = 0.62; // duração do salto (s)
 const JUMP_H = 1.6; // altura do salto
 const R = 3.3; // raio da volta da corda (no meio)
 const HAND_Y = 3.4; // altura a que a corda está presa nos postes
+const ROPE_R = 0.09;
+
+/** Textura de corda entrançada: fios em diagonal, castanho-claro com sombras. */
+let ropeTex: THREE.CanvasTexture | null = null;
+function ropeTexture(): THREE.CanvasTexture {
+  if (ropeTex) return ropeTex;
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 32;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#c9a46a';
+  g.fillRect(0, 0, 64, 32);
+  for (let i = -2; i < 6; i++) {
+    g.fillStyle = i % 2 ? '#a8824c' : '#dcbb84';
+    g.beginPath();
+    g.moveTo(i * 16, 0);
+    g.lineTo(i * 16 + 10, 0);
+    g.lineTo(i * 16 + 26, 32);
+    g.lineTo(i * 16 + 16, 32);
+    g.closePath();
+    g.fill();
+  }
+  ropeTex = new THREE.CanvasTexture(c);
+  ropeTex.colorSpace = THREE.SRGBColorSpace;
+  ropeTex.wrapS = ropeTex.wrapT = THREE.RepeatWrapping;
+  ropeTex.repeat.set(90, 1);
+  return ropeTex;
+}
 
 class JumpRopeRun extends RowMinigame {
   protected readonly duration = 45;
@@ -32,7 +60,7 @@ class JumpRopeRun extends RowMinigame {
     for (const side of [-1, 1]) {
       const post = mesh(new THREE.CylinderGeometry(0.16, 0.2, HAND_Y + 0.4, 10), toon('#8b5a2b'));
       post.position.set(side * this.half, (HAND_Y + 0.4) / 2, 0);
-      const knob = mesh(new THREE.SphereGeometry(0.28, 12, 10), toon('#ff6fb5'));
+      const knob = mesh(new THREE.SphereGeometry(0.28, 12, 10), toon('#8b5a2b'));
       knob.position.set(side * this.half, HAND_Y, 0);
       this.scene.add(post, knob);
     }
@@ -42,7 +70,8 @@ class JumpRopeRun extends RowMinigame {
     // Curva «catmullrom» simples: a «centripetal» (por omissão) pode dar valores inválidos.
     this.ropeCurve.curveType = 'catmullrom';
     // Sem sombra: a corda é refeita a cada imagem e a sombra dela chegou a escurecer o ecrã todo.
-    this.rope = mesh(new THREE.TubeGeometry(this.ropeCurve, 48, 0.07, 6), toon('#ff6fb5'), { cast: false });
+    // Corda de sisal entrançada (textura às riscas em diagonal), mais grossa.
+    this.rope = mesh(new THREE.TubeGeometry(this.ropeCurve, 48, ROPE_R, 8), toonUnique('#ffffff', { map: ropeTexture() }), { cast: false });
     this.rope.frustumCulled = false;
     this.scene.add(this.rope);
     this.camera.position.set(0, 5.5, this.half * 1.25 + 4);
@@ -128,7 +157,7 @@ class JumpRopeRun extends RowMinigame {
     // Proteção: se algum ponto vier inválido, mantém a corda da imagem anterior.
     if (this.ropePts.some((p) => !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.z))) return;
     this.ropeCurve.updateArcLengths();
-    const geo = new THREE.TubeGeometry(this.ropeCurve, 48, 0.07, 6);
+    const geo = new THREE.TubeGeometry(this.ropeCurve, 48, ROPE_R, 8);
     const pos = geo.attributes.position!.array as Float32Array;
     for (let i = 0; i < pos.length; i++)
       if (!Number.isFinite(pos[i]!)) {
