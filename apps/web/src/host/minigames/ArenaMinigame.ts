@@ -126,6 +126,10 @@ export abstract class ArenaMinigame implements MinigameRun {
   /** Quando cada personagem saiu do jogo (para os lugares: sair mais tarde é melhor). */
   protected readonly outTimes = new Map<string, number>();
 
+  hideCharacters(): void {
+    for (const a of this.actors) a.model.root.visible = false;
+  }
+
   /** Lugares por sobrevivência (os jogos com pontos substituem isto). */
   ranking(): string[][] {
     return rankSurvival(

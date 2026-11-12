@@ -90,10 +90,11 @@ import { starMesh } from '../stages/environment';
 import { Hud, esc, type ScoreEntry } from '../ui/Hud';
 import type { GameMenu } from '../ui/GameMenu';
 import { MINIGAMES, MODE_LABEL, pickDuel, pickMinigame } from '../minigames';
-import type { MinigameContext, MinigameDef, MinigameSeat } from '../minigames/types';
+import type { MinigameContext, MinigameDef, MinigameRun, MinigameSeat } from '../minigames/types';
 import type { DiceLayout, Seat, SeatControl } from './Seats';
 import { settings } from './Settings';
 import { rankBy, rankWinners } from '../minigames/rank';
+import { ResultsStage } from '../stages/ResultsStage';
 
 const PATH_COLORS = ['#ffd23f', '#3fd0ff', '#ff6fb5'];
 /** Moedas para quem acerta no vencedor de um duelo (apostas no telemóvel). */
@@ -1317,7 +1318,7 @@ export class PartyFlow {
     this.waitAll('Minijogo! Olha para o ecrã 👀');
     this.stage.overview();
     await this.hud.banner('Minijogo!', { sub: MODE_LABEL[teams.mode], hold: 1.6, color: '#ffd23f' });
-    const winners = await this.runMinigame(state.players, teams, null);
+    const winners = await this.runMinigame(state.players, teams, null, false, true);
     // Todos contra todos: paga por lugar (10/3/2/0). Equipas e 1 contra 3: 10 a cada vencedor.
     const places = teams.mode === 'ffa' && winners.length ? this.lastPlaces : null;
     const awarded = awardMinigame(state, winners, places ?? undefined);
@@ -1347,21 +1348,41 @@ export class PartyFlow {
         color: getCharacter(p.characterId).color,
       });
     }
-    const sorted = [...state.players].sort(
-      (a, b) => Number(winners.includes(b.id)) - Number(winners.includes(a.id)) || (awarded.get(b.id) ?? 0) - (awarded.get(a.id) ?? 0),
-    );
-    this.hud.panel(`
-      <h1>${winners.length ? 'Vencedores!' : 'Ninguém ganhou!'}</h1>
-      <div class="rows">${sorted
-        .map((p, i) => {
-          const win = winners.includes(p.id);
-          return `<div class="row ${win ? 'win' : ''}" style="animation-delay:${i * 0.07}s">
-            <span>${win ? '🏆' : ''}</span><span class="dot" style="background:${getCharacter(p.characterId).color}"></span>
-            <span>${esc(p.name)}</span><span class="gain">${awarded.get(p.id) ? `${placeOf.get(p.id) && !win ? `${placeOf.get(p.id)}.º · ` : ''}+${awarded.get(p.id)} 🪙` : ''}</span><span>🪙 ${p.coins}</span></div>`;
-        })
-        .join('')}</div>`);
-    await this.wait(4);
-    this.hud.panel(null);
+    // Ecrã de resultados no cenário do minijogo: pódio, animações e as moedas a entrar.
+    const showPlaces = this.lastPlaces ?? [state.players.map((p) => p.id)];
+    const placeNum = new Map<string, number>();
+    {
+      let rank = 1;
+      for (const g of showPlaces) {
+        for (const id of g) placeNum.set(id, rank);
+        rank += g.length;
+      }
+    }
+    const run = this.resultsRun;
+    this.resultsRun = null;
+    if (run) {
+      run.hideCharacters?.();
+      this.hud.setScoreboard(null);
+      this.hud.setRound(null);
+      await ResultsStage.show(
+        this.engine,
+        run.scene,
+        run.camera,
+        state.players.map((p) => ({
+          id: p.id,
+          name: p.name,
+          characterId: p.characterId,
+          place: placeNum.get(p.id) ?? state.players.length,
+          gained: awarded.get(p.id) ?? 0,
+          total: p.coins,
+        })),
+        6.5,
+      );
+      run.dispose();
+    }
+    sound.music('board');
+    this.engine.setStage(this.stage, false);
+    this.hud.setRound(`Ronda ${state.round} / ${state.totalRounds}`);
     this.scoreboard();
     for (const p of state.players) this.stage.token(p.id).setAnim(winners.includes(p.id) ? 'cheer' : 'idle');
     await this.wait(1.2);
@@ -1401,7 +1422,11 @@ export class PartyFlow {
    * Corre um minijogo com estes jogadores e devolve os vencedores.
    * `title` aparece no topo do ecrã de apresentação (duelos/VS).
    */
-  private async runMinigame(players: PartyPlayer[], teams: MinigameTeams, title: string | null, duel = false): Promise<string[]> {
+  /** O último minijogo, guardado para o ecrã de resultados se montar no cenário dele. */
+  private resultsRun: MinigameRun | null = null;
+
+  private async runMinigame(players: PartyPlayer[], teams: MinigameTeams, title: string | null, duel = false, keepScene = false): Promise<string[]> {
+    let finalRun: MinigameRun | null = null;
     const def =
       MINIGAMES.find((m) => m.id === this.d.forcedMinigame && m.modes.includes(teams.mode) && (duel || players.length === 2 || !m.duel)) ??
       (duel ? pickDuel(this.rng, this.lastMinigame, this.playedMinigames) : pickMinigame(teams.mode, this.rng, this.lastMinigame, this.playedMinigames));
@@ -1516,6 +1541,8 @@ export class PartyFlow {
       this.d.hub.clearPresses();
       ctx.round = round;
       ctx.rounds = totalRounds;
+      finalRun?.dispose();
+      finalRun = null;
       const run = def.create(ctx);
       this.engine.setStage(run, false);
       const updateHud = () => {
@@ -1573,7 +1600,7 @@ export class PartyFlow {
           color: '#ffd23f',
         });
       } else await this.hud.big('FIM!', 1.4);
-      run.dispose();
+      finalRun = run;
       // Já não há como apanhar o primeiro? Acaba mais cedo.
       const counts = [...roundWins.values()].sort((a, b) => b - a);
       const left = totalRounds - round;
@@ -1589,8 +1616,14 @@ export class PartyFlow {
       const key = (id: string) => (winners.includes(id) ? 1e6 : 0) + (roundWins.get(id) ?? 0) * 1000 - (placeSum.get(id) ?? 0);
       this.lastPlaces = rankBy(ids, key);
     }
-    sound.music('board');
     sound.play(winners.length ? 'cheer' : 'aww');
+    if (keepScene && finalRun) {
+      // Fica o cenário do minijogo para o ecrã de resultados (quem chamou mostra-o e volta ao tabuleiro).
+      this.resultsRun = finalRun;
+      return winners;
+    }
+    finalRun?.dispose();
+    sound.music('board');
     this.engine.setStage(this.stage, false);
     this.hud.setRound(`Ronda ${this.state.round} / ${this.state.totalRounds}`);
     this.scoreboard();

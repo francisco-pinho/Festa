@@ -126,6 +126,10 @@ export abstract class DuelMinigame implements MinigameRun {
     for (const d of this.duelists) d.model.update(dt);
   }
 
+  hideCharacters(): void {
+    for (const d of this.duelists) d.model.root.visible = false;
+  }
+
   dispose(): void {
     for (const d of this.duelists) d.model.dispose();
     disposeObject(this.scene);

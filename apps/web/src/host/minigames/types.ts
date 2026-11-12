@@ -48,6 +48,8 @@ export interface MinigameRun extends Stage {
    * Opcional: sem isto, quem ganhou fica em 1.º e os outros empatados a seguir.
    */
   ranking?(): string[][];
+  /** Esconde as personagens do minijogo (o ecrã de resultados põe as suas no pódio). */
+  hideCharacters?(): void;
   dispose(): void;
 }
 

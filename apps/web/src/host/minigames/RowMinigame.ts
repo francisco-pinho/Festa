@@ -99,6 +99,10 @@ export abstract class RowMinigame implements MinigameRun {
     this.ctx.botPad(r.seat.id).press(button);
   }
 
+  hideCharacters(): void {
+    for (const r of this.row) r.model.root.visible = false;
+  }
+
   /** Lugares por sobrevivência (os jogos com pontos substituem isto). */
   ranking(): string[][] {
     return rankSurvival(
