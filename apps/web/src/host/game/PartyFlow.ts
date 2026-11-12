@@ -1394,7 +1394,17 @@ export class PartyFlow {
     const roundWins = new Map<string, number>();
     const winsTag = (id: string) => (totalRounds > 1 && roundWins.get(id) ? ` 🏆${roundWins.get(id)}` : '');
     sound.music('minigame');
-    for (let round = 1; round <= totalRounds; round++) {
+    // Empate no fim das rondas (no topo há gente de lados diferentes, ou ninguém ganhou nada)?
+    // Joga-se uma ronda de desempate (até 2).
+    const tied = () => {
+      const best = Math.max(0, ...roundWins.values());
+      if (best === 0) return true;
+      const top = players.filter((p) => roundWins.get(p.id) === best);
+      return new Set(top.map((p) => (teams.mode === 'ffa' ? p.id : teamOf(p.id)))).size > 1;
+    };
+    const MAX_TIEBREAKS = 2;
+    for (let round = 1; round <= totalRounds || (totalRounds > 1 && round <= totalRounds + MAX_TIEBREAKS && tied()); round++) {
+      const tiebreak = round > totalRounds;
       for (const s of this.d.seats) s.botPad.reset();
       this.d.hub.clearPresses();
       ctx.round = round;
@@ -1403,7 +1413,7 @@ export class PartyFlow {
       this.engine.setStage(run, false);
       const updateHud = () => {
         const scores = new Map(run.scores().map((sc) => [sc.id, sc.value]));
-        this.hud.setRound(`${totalRounds > 1 ? `Ronda ${round}/${totalRounds} · ` : ''}⏱ ${Math.ceil(run.timeLeft())}`);
+        this.hud.setRound(`${tiebreak ? 'Desempate · ' : totalRounds > 1 ? `Ronda ${round}/${totalRounds} · ` : ''}⏱ ${Math.ceil(run.timeLeft())}`);
         // Em minijogos de várias rondas, ordena por rondas ganhas e depois pela classificação da festa.
         const order = ranking(this.state).map((r) => r.player.id);
         const sorted = [...players].sort((a, b) => (roundWins.get(b.id) ?? 0) - (roundWins.get(a.id) ?? 0) || order.indexOf(a.id) - order.indexOf(b.id));
@@ -1424,7 +1434,8 @@ export class PartyFlow {
         );
       };
       updateHud();
-      if (totalRounds > 1) await this.hud.big(`Ronda ${round}`, 1);
+      if (tiebreak) await this.hud.banner('Desempate!', { sub: 'Quem ganhar esta ronda leva o minijogo', hold: 1.4, color: '#ff6b7a' });
+      else if (totalRounds > 1) await this.hud.big(`Ronda ${round}`, 1);
       for (const n of ['3', '2', '1']) await this.hud.big(n, 0.8);
       run.start();
       for (const p of players) this.buzz(p.id, 120); // «Já!»
@@ -1439,7 +1450,7 @@ export class PartyFlow {
       updateHud();
       if (totalRounds > 1) {
         const names = roundWinners.map((id) => getPlayer(this.state, id).name);
-        await this.hud.banner(round === totalRounds ? 'FIM!' : `Fim da ronda ${round}`, {
+        await this.hud.banner(round >= totalRounds && !tied() ? 'FIM!' : tiebreak ? 'Fim do desempate' : `Fim da ronda ${round}`, {
           sub: names.length ? `🏆 ${names.join(', ')}` : 'Ninguém ganhou esta ronda',
           hold: 1.6,
           color: '#ffd23f',
