@@ -186,6 +186,6 @@ export const Hammer: MinigameDef = {
   description: () => 'O gigante tem um martelo de brincar: Ⓐ dá uma martelada! Os outros têm 2 corações e fogem. O gigante ganha se apanhar toda a gente antes do fim.',
   controls: '🕹️ Correr · Ⓐ Martelada (gigante) / Arranque',
   stick: true,
-  buttons: [{ id: 'a', label: 'Martelada / Arranque' }],
+  buttons: [{ id: 'a', label: 'Martelar/Correr' }],
   create: (ctx) => new HammerRun(ctx),
 };

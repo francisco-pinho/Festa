@@ -152,7 +152,18 @@ export class SeatControl {
   /** Traduz um layout de alto nível para o comando do telemóvel. */
   toPhone(seat: Seat, l: HostLayout): ControllerLayout {
     const color = getCharacter(seat.characterId).color;
-    const pad = (p: Omit<PadLayout, 'kind' | 'color'>): PadLayout => ({ kind: 'pad', color, ...p });
+    // Os textos têm limites (o servidor recusa mensagens fora do esquema e o telemóvel ficava no
+    // ecrã anterior): corta o que for comprido em vez de deixar o comando sem botões.
+    const cut = (t: string | undefined, max: number) => (t && t.length > max ? `${t.slice(0, max - 1)}…` : t);
+    const pad = (p: Omit<PadLayout, 'kind' | 'color'>): PadLayout => ({
+      kind: 'pad',
+      color,
+      ...p,
+      title: cut(p.title, 120)!,
+      sub: cut(p.sub, 160),
+      stickLabel: cut(p.stickLabel, 30),
+      buttons: Object.fromEntries(Object.entries(p.buttons).map(([k, v]) => [k, cut(v, 16)])) as PadLayout['buttons'],
+    });
     switch (l.kind) {
       case 'wait':
       case 'pad':
