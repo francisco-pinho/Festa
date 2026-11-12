@@ -167,3 +167,66 @@ MODELO (copia daqui...)
 
     Notas do Claude:
 
+[ ] TÍTULO: organizar ideias 
+    Tipo: técnico
+    Prioridade (alta):
+    Onde no jogo (que ecrã, minijogo, mapa...): no vscode
+
+    Como funciona: sempre que uma ideia do ficheiro de ideias for concluída, podes apaga-la para que apenas tenha ideias por fazer ou em andamento
+
+
+    Controlos no telemóvel (botões, joystick, abanar...):
+
+    Como se ganha / o que acontece no fim:
+
+    Inspirado em (jogo, vídeo, link, imagem...):
+
+    Notas do Claude:
+
+[ ] TÍTULO: ilha inicial
+    Tipo: gráfica
+    Prioridade ( média ):
+    Onde no jogo (que ecrã, minijogo, mapa...): ecrã inicial de escolha de personagens
+
+    Como funciona: muda a ilha inicial para que seja algo mais bonito. não precisa de ser uma ilha porque aí seria alusivo apenas a um mapa. uma ideia é ser dentro de uma sala de estar em que as personagens que vão entrando podem ir sentando no sofá, ficar perto da lareira etc.
+    Não é obrigatório ser uma casa, dá-me sugestões que podemos decidir em conjunto
+
+    Controlos no telemóvel (botões, joystick, abanar...): 
+
+    Como se ganha / o que acontece no fim:
+
+    Inspirado em (jogo, vídeo, link, imagem...):
+
+    Notas do Claude:
+
+[ ] TÍTULO: lançar dados
+    Tipo: camera
+    Prioridade (baixa):
+    Onde no jogo (que ecrã, minijogo, mapa...): no jogo festa 
+
+    Como funciona: quando estou a saltar para lançar os dados há duas coisas a corrijir. a camera deve ficar à frente quando salto e apeans ir para trás quando começo a andar. quando lanço o 3 dado no caso dos dois primeiros serem iguais, o dado fica fora da tela. 
+
+
+    Controlos no telemóvel (botões, joystick, abanar...): voltar a usar o botões A B Y X e não a maneira atual para mandar os dados.
+
+    Como se ganha / o que acontece no fim: 
+
+    Inspirado em (jogo, vídeo, link, imagem...):
+
+    Notas do Claude:
+
+[ ] TÍTULO: Músicas
+    Tipo: música
+    Prioridade ( baixa):
+    Onde no jogo (que ecrã, minijogo, mapa...): todo o jogo
+
+    Como funciona: altera as músicas todas. não sei o que será possível fazer quanto a isto mas quero músicas melhores e temáticas para cada coisa, jogo, mapa etc
+
+
+    Controlos no telemóvel (botões, joystick, abanar...):
+
+    Como se ganha / o que acontece no fim:
+
+    Inspirado em (jogo, vídeo, link, imagem...):
+
+    Notas do Claude:

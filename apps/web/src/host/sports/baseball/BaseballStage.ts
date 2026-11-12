@@ -580,6 +580,9 @@ export class BaseballStage extends SportStage {
 
   /** Coloca uma personagem no caminho das bases (`s` em bases, 0 = casa … 4 = casa outra vez). */
   private placeOnPath(m: CharacterModel, s: number): void {
+    // Proteção: um valor inválido (ex.: NaN numa conta de tempo) rebentava o jogo inteiro.
+    if (!Number.isFinite(s)) return;
+    s = THREE.MathUtils.clamp(s, 0, 4);
     const i = Math.min(3, Math.floor(s));
     const a = basePos(i);
     const b = basePos((i + 1) % 4);

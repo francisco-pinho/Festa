@@ -406,7 +406,8 @@ export function basePos(i: number): Vec3 {
     { x: d, y: 0, z: -d },
     { x: 0, y: 0, z: -2 * d },
     { x: -d, y: 0, z: -d },
-  ][i % 4]!;
+    // Sempre 0–3 (negativos ou valores inválidos não podem dar «sem base»).
+  ][Number.isFinite(i) ? (((Math.floor(i) % 4) + 4) % 4) : 0]!;
 }
 
 /**
