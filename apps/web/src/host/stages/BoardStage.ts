@@ -6,7 +6,7 @@ import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { getCharacter, getSpace, type Board, type SpaceType } from '@festa/game';
 import type { Engine, Stage } from '../three/Engine';
-import { CharacterModel } from '../three/CharacterModel';
+import { CharacterModel, type CharacterAnim } from '../three/CharacterModel';
 import { Dice } from '../three/Dice';
 import { canvasTexture, disposeObject, FONT, mesh, textSprite, toon, toonUnique } from '../three/materials';
 import { damp, ease, lerp } from '../three/tweens';
@@ -127,12 +127,24 @@ export class BoardStage implements Stage {
 
   focus(seatId: string, close = false): void {
     if (this.deferWhileMap(() => this.focus(seatId, close))) return;
+    this.closeUpOn = false;
     this.follow = this.tokens.get(seatId) ?? null;
     this.followDistance = close ? 0.65 : 1;
   }
 
+  /** Grande plano da personagem (compras, estrelas): a câmara desce e aproxima-se. */
+  closeUp(seatId: string): void {
+    if (this.deferWhileMap(() => this.closeUp(seatId))) return;
+    this.follow = this.tokens.get(seatId) ?? null;
+    this.closeUpOn = true;
+    this.faceCamera(seatId);
+  }
+
+  private closeUpOn = false;
+
   focusPoint(x: number, z: number, distance = 1): void {
     if (this.deferWhileMap(() => this.focusPoint(x, z, distance))) return;
+    this.closeUpOn = false;
     this.follow = null;
     this.camTargetLook.set(x, 0.8, z);
     this.camTargetPos.set(x, 12 * distance + 1, z + 14 * distance);
@@ -363,25 +375,140 @@ export class BoardStage implements Stage {
 
   /** A estrela voa para a personagem, que festeja. */
   async collectStar(id: string): Promise<void> {
-    sound.play('star');
-    sound.play('cheer', { vol: 0.6 });
     const t = this.token(id);
-    const icon = starMesh(0.6);
+    // Grande plano: a estrela sobe, gira cada vez mais depressa, desce para as mãos e explode em brilhos.
+    this.closeUp(id);
+    await this.engine.wait(0.5);
+    sound.play('star');
+    const icon = starMesh(0.9);
     const from = this.star.position.clone().add(new THREE.Vector3(0, 2.6, 0));
-    const to = t.root.position.clone().add(new THREE.Vector3(0, HEAD_Y + 0.6, 0));
+    const above = t.root.position.clone().add(new THREE.Vector3(0, HEAD_Y + 2.4, 0));
+    const hands = t.root.position.clone().add(new THREE.Vector3(0, HEAD_Y + 0.5, 0.2));
     this.scene.add(icon);
     t.setAnim('cheer');
     await this.engine.tween(0.9, (k) => {
-      icon.position.lerpVectors(from, to, k);
+      icon.position.lerpVectors(from, above, k);
       icon.position.y += Math.sin(k * Math.PI) * 2;
       icon.rotation.y = k * Math.PI * 4;
     });
-    await this.engine.tween(0.4, (k) => icon.scale.setScalar(1 - k));
+    await this.engine.tween(0.7, (k) => {
+      icon.position.lerpVectors(above, hands, k * k);
+      icon.rotation.y += 0.25 + k * 0.6;
+      icon.scale.setScalar(1 + Math.sin(k * Math.PI) * 0.4);
+    });
+    sound.play('cheer', { vol: 0.7 });
+    this.sparkle(hands, '#ffd23f', 28, 5);
+    this.sparkle(hands, '#ffffff', 12, 3.5);
+    this.ringFlash(t.root.position.clone(), '#ffd23f', 3.2);
+    this.hopUp(id, 1.1);
+    await this.engine.tween(0.35, (k) => icon.scale.setScalar(1.3 * (1 - k)));
     this.scene.remove(icon);
     disposeObject(icon);
-    await this.engine.wait(0.8);
+    await this.engine.wait(1);
     t.setAnim('idle');
   }
+
+  /** Item comprado: aparece por cima da cabeça, gira e entra na personagem (com brilhos). */
+  async showPurchase(id: string, emoji: string, color = '#ff6fb5'): Promise<void> {
+    const t = this.token(id);
+    this.closeUp(id);
+    await this.engine.wait(0.45);
+    const sprite = textSprite(emoji, { height: 1.4 });
+    const top = t.root.position.clone().add(new THREE.Vector3(0, HEAD_Y + 1.6, 0));
+    sprite.position.copy(top);
+    const base = sprite.scale.clone();
+    sprite.scale.copy(base).multiplyScalar(0.01);
+    this.scene.add(sprite);
+    sound.play('coin', { pitch: 1.4 });
+    this.react(id, 'cheer', 1.6);
+    this.sparkle(top, color, 14, 3);
+    await this.engine.tween(0.45, (k) => sprite.scale.copy(base).multiplyScalar(Math.max(0.01, ease.backOut(k))));
+    await this.engine.tween(0.6, (k) => (sprite.position.y = top.y + Math.sin(k * Math.PI * 2) * 0.15));
+    const into = t.root.position.clone().add(new THREE.Vector3(0, 1.2, 0));
+    await this.engine.tween(0.35, (k) => {
+      sprite.position.lerpVectors(top, into, k);
+      sprite.scale.copy(base).multiplyScalar(1 - k * 0.9);
+    });
+    this.scene.remove(sprite);
+    disposeObject(sprite);
+    this.ringFlash(t.root.position.clone(), color);
+    this.sparkle(into, color, 10, 2.5);
+    this.hopUp(id, 0.5);
+    await this.engine.wait(0.5);
+  }
+
+  // ── Efeitos (brilhos, anéis, saltos) ────────────────────
+
+  private readonly fx: { obj: THREE.Object3D; vel: THREE.Vector3; life: number; max: number; ring?: number }[] = [];
+  private readonly sparkGeo = new THREE.OctahedronGeometry(0.09, 0);
+
+  /** Brilhos que saltam em todas as direções e caem. */
+  sparkle(at: THREE.Vector3, color: string, count = 12, speed = 3.5): void {
+    for (let i = 0; i < count; i++) {
+      const m = new THREE.Mesh(this.sparkGeo, new THREE.MeshBasicMaterial({ color, transparent: true }));
+      m.position.copy(at);
+      const a = Math.random() * Math.PI * 2;
+      const up = 0.4 + Math.random() * 0.9;
+      const v = new THREE.Vector3(Math.cos(a), up, Math.sin(a)).normalize().multiplyScalar(speed * (0.5 + Math.random() * 0.6));
+      this.scene.add(m);
+      this.fx.push({ obj: m, vel: v, life: 0.9 + Math.random() * 0.4, max: 1.3 });
+    }
+  }
+
+  /** Anel de luz que se abre no chão. */
+  ringFlash(at: THREE.Vector3, color: string, size = 2.2): void {
+    const geo = new THREE.RingGeometry(0.6, 0.8, 40);
+    geo.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false }));
+    m.position.copy(at).setY(at.y + 0.08);
+    this.scene.add(m);
+    this.fx.push({ obj: m, vel: new THREE.Vector3(), life: 0.6, max: 0.6, ring: size });
+  }
+
+  /** Salto rápido no sítio (alegria). */
+  hopUp(id: string, height = 0.5): void {
+    // Não salta se estiver a andar (o salto estragava a posição do passo).
+    if (!['idle', 'cheer', 'jump', 'hurt'].includes(this.token(id).anim)) return;
+    const root = this.token(id).root;
+    const base = root.position.y;
+    void this.engine.tween(0.42, (k) => (root.position.y = base + Math.sin(k * Math.PI) * height));
+  }
+
+  /** Animação curta que volta ao repouso — só se a personagem estiver parada (não interrompe a andar). */
+  react(id: string, anim: CharacterAnim, seconds: number): void {
+    const t = this.token(id);
+    if (t.anim !== 'idle' && t.anim !== 'cheer' && t.anim !== 'jump' && t.anim !== 'hurt') return;
+    t.setAnim(anim);
+    void this.engine.wait(seconds).then(() => {
+      if (t.anim === anim) t.setAnim('idle');
+    });
+  }
+
+  private updateFx(dt: number): void {
+    for (let i = this.fx.length - 1; i >= 0; i--) {
+      const f = this.fx[i]!;
+      f.life -= dt;
+      const mat = (f.obj as THREE.Mesh).material as THREE.MeshBasicMaterial;
+      if (f.ring) {
+        const k = 1 - f.life / f.max;
+        f.obj.scale.setScalar(1 + k * f.ring);
+        mat.opacity = 0.9 * (1 - k);
+      } else {
+        f.vel.y -= 9 * dt;
+        f.obj.position.addScaledVector(f.vel, dt);
+        f.obj.rotation.x += dt * 8;
+        f.obj.rotation.y += dt * 6;
+        mat.opacity = Math.min(1, f.life * 2);
+      }
+      if (f.life <= 0) {
+        this.scene.remove(f.obj);
+        mat.dispose();
+        if (f.ring) (f.obj as THREE.Mesh).geometry.dispose();
+        this.fx.splice(i, 1);
+      }
+    }
+  }
+
 
   // ── Cruzamentos ─────────────────────────────────────────
 
@@ -460,9 +587,16 @@ export class BoardStage implements Stage {
     if (this.follow) {
       const p = this.follow.root.position;
       const d = this.followDistance;
-      this.camTargetLook.set(p.x, p.y + 1.2, p.z);
-      this.camTargetPos.set(p.x, p.y + 10.5 * d + 1.5, p.z + 13 * d);
+      if (this.closeUpOn) {
+        // Grande plano: câmara baixa e perto, de frente para a personagem.
+        this.camTargetLook.set(p.x, p.y + 1.5, p.z);
+        this.camTargetPos.set(p.x + 0.6, p.y + 2.9, p.z + 5.4);
+      } else {
+        this.camTargetLook.set(p.x, p.y + 1.2, p.z);
+        this.camTargetPos.set(p.x, p.y + 10.5 * d + 1.5, p.z + 13 * d);
+      }
     }
+    this.updateFx(dt);
     const k = damp(3.2, dt);
     this.camPos.lerp(this.camTargetPos, k);
     this.camLook.lerp(this.camTargetLook, k);
@@ -849,6 +983,20 @@ export class BoardStage implements Stage {
   coinBurst(id: string, amount: number): void {
     if (amount) sound.play(amount > 0 ? 'coin' : 'coinLose');
     const root = this.token(id).root;
+    if (amount) {
+      const feet = root.position.clone();
+      if (amount > 0) {
+        // Ganhar: salto de alegria, anel dourado aos pés e brilhos.
+        this.react(id, amount >= 5 ? 'cheer' : 'jump', 0.9);
+        this.hopUp(id, amount >= 5 ? 0.7 : 0.4);
+        this.ringFlash(feet, '#ffd23f');
+        this.sparkle(feet.clone().setY(feet.y + 1.4), '#ffd23f', Math.min(18, 6 + amount));
+      } else {
+        // Perder: encolhe-se e as moedas saltam para o chão.
+        this.react(id, 'hurt', 0.8);
+        this.ringFlash(feet, '#ff5a5f');
+      }
+    }
     const n = Math.min(12, Math.abs(amount));
     const gain = amount > 0;
     for (let i = 0; i < n; i++) {
@@ -867,7 +1015,17 @@ export class BoardStage implements Stage {
           coin.rotation.z = k * 10;
           coin.scale.setScalar(gain ? 1 - k * 0.5 : 1);
         })
-        .then(() => this.scene.remove(coin));
+        .then(async () => {
+          if (!gain) {
+            // A moeda perdida ressalta no chão e desaparece.
+            const y0 = coin.position.y;
+            await this.engine.tween(0.45, (k) => {
+              coin.position.y = Math.max(root.position.y + 0.05, y0 - k * 1.2) + Math.abs(Math.sin(k * Math.PI * 2)) * 0.5 * (1 - k);
+              coin.scale.setScalar(1 - k);
+            });
+          }
+          this.scene.remove(coin);
+        });
     }
   }
 

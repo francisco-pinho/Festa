@@ -911,10 +911,11 @@ export class PartyFlow {
       if (answer === 'buy' && ghostSellStar(p)) {
         bought = true;
         this.coinBurst(p.id, -RULES.ghostStarPrice);
-        token.setAnim('cheer');
         this.ctl.vibrate(seat, [60, 40, 200]);
         this.scoreboard(p.id);
+        const shown = this.stage.showPurchase(p.id, '⭐', '#ffd23f');
         await this.hud.banner(`${p.name} comprou uma estrela ao fantasma!`, { hold: 1.8, color: '#ffd23f' });
+        await shown;
       }
     }
     if (!bought) {
@@ -926,6 +927,7 @@ export class PartyFlow {
       await this.hud.banner('👻 O fantasma roubou-te!', { sub: lost ? `${p.name} perdeu ${lost} moedas` : 'Mas não tinhas moedas…', hold: 1.6, color: '#b98cff' });
     }
     token.setAnim('idle');
+    this.stage.focus(p.id);
   }
 
   private async starOffer(p: PartyPlayer): Promise<void> {
@@ -1013,9 +1015,11 @@ export class PartyFlow {
       p.stats.shopSpent += price;
       p.items.push(item);
       this.coinBurst(p.id, -price);
-      this.stage.token(p.id).setAnim('cheer');
       this.scoreboard(p.id);
+      // Grande plano: o item aparece por cima da cabeça e entra na personagem.
+      const shown = this.stage.showPurchase(p.id, ITEMS[item].emoji);
       await this.hud.banner(`${ITEMS[item].emoji} ${p.name} comprou: ${ITEMS[item].name}`, { hold: 1.4 });
+      await shown;
       this.stage.token(p.id).setAnim('idle');
     }
     this.stage.focus(p.id);
@@ -1135,9 +1139,12 @@ export class PartyFlow {
       const list = e.item ? names.map((n) => (n.startsWith(ITEMS[e.item!].emoji) ? result : n)) : [...names.slice(0, 6), result];
       const idx = Math.max(0, list.indexOf(result));
       await this.hud.roulette('🎁 Item grátis!', list, idx, 1.2);
-      token.setAnim('cheer');
       if (!e.item) this.coinBurst(p.id, e.coins);
+      const shown = e.item ? this.stage.showPurchase(p.id, ITEMS[e.item].emoji) : Promise.resolve();
+      if (!e.item) token.setAnim('cheer');
       await this.hud.banner(e.item ? `${p.name} ganhou: ${ITEMS[e.item].name}` : 'Inventário cheio: +5 moedas', { hold: 1.4 });
+      await shown;
+      this.stage.focus(p.id);
     } else if (e.kind === 'bank') {
       const name = state.board.bankName ?? 'Banco';
       this.stage.focus(p.id, true);
