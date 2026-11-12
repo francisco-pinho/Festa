@@ -92,6 +92,38 @@ export abstract class SportStage implements SportRun {
     return undefined;
   }
 
+  private skipOffer = false;
+
+  /**
+   * Repetições que se podem saltar: − no comando, o botão «Saltar repetição» no telemóvel de quem
+   * está a ver, ou Enter/Espaço no PC. Devolve `skipped()` (para a repetição parar) e `end()`.
+   */
+  protected beginSkip(): { skipped: () => boolean; end: () => void } {
+    let skip = false;
+    this.skipOffer = true;
+    this.refreshWaiting();
+    const offPress = this.ctx.hub.events.on('press', ({ button }) => {
+      if (button === 'minus') skip = true;
+    });
+    const offChoice = this.ctx.hub.events.on('choice', ({ id }) => {
+      if (id === 'skip-replay') skip = true;
+    });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Enter' || e.code === 'Space') skip = true;
+    };
+    window.addEventListener('keydown', onKey);
+    return {
+      skipped: () => skip,
+      end: () => {
+        offPress();
+        offChoice();
+        window.removeEventListener('keydown', onKey);
+        this.skipOffer = false;
+        this.refreshWaiting();
+      },
+    };
+  }
+
   /** Aposta/pergunta para quem está a ver (opcional). */
   protected phoneAsk(_seat: Seat): Extract<ControllerLayout, { kind: 'info' }>['ask'] {
     return undefined;
@@ -102,7 +134,7 @@ export abstract class SportStage implements SportRun {
       kind: 'info',
       title: message,
       stats: this.phoneStats(seat),
-      ask: this.phoneAsk(seat),
+      ask: this.skipOffer ? { prompt: 'Repetição', options: [{ id: 'skip-replay', label: '⏩ Saltar repetição' }] } : this.phoneAsk(seat),
       table: this.lastRows.length
         ? {
             title: 'Placar',

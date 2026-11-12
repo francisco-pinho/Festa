@@ -722,7 +722,8 @@ export class BaseballStage extends SportStage {
     const flight = simulateFlight({ x: at.x, y: at.y, z: at.z }, c);
     const bm = this.model(batter.id);
     const end = flight.samples[flight.samples.length - 1]!;
-    this.ctx.hud.hint('🔁 Repetição', true);
+    this.ctx.hud.hint('🔁 Repetição · − para saltar', true);
+    const skip = this.beginSkip();
     bm.root.visible = true;
     bm.root.position.set(-0.85, 0, PLATE_Z);
     bm.faceYaw(Math.PI / 2, true);
@@ -732,12 +733,16 @@ export class BaseballStage extends SportStage {
     // 1.º ângulo: de lado, junto ao batedor.
     this.cameraTo({ x: 3.2, y: 1.4, z: 2.2 }, { x: -0.3, y: 1.2, z: 0 }, { instant: true });
     const D = Math.min(4.5, end.t);
-    await this.tween(D * 2.4, (k) => {
-      const t = k * D;
+    // Em câmara lenta (2,4×), passo a passo para se poder saltar a meio.
+    const total = D * 2.4;
+    for (let clock = 0; clock < total && !skip.skipped(); clock += 0.03) {
+      const t = (clock / total) * D;
       const p = flightAt(flight, t);
       this.ball.position.set(p.x, p.y, p.z);
       if (t > 0.35) this.cameraTo({ x: p.x * 0.3 + 6, y: Math.max(4, p.y * 0.5), z: p.z * 0.4 + 8 }, { x: p.x, y: p.y, z: p.z }, { speed: 4 });
-    }, ease.linear);
+      await this.wait(0.03);
+    }
+    skip.end();
     this.ctx.hud.hint(null, true);
     this.ball.visible = false;
     this.bat.removeFromParent();

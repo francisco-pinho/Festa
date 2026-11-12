@@ -323,7 +323,8 @@ export class BowlingStage extends SportStage {
     const rec = this.recording;
     if (!rec || rec.length < 10) return;
     this.replaying = true;
-    this.ctx.hud.hint('🔁 Repetição', true);
+    this.ctx.hud.hint('🔁 Repetição · − para saltar', true);
+    const skip = this.beginSkip();
     this.cameraTo({ x: 0.85, y: 1.05, z: PIN_Z + 4 }, { x: -0.2, y: 0.3, z: PIN_Z - 0.8 }, { instant: true });
     this.ball.visible = true;
     this.pinMeshes.forEach((p) => (p.visible = true));
@@ -331,8 +332,10 @@ export class BowlingStage extends SportStage {
     let acc = 0;
     for (const fr of rec) times.push((acc += fr.dt));
     this.replayState = { rec, times, clock: 0 };
-    while (this.replayState) await this.wait(0.05);
-    await this.wait(0.6);
+    while (this.replayState && !skip.skipped()) await this.wait(0.05);
+    this.replayState = null;
+    skip.end();
+    if (!skip.skipped()) await this.wait(0.6);
     this.ctx.hud.hint(null, true);
     this.ball.visible = false;
     this.replaying = false;
