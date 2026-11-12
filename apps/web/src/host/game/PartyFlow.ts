@@ -1365,6 +1365,26 @@ export class PartyFlow {
     for (const p of state.players) this.stage.token(p.id).setAnim(winners.includes(p.id) ? 'cheer' : 'idle');
     await this.wait(1.2);
     for (const p of state.players) this.stage.token(p.id).setAnim('idle');
+
+    // Nova ordem de jogada: pela classificação neste minijogo (quem ganhou joga primeiro;
+    // empates mantêm a ordem que tinham).
+    const rankOf = (id: string) => placeOf.get(id) ?? (winners.includes(id) ? 1 : 99);
+    const before = [...state.players];
+    state.players.sort((x, y) => rankOf(x.id) - rankOf(y.id) || before.indexOf(x) - before.indexOf(y));
+    if (state.round < state.totalRounds && state.players.some((p, i) => p !== before[i])) {
+      this.scoreboard();
+      this.hud.panel(`
+        <h1>Nova ordem de jogada</h1>
+        <div class="rows">${state.players
+          .map(
+            (p, i) => `<div class="row" style="animation-delay:${i * 0.08}s">
+              <span>${i + 1}.</span><span class="dot" style="background:${getCharacter(p.characterId).color}"></span>
+              <span>${esc(p.name)}</span><span></span><span></span></div>`,
+          )
+          .join('')}</div>`);
+      await this.wait(2.6);
+      this.hud.panel(null);
+    }
   }
 
   /**
