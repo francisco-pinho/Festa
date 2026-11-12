@@ -113,6 +113,10 @@ export const controllerLayoutSchema = z.discriminatedUnion('kind', [
     /** Túneis, metro, elevadores… (desenhados a tracejado). */
     tunnels: z.array(z.tuple([z.number().int().min(0).max(249), z.number().int().min(0).max(249)])).max(20).optional(),
     color: hexColor.optional(),
+    /** Botões por baixo do mapa (ex.: na vez de lançar: 🎲 Lançar, Itens, Mapa). Enviam carregadelas. */
+    actions: z.array(z.object({ id: buttonIdSchema, label: z.string().max(24), primary: z.boolean().optional() })).max(4).optional(),
+    /** Abanar o telemóvel conta como Ⓐ. */
+    shake: z.boolean().optional(),
   }),
   /**
    * Quando o comando não está a ser usado: o que interessa a este jogador agora

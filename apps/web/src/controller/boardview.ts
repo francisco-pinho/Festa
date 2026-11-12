@@ -5,7 +5,11 @@
  * o mapa fica desenhado e só os bonecos se mexem (com transição suave).
  */
 import type { ControllerLayout } from '@festa/shared';
+import type { ButtonId, ControllerInput } from '@festa/shared';
 import { statsHtml } from './infoview';
+import { haptic } from './haptics';
+
+type Send = (input: ControllerInput) => void;
 
 type BoardLayout = Extract<ControllerLayout, { kind: 'board' }>;
 
@@ -35,7 +39,32 @@ function playersHtml(l: BoardLayout): string {
     .join('');
 }
 
-export function renderBoard(view: HTMLElement, l: BoardLayout): void {
+/** Botões por baixo do mapa (redesenhados a cada atualização). */
+function renderActions(view: HTMLElement, l: BoardLayout, send?: Send): void {
+  const bar = view.querySelector<HTMLElement>('.bv-actions');
+  if (!bar) return;
+  const actions = l.actions ?? [];
+  bar.hidden = !actions.length;
+  bar.innerHTML = actions
+    .map((a) => `<button class="bv-act ${a.primary ? 'primary' : ''}" data-b="${a.id}">${esc(a.label)}</button>`)
+    .join('') + (l.shake && actions.length ? '<small class="bv-shake">…ou abana o telemóvel!</small>' : '');
+  if (!send) return;
+  bar.querySelectorAll<HTMLButtonElement>('.bv-act').forEach((b) => {
+    b.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      haptic(30);
+      send({ t: 'button', button: b.dataset.b as ButtonId, pressed: true });
+    });
+    b.addEventListener('pointerup', () => send({ t: 'button', button: b.dataset.b as ButtonId, pressed: false }));
+  });
+}
+
+export function renderBoard(view: HTMLElement, l: BoardLayout, send?: Send): void {
+  renderBoardInner(view, l);
+  renderActions(view, l, send);
+}
+
+function renderBoardInner(view: HTMLElement, l: BoardLayout): void {
   const key = boardKey(l);
   const existing = view.querySelector<SVGGElement>('.bv-players');
   if (existing && key === drawnKey) {
@@ -92,5 +121,6 @@ export function renderBoard(view: HTMLElement, l: BoardLayout): void {
         <g class="bv-links">${lines}</g><g class="bv-tunnels">${tunnels}</g>${dots}${star}<g class="bv-players">${playersHtml(l)}</g>
       </svg>
       ${me ? '<p class="bv-hint">Tu estás no círculo a pulsar · o halo é quem está a jogar</p>' : ''}
+      <div class="bv-actions" hidden></div>
     </div>`;
 }

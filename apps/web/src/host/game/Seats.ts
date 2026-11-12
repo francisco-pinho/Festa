@@ -27,6 +27,8 @@ export interface DiceLayout {
   prompt: string;
   label: string;
   extras?: { id: string; label: string; color?: string }[];
+  /** Mapa do tabuleiro em tempo real para mostrar no telemóvel (com os botões por baixo). */
+  board?: Extract<ControllerLayout, { kind: 'board' }>;
 }
 
 /** Minijogos: joystick + A/B. */
@@ -177,6 +179,19 @@ export class SeatControl {
       case 'dice': {
         const items = (l.extras ?? []).filter((x) => x.id !== 'map');
         const map = l.extras?.find((x) => x.id === 'map');
+        // Com mapa: o telemóvel mostra o tabuleiro ao vivo e os botões por baixo.
+        if (l.board)
+          return {
+            ...l.board,
+            message: l.prompt,
+            color,
+            shake: true,
+            actions: [
+              { id: 'a', label: `🎲 ${l.label}`, primary: true },
+              ...(items.length ? [{ id: 'x' as const, label: `🎒 Itens (${items.length})` }] : []),
+              ...(map ? [{ id: 'y' as const, label: map.label.includes('Fechar') ? '🗺️ Fechar mapa' : '🗺️ Mapa grande' }] : []),
+            ],
+          };
         return pad({
           title: l.prompt,
           sub: '…ou abana o telemóvel!',

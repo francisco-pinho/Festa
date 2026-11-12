@@ -349,10 +349,24 @@ function renderLayout(): void {
       setView('');
       cleanupView = renderPad(view, l, send, stickSender);
       break;
-    case 'board':
-      setView('');
-      renderBoard(view, l);
+    case 'board': {
+      // Mesmo mapa já no ecrã: só atualiza (as personagens deslizam de casa em casa).
+      if (view.querySelector('.boardview')) {
+        cleanupView?.();
+        cleanupView = null;
+      } else setView('');
+      renderBoard(view, l, send);
+      // Na vez de lançar: abanar o telemóvel também lança.
+      if (l.shake && sensors.supported) {
+        const off = sensors.onShake(() => {
+          send({ t: 'button', button: 'a', pressed: true });
+          send({ t: 'button', button: 'a', pressed: false });
+          hapticPattern([30, 30, 60]);
+        });
+        cleanupView = off;
+      }
       break;
+    }
     case 'info':
       setView('');
       renderInfo(view, l, send);
