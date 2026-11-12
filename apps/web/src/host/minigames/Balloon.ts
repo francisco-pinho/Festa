@@ -10,6 +10,7 @@ import { getCharacter } from '@festa/game';
 import { mesh, toon, toonUnique } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { rankBy } from './rank';
 
 interface BalloonObj {
   group: THREE.Group;
@@ -104,6 +105,14 @@ class BalloonRun extends RowMinigame {
     return this.row.map((r) => {
       const b = this.balloonOf(r)!;
       return { id: r.seat.id, value: b.popped ? `💥 ${b.poppedAt}.º` : `🎈 ${Math.round((b.air / b.need) * 100)}%` };
+    });
+  }
+
+  override ranking(): string[][] {
+    // Quem rebentou (pela ordem) e depois o balão mais cheio.
+    return rankBy(this.row.map((r) => r.seat.id), (id) => {
+      const b = this.balloons.find((x) => x.owners.some((o) => o.seat.id === id))!;
+      return b.popped ? 1e6 - b.poppedAt : b.air / b.need;
     });
   }
 

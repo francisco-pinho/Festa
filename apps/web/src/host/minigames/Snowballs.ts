@@ -133,6 +133,7 @@ class SnowballsRun extends ArenaMinigame {
         const airborne = a.pos.y > 0.5;
         if (d < b.r + 0.45 && !(airborne && b.r < 1)) {
           a.alive = false;
+          this.outTimes.set(a.seat.id, this.elapsed);
           this.outAt.set(a.seat.id, this.elapsed);
           a.model.setAnim('fall');
           a.model.root.scale.set(1.15, 0.45, 1.15);

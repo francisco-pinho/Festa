@@ -94,6 +94,7 @@ class HotPotatoRun extends ArenaMinigame {
       if (this.fuse <= 0) {
         const out = this.holder;
         out.alive = false;
+        this.outTimes.set(out.seat.id, this.elapsed);
         out.vel.set(0, 9, 0);
         this.falling.add(out);
         out.model.setAnim('fall');

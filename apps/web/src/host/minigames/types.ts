@@ -43,6 +43,11 @@ export interface MinigameRun extends Stage {
   /** Pontuações para mostrar no placar durante o jogo. */
   scores(): MinigameScore[];
   winners(): string[];
+  /**
+   * Lugares em todos contra todos: grupos do melhor para o pior (empates no mesmo grupo).
+   * Opcional: sem isto, quem ganhou fica em 1.º e os outros empatados a seguir.
+   */
+  ranking?(): string[][];
   dispose(): void;
 }
 

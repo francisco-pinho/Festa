@@ -12,6 +12,7 @@ import { setupSky } from '../stages/environment';
 import { TEAM_COLORS } from './ArenaMinigame';
 import { ringDecor } from './scenery';
 import type { MinigameContext, MinigameRun, MinigameScore, MinigameSeat } from './types';
+import { rankSurvival } from './rank';
 
 export interface Rower {
   seat: MinigameSeat;
@@ -96,6 +97,15 @@ export abstract class RowMinigame implements MinigameRun {
 
   protected botPress(r: Rower, button: ButtonId): void {
     this.ctx.botPad(r.seat.id).press(button);
+  }
+
+  /** Lugares por sobrevivência (os jogos com pontos substituem isto). */
+  ranking(): string[][] {
+    return rankSurvival(
+      this.row.map((r) => r.seat.id),
+      (id) => !!this.row.find((r) => r.seat.id === id)?.alive,
+      (id) => this.row.find((r) => r.seat.id === id)?.outAt,
+    );
   }
 
   /** Tira um jogador do jogo (guarda quando saiu). */

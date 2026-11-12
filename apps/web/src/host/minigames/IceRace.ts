@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { rankBy } from './rank';
 
 /** Elipses da pista: parede de fora, ilha do meio e a linha central (para os bots). */
 const OUT = { a: 14, b: 8.5 };
@@ -108,6 +109,14 @@ class IceRaceRun extends ArenaMinigame {
       if (f) return { id: a.seat.id, value: `🏁 ${f}.º` };
       const lap = Math.min(this.laps, Math.floor((this.progress.get(a.seat.id) ?? 0) / (Math.PI * 2)) + 1);
       return { id: a.seat.id, value: `volta ${lap}/${this.laps}` };
+    });
+  }
+
+  override ranking(): string[][] {
+    // Quem acabou (pela ordem) e depois quem foi mais longe.
+    return rankBy(this.actors.map((a) => a.seat.id), (id) => {
+      const f = this.finishedAt.get(id);
+      return f ? 1e6 - f : (this.progress.get(id) ?? 0);
     });
   }
 

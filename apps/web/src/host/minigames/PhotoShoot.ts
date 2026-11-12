@@ -10,6 +10,7 @@ import { getCharacter } from '@festa/game';
 import { disposeObject, mesh, textSprite, toon, toonUnique } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { rankBy } from './rank';
 
 const PLANE_Z = -8;
 const REQUESTS = 3;
@@ -151,6 +152,10 @@ class PhotoRun extends RowMinigame {
 
   scores(): MinigameScore[] {
     return this.row.map((r) => ({ id: r.seat.id, value: `📸 ${this.total.get(r.seat.id) ?? 0} pts` }));
+  }
+
+  override ranking(): string[][] {
+    return rankBy(this.row.map((r) => r.seat.id), (id) => this.total.get(id) ?? 0);
   }
 
   winners(): string[] {

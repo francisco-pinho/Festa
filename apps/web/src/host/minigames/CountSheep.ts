@@ -10,6 +10,7 @@ import type { ButtonId } from '@festa/shared';
 import { disposeObject, mesh, textSprite, toon } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { rankBy } from './rank';
 
 interface Sheep {
   group: THREE.Group;
@@ -131,6 +132,10 @@ class CountSheepRun extends RowMinigame {
       id: r.seat.id,
       value: this.phase === 'reveal' ? `🐑 ${this.guess.get(r.seat.id)} (${Math.abs(this.guess.get(r.seat.id)! - this.whiteCount)} de diferença)` : this.locked.has(r.seat.id) ? '✔ respondeu' : '🐑 a contar…',
     }));
+  }
+
+  override ranking(): string[][] {
+    return rankBy(this.row.map((r) => r.seat.id), (id) => Math.abs((this.guess.get(id) ?? 0) - this.whiteCount), false);
   }
 
   winners(): string[] {

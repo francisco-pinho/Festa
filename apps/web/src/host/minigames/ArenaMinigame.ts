@@ -10,6 +10,7 @@ import { disposeObject, mesh, toon } from '../three/materials';
 import { damp } from '../three/tweens';
 import { Water, setupSky } from '../stages/environment';
 import type { MinigameContext, MinigameRun, MinigameScore, MinigameSeat } from './types';
+import { rankSurvival } from './rank';
 
 export interface Actor {
   seat: MinigameSeat;
@@ -122,6 +123,17 @@ export abstract class ArenaMinigame implements MinigameRun {
 
   /** Quem caiu da plataforma: continua a cair (mesmo depois de o jogo acabar) até desaparecer na água/lava. */
   private readonly sinking = new Set<Actor>();
+  /** Quando cada personagem saiu do jogo (para os lugares: sair mais tarde é melhor). */
+  protected readonly outTimes = new Map<string, number>();
+
+  /** Lugares por sobrevivência (os jogos com pontos substituem isto). */
+  ranking(): string[][] {
+    return rankSurvival(
+      this.actors.map((a) => a.seat.id),
+      (id) => !!this.actors.find((a) => a.seat.id === id)?.alive,
+      (id) => this.outTimes.get(id),
+    );
+  }
 
   /**
    * Tira a personagem do jogo e fá-la cair da plataforma para a água (ou lava): salta um bocadinho
@@ -130,6 +142,7 @@ export abstract class ArenaMinigame implements MinigameRun {
   protected sink(a: Actor, push = 3): void {
     if (this.sinking.has(a)) return;
     a.alive = false;
+    if (!this.outTimes.has(a.seat.id)) this.outTimes.set(a.seat.id, this.elapsed);
     const out = new THREE.Vector3(a.pos.x, 0, a.pos.z);
     if (out.lengthSq() < 0.01) out.set(1, 0, 0);
     out.normalize();

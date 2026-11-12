@@ -9,6 +9,7 @@ import { mesh, toon, toonUnique, disposeObject, textSprite } from '../three/mate
 import { coinMaterials, glowTexture } from '../three/coinArt';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { rankBy } from './rank';
 
 const ARENA_R = 12;
 const GRAVITY = 18;
@@ -47,6 +48,10 @@ class CoinShowerRun extends ArenaMinigame {
 
   scores(): MinigameScore[] {
     return this.ctx.seats.map((s) => ({ id: s.id, value: `🪙 ${this.score.get(s.id) ?? 0}` }));
+  }
+
+  override ranking(): string[][] {
+    return rankBy(this.ctx.seats.map((s) => s.id), (id) => this.score.get(id) ?? 0);
   }
 
   winners(): string[] {

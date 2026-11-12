@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { rankBy } from './rank';
 
 const BITES = 4;
 
@@ -95,6 +96,14 @@ class PizzaRun extends RowMinigame {
     return this.row.map((r) => {
       const p = this.pizzaOf(r);
       return { id: r.seat.id, value: p.doneAt ? `🏁 ${p.doneAt}.º` : `🍕 ${Math.round((p.slice / p.slices.length) * 100)}%` };
+    });
+  }
+
+  override ranking(): string[][] {
+    // Quem acabou (pela ordem) e depois quem comeu mais.
+    return rankBy(this.row.map((r) => r.seat.id), (id) => {
+      const p = this.pizzas.find((x) => x.owners.some((o) => o.seat.id === id))!;
+      return p.doneAt ? 1e6 - p.doneAt : (p.slice * BITES + p.bites) / p.slices.length;
     });
   }
 

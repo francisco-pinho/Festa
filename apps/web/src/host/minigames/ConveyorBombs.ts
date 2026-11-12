@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { disposeObject, mesh, textSprite, toon, toonUnique } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { rankBy } from './rank';
 
 const LEN = 9; // comprimento da passadeira
 const LIVES = 3;
@@ -89,6 +90,13 @@ class ConveyorRun extends RowMinigame {
 
   scores(): MinigameScore[] {
     return this.lanes.map((l) => ({ id: l.r.seat.id, value: l.lives > 0 ? '❤️'.repeat(l.lives) : '💥 fora' }));
+  }
+
+  override ranking(): string[][] {
+    return rankBy(this.lanes.map((l) => l.r.seat.id), (id) => {
+      const l = this.lanes.find((x) => x.r.seat.id === id)!;
+      return l.lives > 0 ? 1e6 + l.lives : (this.outAt.get(id) ?? 0);
+    });
   }
 
   winners(): string[] {

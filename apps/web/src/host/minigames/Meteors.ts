@@ -110,6 +110,7 @@ class MeteorsRun extends ArenaMinigame {
       if (!a.alive) continue;
       if (Math.hypot(a.pos.x - m.x, a.pos.z - m.z) > m.r + a.radius * 0.3) continue;
       a.alive = false;
+      this.outTimes.set(a.seat.id, this.elapsed);
       this.outAt.set(a.seat.id, this.elapsed);
       a.vel.set(0, 0, 0);
       a.model.setAnim('fall');

@@ -12,6 +12,7 @@ import { drawIcon } from '../../common/icons';
 import { disposeObject, mesh, textSprite, toon } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { rankBy } from './rank';
 
 const COLS = 4;
 const ROWS = 3;
@@ -156,6 +157,10 @@ class MemoryRun extends RowMinigame {
 
   scores(): MinigameScore[] {
     return this.row.map((r) => ({ id: r.seat.id, value: `${this.points.get(r.seat.id) ?? 0} ✔` }));
+  }
+
+  override ranking(): string[][] {
+    return rankBy(this.row.map((r) => r.seat.id), (id) => this.points.get(id) ?? 0);
   }
 
   winners(): string[] {

@@ -196,6 +196,7 @@ class ColorFloorRun extends ArenaMinigame {
         const t = this.tileAt(a.pos.x, a.pos.z);
         if (!t || t.drop > 0.15) {
           a.alive = false;
+          this.outTimes.set(a.seat.id, this.elapsed);
           this.falling.add(a);
           a.model.setAnim('fall');
           this.ctx.vibrate(a.seat.id, 300);

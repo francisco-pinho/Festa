@@ -10,6 +10,7 @@ import { getCharacter } from '@festa/game';
 import { disposeObject, mesh, textSprite, toon, toonUnique } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { rankBy } from './rank';
 
 const START_Z = 2.5;
 /** Distância máxima (força 1) e travagem da bola. */
@@ -96,6 +97,10 @@ class RightForceRun extends RowMinigame {
       id: l.r.seat.id,
       value: !l.thrown ? (l.charging ? '💪 a carregar' : '⏳ à espera') : l.stopped ? `🎯 a ${this.miss(l).toFixed(1)} m` : '🏐 a rolar…',
     }));
+  }
+
+  override ranking(): string[][] {
+    return rankBy(this.lanes.map((l) => l.r.seat.id), (id) => this.miss(this.lanes.find((l) => l.r.seat.id === id)!), false);
   }
 
   winners(): string[] {

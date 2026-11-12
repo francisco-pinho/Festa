@@ -10,6 +10,7 @@ import { getCharacter } from '@festa/game';
 import { disposeObject, mesh, textSprite, toon, toonUnique } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { rankBy } from './rank';
 
 const R = 8.5; // raio da mesa
 const HOLE = 0.36; // meia abertura do buraco (rad)
@@ -119,6 +120,14 @@ class PinballRun extends RowMinigame {
 
   scores(): MinigameScore[] {
     return this.seats.map((s) => ({ id: s.r.seat.id, value: s.lives > 0 ? '❤️'.repeat(s.lives) : '💥 fora' }));
+  }
+
+  override ranking(): string[][] {
+    // Vivos primeiro (mais vidas = melhor); depois quem saiu mais tarde.
+    return rankBy(this.seats.map((s) => s.r.seat.id), (id) => {
+      const s = this.seats.find((x) => x.r.seat.id === id)!;
+      return s.lives > 0 ? 1e6 + s.lives : (this.outAt.get(id) ?? 0);
+    });
   }
 
   winners(): string[] {

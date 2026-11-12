@@ -93,6 +93,7 @@ import { MINIGAMES, MODE_LABEL, pickDuel, pickMinigame } from '../minigames';
 import type { MinigameContext, MinigameDef, MinigameSeat } from '../minigames/types';
 import type { DiceLayout, Seat, SeatControl } from './Seats';
 import { settings } from './Settings';
+import { rankBy, rankWinners } from '../minigames/rank';
 
 const PATH_COLORS = ['#ffd23f', '#3fd0ff', '#ff6fb5'];
 /** Moedas para quem acerta no vencedor de um duelo (apostas no telemóvel). */
@@ -1318,7 +1319,7 @@ export class PartyFlow {
     await this.hud.banner('Minijogo!', { sub: MODE_LABEL[teams.mode], hold: 1.6, color: '#ffd23f' });
     const winners = await this.runMinigame(state.players, teams, null);
     // Todos contra todos: paga por lugar (10/3/2/0). Equipas e 1 contra 3: 10 a cada vencedor.
-    const places = teams.mode === 'ffa' ? this.lastPlaces : null;
+    const places = teams.mode === 'ffa' && winners.length ? this.lastPlaces : null;
     const awarded = awardMinigame(state, winners, places ?? undefined);
     const placeOf = new Map<string, number>();
     if (places) {
@@ -1365,6 +1366,35 @@ export class PartyFlow {
     for (const p of state.players) this.stage.token(p.id).setAnim(winners.includes(p.id) ? 'cheer' : 'idle');
     await this.wait(1.2);
     for (const p of state.players) this.stage.token(p.id).setAnim('idle');
+    await this.reorderByMinigame();
+  }
+
+  /**
+   * Nova ordem de jogada: pela classificação no último minijogo (1.º joga primeiro). Empates mantêm a
+   * ordem que tinham. Só a primeira ordem da festa é decidida pelos dados.
+   */
+  private async reorderByMinigame(): Promise<void> {
+    const state = this.state;
+    const places = this.lastPlaces;
+    if (!places?.length || state.round >= state.totalRounds) return;
+    const rankOf = new Map<string, number>();
+    places.forEach((g, i) => g.forEach((id) => rankOf.set(id, i)));
+    const before = [...state.players];
+    state.players.sort((x, y) => (rankOf.get(x.id) ?? 99) - (rankOf.get(y.id) ?? 99) || before.indexOf(x) - before.indexOf(y));
+    if (state.players.every((p, i) => p === before[i])) return;
+    this.scoreboard();
+    this.hud.panel(`
+      <h1>Nova ordem de jogada</h1>
+      <h2>Pela classificação no minijogo</h2>
+      <div class="rows">${state.players
+        .map(
+          (p, i) => `<div class="row" style="animation-delay:${i * 0.08}s">
+            <span>${i + 1}.</span><span class="dot" style="background:${getCharacter(p.characterId).color}"></span>
+            <span>${esc(p.name)}</span><span></span><span></span></div>`,
+        )
+        .join('')}</div>`);
+    await this.wait(2.8);
+    this.hud.panel(null);
   }
 
   /**
@@ -1466,6 +1496,8 @@ export class PartyFlow {
     // Vários rounds (melhor de N): ganha quem ganhar mais rondas.
     const totalRounds = def.rounds ?? 1;
     const roundWins = new Map<string, number>();
+    /** Soma dos lugares de cada um nas rondas (desempata quem ganhou as mesmas rondas). */
+    const placeSum = new Map<string, number>();
     const winsTag = (id: string) => (totalRounds > 1 && roundWins.get(id) ? ` 🏆${roundWins.get(id)}` : '');
     sound.music('minigame');
     // Empate no fim das rondas (no topo há gente de lados diferentes, ou ninguém ganhou nada)?
@@ -1524,6 +1556,14 @@ export class PartyFlow {
       updateHud();
       const roundWinners = run.winners();
       for (const id of roundWinners) roundWins.set(id, (roundWins.get(id) ?? 0) + 1);
+      // Lugares desta ronda (todos contra todos: os do minijogo; equipas: quem ganhou e os outros).
+      const ids = players.map((p) => p.id);
+      const roundRank = teams.mode === 'ffa' && run.ranking ? run.ranking() : rankWinners(ids, roundWinners);
+      let pos = 1;
+      for (const g of roundRank) {
+        for (const id of g) placeSum.set(id, (placeSum.get(id) ?? 0) + pos);
+        pos += g.length;
+      }
       updateHud();
       if (totalRounds > 1) {
         const names = roundWinners.map((id) => getPlayer(this.state, id).name);
@@ -1542,11 +1582,13 @@ export class PartyFlow {
     this.waitAll('Fim do minijogo!');
     const best = Math.max(0, ...roundWins.values());
     const winners = best > 0 ? players.filter((p) => roundWins.get(p.id) === best).map((p) => p.id) : [];
-    // Lugares (para o prémio por lugar): pelas rondas ganhas; num jogo de uma ronda só se sabe quem ganhou.
-    if (best > 0 && totalRounds > 1) {
-      const counts = [...new Set(players.map((p) => roundWins.get(p.id) ?? 0))].sort((a, b) => b - a);
-      this.lastPlaces = counts.map((c) => players.filter((p) => (roundWins.get(p.id) ?? 0) === c).map((p) => p.id));
-    } else this.lastPlaces = winners.length ? [winners] : null;
+    // Lugares finais (prémio por lugar e ordem de jogada): quem ganhou primeiro; depois mais rondas
+    // ganhas; empates desfeitos pelos lugares em cada ronda (soma mais baixa = melhor).
+    {
+      const ids = players.map((p) => p.id);
+      const key = (id: string) => (winners.includes(id) ? 1e6 : 0) + (roundWins.get(id) ?? 0) * 1000 - (placeSum.get(id) ?? 0);
+      this.lastPlaces = rankBy(ids, key);
+    }
     sound.music('board');
     sound.play(winners.length ? 'cheer' : 'aww');
     this.engine.setStage(this.stage, false);

@@ -10,6 +10,7 @@ import { disposeObject, mesh, textSprite, toon, toonUnique } from '../three/mate
 import { Water } from '../stages/environment';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { rankBy } from './rank';
 
 const PRIZES = [
   { emoji: '🧰', name: 'Baú!', points: 5, chance: 0.18 },
@@ -95,6 +96,10 @@ class FishingRun extends RowMinigame {
 
   scores(): MinigameScore[] {
     return this.anglers.map((a) => ({ id: a.r.seat.id, value: `🎣 ${a.points} pts` }));
+  }
+
+  override ranking(): string[][] {
+    return rankBy(this.anglers.map((a) => a.r.seat.id), (id) => this.anglers.find((a) => a.r.seat.id === id)!.points);
   }
 
   winners(): string[] {
