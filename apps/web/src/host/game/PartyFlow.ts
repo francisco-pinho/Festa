@@ -13,7 +13,6 @@ import {
   ITEMS,
   LAST_PLACE_GIFT,
   RULES,
-  SHOP_LABEL,
   SHOP_STOCK,
   VILLAIN_LABELS,
   addCoins,
