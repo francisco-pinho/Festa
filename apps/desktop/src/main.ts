@@ -145,6 +145,9 @@ ipcMain.handle('festa:goOnline', async (): Promise<{ url?: string; error?: strin
   }
 });
 
+// Versão portátil (Festa-…-portatil.exe): o electron-builder define PORTABLE_EXECUTABLE_FILE.
+ipcMain.handle('festa:info', () => ({ portable: !!process.env.PORTABLE_EXECUTABLE_FILE }));
+
 ipcMain.handle('festa:quit', () => {
   app.quit();
 });

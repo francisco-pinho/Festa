@@ -29,7 +29,7 @@ import { BotPad, SeatControl, type Seat } from './Seats';
 import { PartyFlow } from './PartyFlow';
 import { creditsHtml } from '../ui/credits';
 
-type LobbyChoice = { mode: 'party'; rounds: number; boardId: string } | { mode: 'sports'; sport: SportDef };
+type LobbyChoice = { mode: 'party'; rounds: number; boardId: string } | { mode: 'sports'; sport: SportDef } | { mode: 'test' };
 
 const BOARD_ICON: Record<string, string> = { city: '🌃', volcano: '🌋', castle: '🏰', park: '🎡', island: '🏝️' };
 
@@ -39,6 +39,8 @@ export class Director {
   private rng: Rng = createRng();
   private lastMinigame: string | null = null;
   private forcedMinigame: string | null = null;
+  /** Versão portátil da app: o menu principal tem «Testar minijogos». */
+  private portable = false;
   /** Personagem de cada jogador (escolhida ao entrar; fica até sair da sala). */
   private readonly picks = new Map<string, { char: string; ready: boolean }>();
   private lastRounds: number = RULES.roundOptions[1];
@@ -52,6 +54,10 @@ export class Director {
     private readonly menu: GameMenu,
     private readonly menus: ScreenMenus,
   ) {
+    void (window as unknown as { festaDesktop?: { info?(): Promise<{ portable: boolean }> } }).festaDesktop
+      ?.info?.()
+      .then((i) => (this.portable = !!i.portable))
+      .catch(() => undefined);
     this.seatsCtl = new SeatControl(hub, engine, menus);
     conn.events.on('status', (s) =>
       this.hud.status(s === 'online' ? null : s === 'connecting' ? 'A ligar ao servidor…' : 'Sem ligação ao servidor'),
@@ -64,6 +70,10 @@ export class Director {
       const choice = await this.lobby();
       if (choice.mode === 'sports') {
         await this.sports(choice.sport);
+        continue;
+      }
+      if (choice.mode === 'test') {
+        await this.testMenu();
         continue;
       }
       await this.buildSeats(seatCount);
@@ -350,6 +360,7 @@ export class Director {
           { id: 'party', label: '🎲 Festa', sub: 'Tabuleiro, estrelas, itens e minijogos' },
           { id: 'sports', label: '🏆 Desportos', sub: 'Bowling, ténis, golfe, boxe e basebol' },
           { id: 'settings', label: '⚙️ Definições' },
+          ...(this.portable ? [{ id: 'test', label: '🧪 Testar minijogos', sub: 'Escolhe um minijogo e joga-o já' }] : []),
           { id: 'credits', label: '📜 Créditos' },
           { id: 'quit', label: '🚪 Sair do jogo' },
         ],
@@ -360,6 +371,8 @@ export class Director {
       else if (pickMode === 'sports') {
         const sport = await this.pickSport(leader);
         if (sport) choice = { mode: 'sports', sport };
+      } else if (pickMode === 'test') {
+        choice = { mode: 'test' };
       } else if (pickMode === 'credits') {
         this.hud.panel(creditsHtml());
         this.hud.panelElement().classList.add('compact');
@@ -485,6 +498,49 @@ export class Director {
    * Desenvolvimento: corre um minijogo sozinho (abrir /?minigame=<id>&mode=<modo>).
    * Bots em todos os lugares, mais quem estiver ligado (telemóvel ou teclado).
    */
+  /**
+   * Modo de testes (só na versão portátil): lista de todos os minijogos; escolhe-se um (e o modo)
+   * e joga-se logo, com quem está ligado e bots até 4. No fim volta à lista.
+   */
+  private async testMenu(): Promise<void> {
+    await this.buildSeats((h) => Math.max(4, h));
+    this.menu.mode = 'game';
+    const flow = this.partyFlow();
+    const MODE_NAME: Record<MinigameMode, string> = { ffa: 'Todos contra todos', teams: 'Equipas', oneVsAll: '1 contra todos' };
+    let last: string | undefined;
+    for (;;) {
+      const pick = await this.menus.ask({
+        player: this.leader,
+        keyboard: true,
+        title: '🧪 Testar minijogos',
+        columns: 4,
+        initial: last,
+        options: [
+          ...MINIGAMES.map((m) => ({ id: m.id, label: m.name, sub: m.duel ? 'Duelo' : m.modes.map((x) => MODE_NAME[x]).join(' · ') })),
+          { id: 'back', label: '↩ Voltar ao início' },
+        ],
+        cancel: 'back',
+      });
+      if (pick === 'back') break;
+      last = pick;
+      const def = MINIGAMES.find((m) => m.id === pick)!;
+      let mode: MinigameMode = def.modes[0]!;
+      if (!def.duel && def.modes.length > 1) {
+        const m = await this.menus.ask({
+          player: this.leader,
+          keyboard: true,
+          title: `${def.name}: que modo?`,
+          options: [...def.modes.map((x) => ({ id: x, label: MODE_NAME[x] })), { id: 'back', label: '↩ Voltar' }],
+          cancel: 'back',
+        });
+        if (m === 'back') continue;
+        mode = m as MinigameMode;
+      }
+      await flow.testMinigame(def.id, mode);
+    }
+    this.menu.mode = 'lobby';
+  }
+
   async testMinigame(id: string, mode: MinigameMode, players = 4): Promise<void> {
     const duel = MINIGAMES.find((m) => m.id === id)?.duel ?? false;
     if (duel) players = Math.max(4, players);

@@ -74,6 +74,7 @@ import {
   tunnelBetween,
   type ItemId,
   type MinigameTeams,
+  type MinigameMode,
   type PartyPlayer,
   type PartyState,
   type Rng,
@@ -1668,6 +1669,29 @@ export class PartyFlow {
     this.stage = new BoardStage(this.engine, this.state.board, this.d.seats);
     this.engine.setStage(this.stage);
     for (;;) await this.roundMinigame();
+  }
+
+  /** Modo de testes: joga um minijogo escolhido (no modo escolhido) e mostra quem ganhou. */
+  async testMinigame(id: string, mode: MinigameMode): Promise<void> {
+    if (!this.state) await this.minigameSetup('ilha');
+    const def = MINIGAMES.find((m) => m.id === id)!;
+    this.d.forcedMinigame = id;
+    let winners: string[];
+    if (def.duel) {
+      const [a, b] = this.state.players as [PartyPlayer, PartyPlayer];
+      winners = await this.runMinigame([a, b], { mode: 'ffa', blue: [a.id, b.id], red: [] }, '⚔️ Duelo!', true);
+    } else {
+      const ids = this.state.players.map((p) => p.id);
+      const teams: MinigameTeams =
+        mode === 'ffa'
+          ? { mode, blue: ids, red: [] }
+          : mode === 'oneVsAll'
+            ? { mode, blue: [ids[0]!], red: ids.slice(1) }
+            : { mode, blue: ids.filter((_, i) => i % 2 === 0), red: ids.filter((_, i) => i % 2 === 1) };
+      winners = await this.runMinigame(this.state.players, teams, null);
+    }
+    const names = winners.map((w) => getPlayer(this.state, w).name);
+    await this.hud.banner(names.length ? `Ganhou: ${names.join(', ')}` : 'Ninguém ganhou', { sub: def.name, hold: 2, color: '#ffd23f' });
   }
 
   /** Desenvolvimento: duelos seguidos entre os dois primeiros jogadores. */
