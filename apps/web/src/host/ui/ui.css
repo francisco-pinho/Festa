@@ -1261,3 +1261,40 @@
   font-size: 2.8vh;
   font-weight: 800;
 }
+
+/* ── Menu dos jogos na televisão da sala (lobby) ── */
+.lobby-ui.at-tv .lobby-join,
+.lobby-ui.at-tv .lobby-cards,
+.lobby-ui.at-tv .lobby-logo,
+.lobby-ui.at-tv .lobby-help { opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+body.tv-mode .screen-menus {
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  width: 70vw;
+  max-height: 66vh;
+}
+body.tv-mode .smenu {
+  max-width: 68vw;
+  max-height: 64vh;
+  overflow: hidden;
+  background: linear-gradient(160deg, #2d1d5a 0%, #160f2e 100%);
+  border: none;
+  border-radius: 0.6vh;
+  box-shadow: inset 0 0 6vh #000a;
+  animation: tv-on 0.45s ease-out;
+  position: relative;
+}
+/* Linhas de varrimento, como num ecrã. */
+body.tv-mode .smenu::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, #ffffff08 0 2px, transparent 2px 5px);
+}
+@keyframes tv-on {
+  0% { transform: scaleY(0.02); filter: brightness(3); }
+  60% { transform: scaleY(1.04); }
+  100% { transform: none; filter: none; }
+}

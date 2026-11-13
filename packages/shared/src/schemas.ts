@@ -162,7 +162,7 @@ export const controllerLayoutSchema = z.discriminatedUnion('kind', [
       .max(16),
     index: z.number().int().min(0).max(15),
     ready: z.boolean(),
-    buttons: z.object({ a: legend, b: legend, x: legend, plus: legend }),
+    buttons: z.object({ a: legend, b: legend, x: legend, y: legend, plus: legend }),
   }),
   z.object({
     kind: z.literal('pad'),

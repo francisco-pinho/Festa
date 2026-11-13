@@ -42,6 +42,37 @@ export const ROOM_PROPS: readonly string[] = [
   'q-props/Pot_1',
 ];
 
+/** Televisão (canto da frente, à direita, virada para o sofá): onde aparece o menu dos jogos. */
+const TV = { x: 9.9, z: 1.4, y: 2.85 };
+const TV_YAW = Math.atan2(0 - TV.x, -3.6 - TV.z);
+/** Vista da câmara de frente para o ecrã da televisão (o ecrã enche quase todo o ecrã do jogo). */
+export const TV_VIEW = {
+  pos: new THREE.Vector3(TV.x + Math.sin(TV_YAW) * 3.95, TV.y + 0.05, TV.z + Math.cos(TV_YAW) * 3.95),
+  look: new THREE.Vector3(TV.x, TV.y, TV.z),
+};
+
+/** Ecrã da televisão: logótipo da festa a brilhar. */
+function tvScreen(): THREE.CanvasTexture {
+  return canvasTexture(512, (ctx, s) => {
+    const g = ctx.createRadialGradient(s / 2, s / 2, 20, s / 2, s / 2, s * 0.7);
+    g.addColorStop(0, '#4b2f8a');
+    g.addColorStop(1, '#160f2e');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, s, s);
+    ctx.font = 'bold 120px Trebuchet MS, Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = '#1d1433';
+    ctx.strokeText('FESTA', s / 2, s / 2 - 20);
+    ctx.fillStyle = '#ffd23f';
+    ctx.fillText('FESTA', s / 2, s / 2 - 20);
+    ctx.font = 'bold 34px Trebuchet MS, Arial, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('Ⓨ para começar', s / 2, s / 2 + 80);
+  });
+}
+
 export interface LivingRoom {
   group: THREE.Group;
   update(time: number): void;
@@ -854,6 +885,39 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
     g.add(b);
   });
   updaters.push((_dt, time) => bulbs.forEach((m, i) => (m.emissiveIntensity = 0.7 + Math.max(0, Math.sin(time * 2 + i * 1.3)) * 1.2)));
+
+  // ── Televisão num móvel baixo, no canto da frente (virada para o sofá) ──
+  {
+    const tvg = new THREE.Group();
+    const cab = mesh(rbox(4.6, 1.05, 1.2, 0.08), toon('#6b4524'), { receive: true });
+    cab.position.y = 0.55;
+    for (const dx of [-1.15, 1.15]) {
+      const door = mesh(rbox(2.1, 0.8, 0.05, 0.03), toon('#7a5230'), { cast: false });
+      door.position.set(dx, 0.55, 0.6);
+      const knob = mesh(new THREE.SphereGeometry(0.05, 8, 6), toon('#d9a441'), { cast: false });
+      knob.position.set(dx + (dx < 0 ? 0.85 : -0.85), 0.55, 0.65);
+      tvg.add(door, knob);
+    }
+    const stand = mesh(rbox(1.2, 0.12, 0.6, 0.05), toon('#1d1d24'));
+    stand.position.y = 1.14;
+    const neck = mesh(new THREE.BoxGeometry(0.2, 0.5, 0.12), toon('#1d1d24'));
+    neck.position.y = 1.4;
+    const bezel = mesh(rbox(4.1, 2.45, 0.22, 0.08), toon('#15151c'));
+    bezel.position.y = TV.y;
+    const screen = mesh(new THREE.PlaneGeometry(3.8, 2.14), new THREE.MeshBasicMaterial({ map: tvScreen() }), { cast: false });
+    screen.position.set(0, TV.y, 0.12);
+    const led = mesh(new THREE.SphereGeometry(0.03, 6, 4), toonUnique('#4cd964', { emissive: '#4cd964', emissiveIntensity: 2 }), { cast: false });
+    led.position.set(1.9, TV.y - 1.13, 0.12);
+    const console = mesh(rbox(1.1, 0.22, 0.75, 0.06), toon('#f2f2f7'));
+    console.position.set(-1.4, 1.19, 0.1);
+    tvg.add(cab, stand, neck, bezel, screen, led, console);
+    tvg.position.set(TV.x, 0, TV.z);
+    tvg.rotation.y = TV_YAW;
+    g.add(tvg);
+    const tvGlow = new THREE.PointLight('#8f7bff', 4, 6);
+    tvGlow.position.set(TV.x + Math.sin(TV_YAW) * 1.2, TV.y, TV.z + Math.cos(TV_YAW) * 1.2);
+    g.add(tvGlow);
+  }
 
   // ── Balões presos ao braço do sofá ──
   const balloons: THREE.Object3D[] = [];

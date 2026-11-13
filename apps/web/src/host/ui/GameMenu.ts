@@ -72,6 +72,16 @@ export class GameMenu {
     this.engine.timeScale = settings.value.animSpeed;
   }
 
+  private closedAt = 0;
+  private lobbySuspended = false;
+
+  /** Abre o menu para um jogador (Ⓑ no lobby). Não reabre logo a seguir a fechar com o mesmo Ⓑ. */
+  openFor(player: HubPlayer): void {
+    if (this.open || performance.now() - this.closedAt < 250) return;
+    this.controller = player;
+    this.show(this.mode === 'lobby' ? 'settings' : 'main');
+  }
+
   get isOpen(): boolean {
     return this.open;
   }
@@ -89,6 +99,10 @@ export class GameMenu {
     if (this.mode === 'game') {
       this.engine.paused = true;
       this.hub.suspendLayouts({ kind: 'pad', title: '⏸ Pausa', sub: 'Menu no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher', b: 'Voltar', plus: 'Continuar' } });
+    } else if (this.mode === 'lobby') {
+      // No lobby o telemóvel mostra o carrossel (sem cruz): enquanto o menu está aberto, volta a cruz.
+      this.lobbySuspended = true;
+      this.hub.suspendLayouts({ kind: 'pad', title: '⚙️ Definições', sub: 'Menu no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher', b: 'Fechar', plus: 'Fechar' } });
     }
     this.el.hidden = false;
     this.render();
@@ -98,6 +112,11 @@ export class GameMenu {
     if (!this.open) return;
     this.open = false;
     this.el.hidden = true;
+    this.closedAt = performance.now();
+    if (this.lobbySuspended) {
+      this.lobbySuspended = false;
+      this.hub.restoreLayouts();
+    }
     if (this.mode === 'game' || this.engine.paused) {
       this.engine.paused = false;
       this.hub.restoreLayouts();

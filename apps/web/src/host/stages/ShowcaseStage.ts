@@ -44,6 +44,22 @@ export class ShowcaseStage implements Stage {
   private camDistance = 15;
   private camHeight = 5;
 
+  /** Câmara a voar para um sítio (ex.: a televisão da sala); null = vista normal. */
+  private fly: { pos: THREE.Vector3; look: THREE.Vector3 } | null = null;
+  private readonly camPos = new THREE.Vector3();
+  private readonly camLook = new THREE.Vector3();
+  private camReady = false;
+
+  /** Leva a câmara até `pos` a olhar para `look` (a andar pela sala). */
+  flyTo(pos: THREE.Vector3, look: THREE.Vector3): void {
+    this.fly = { pos: pos.clone(), look: look.clone() };
+  }
+
+  /** Volta à vista normal (também a andar). */
+  flyHome(): void {
+    this.fly = null;
+  }
+
   /** Sala de estar (ecrã inicial) em vez da ilha. */
   private readonly room: LivingRoom | null = null;
 
@@ -276,12 +292,25 @@ export class ShowcaseStage implements Stage {
     }
     this.orbit += dt * this.orbitSpeed;
     const angle = Math.sin(this.orbit) * 0.35;
-    this.camera.position.set(
+    const homePos = new THREE.Vector3(
       this.camTarget.x + Math.sin(angle) * this.camDistance,
       this.camTarget.y + this.camHeight,
       this.camTarget.z + Math.cos(angle) * this.camDistance,
     );
-    this.camera.lookAt(this.camTarget);
+    const pos = this.fly?.pos ?? homePos;
+    const look = this.fly?.look ?? this.camTarget;
+    if (!this.camReady || (!this.fly && this.camPos.distanceToSquared(homePos) < 1e-4)) {
+      this.camPos.copy(pos);
+      this.camLook.copy(look);
+      this.camReady = true;
+    } else {
+      // A andar: depressa ao início e a abrandar ao chegar.
+      const k = damp(this.fly ? 2.4 : 3, dt);
+      this.camPos.lerp(pos, k);
+      this.camLook.lerp(look, k);
+    }
+    this.camera.position.copy(this.camPos);
+    this.camera.lookAt(this.camLook);
   }
 
   dispose(): void {

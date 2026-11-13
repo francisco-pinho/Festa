@@ -18,7 +18,7 @@ import type { HubPlayer, PlayerHub } from '../PlayerHub';
 import { cycleLanAddress, getJoinBaseUrl, getJoinUrl, isOnline } from '../joinUrl';
 import type { Engine } from '../three/Engine';
 import { ShowcaseStage } from '../stages/ShowcaseStage';
-import { ROOM_PROPS, ROOM_SEATS } from '../stages/livingRoom';
+import { ROOM_PROPS, ROOM_SEATS, TV_VIEW } from '../stages/livingRoom';
 import { portraitSmall } from '../three/portraits';
 import { Hud, esc } from '../ui/Hud';
 import type { MenuRequest, ScreenMenus } from '../ui/ScreenMenu';
@@ -231,6 +231,27 @@ export class Director {
     const facesSent = new Set<string>();
 
     let mainMenu: MenuRequest | null = null;
+    /** O VIP carregou em Ⓨ (com todos prontos): a câmara vai à televisão e aparece lá o menu dos jogos. */
+    let startRequested = false;
+    let atTv = false;
+    const setTv = (on: boolean) => {
+      atTv = on;
+      document.body.classList.toggle('tv-mode', on);
+      ui.classList.toggle('at-tv', on);
+      if (on) stage.flyTo(TV_VIEW.pos, TV_VIEW.look);
+      else stage.flyHome();
+    };
+    const requestStart = (p: HubPlayer | null) => {
+      if (atTv) return;
+      if (!allReady()) {
+        sound.play('block');
+        const waiting = players().filter((o) => !this.picks.get(o.id)?.ready && o.connected).map((o) => o.name);
+        if (p) this.hub.toast(p, `À espera de ${waiting.join(', ')}`);
+        return;
+      }
+      sound.play('go');
+      startRequested = true;
+    };
     const render = () => {
       ensurePicks();
       ensureRoomSeats();
@@ -244,6 +265,7 @@ export class Director {
       for (const p of list) {
         const pick = this.picks.get(p.id)!;
         stage.setAnim(p.id, pick.ready ? 'cheer' : 'idle');
+        // Ao ir para a TV, todos ficam no lugar (o festejo dos prontos já passou).
         stage.setFaded(p.id, !p.connected);
       }
       ui.querySelector('#cards')!.innerHTML = list
@@ -265,15 +287,17 @@ export class Director {
         ? 'Lê o código com o telemóvel para entrar!'
         : waiting.length
           ? `◀ ▶ escolhe a personagem · Ⓐ pronto · Ⓧ muda de lugar · À espera de ${waiting.join(', ')}`
-          : `Todos prontos! ${this.leader ? `${this.leader.name} escolhe o modo` : 'Enter para escolher'}${bots ? ` · na Festa entram ${bots} bot${bots > 1 ? 's' : ''}` : ''}`;
+          : `Todos prontos! ${this.leader ? `${this.leader.name} carrega em Ⓨ para começar` : 'Enter para começar'}${bots ? ` · na Festa entram ${bots} bot${bots > 1 ? 's' : ''}` : ''}`;
       // Comandos
       for (const p of list) {
         const pick = this.picks.get(p.id)!;
         const c = getCharacter(pick.char);
-        const lead = p === this.leader && allReady();
+        const lead = p === this.leader && atTv;
+        const vip = p === this.leader;
         if (!p.connected) facesSent.delete(p.id);
-        // Escolha da personagem no telemóvel: carrossel com as caras (◀ ▶, tocar numa, Ⓐ pronto, Ⓧ lugar).
-        // Só quem escolhe o modo (com todos prontos) volta ao comando normal, para navegar no menu.
+        // Escolha da personagem no telemóvel: carrossel com as caras e o que cada botão faz
+        // (Ⓐ escolher, Ⓑ menu, Ⓧ mudar de lugar, Ⓨ começar a jogar — só o VIP).
+        // Só o VIP, já na televisão, volta ao comando normal, para navegar no menu dos jogos.
         if (!lead) {
           // As caras vão uma a uma (cada mensagem tem de ser pequena), só da primeira vez.
           if (!facesSent.has(p.id)) {
@@ -289,11 +313,24 @@ export class Director {
               kind: 'pick',
               color: c.color,
               title: pick.ready ? `Pronto com ${c.name}! ✔` : 'Escolhe a tua personagem',
-              sub: pick.ready ? (allReady() ? `${this.leader?.name ?? 'O VIP'} escolhe o modo…` : 'À espera dos outros…') : `${c.name} · ◀ ▶ para mudar`,
+              sub: atTv
+                ? `${this.leader?.name ?? 'O VIP'} está a escolher o jogo na televisão…`
+                : !pick.ready
+                  ? `${c.name} · ◀ ▶ para mudar`
+                  : vip
+                    ? allReady()
+                      ? 'Todos prontos! Carrega em Ⓨ para começar'
+                      : 'À espera dos outros… (Ⓨ começa quando estiverem prontos)'
+                    : `À espera que ${this.leader?.name ?? 'o VIP'} comece (Ⓨ)…`,
               items,
               index: Math.max(0, CHARACTERS.findIndex((ch) => ch.id === pick.char)),
               ready: pick.ready,
-              buttons: pick.ready ? { b: 'Mudar', x: 'Lugar', plus: 'Definições' } : { a: 'Pronto!', x: 'Lugar', plus: 'Definições' },
+              buttons: {
+                a: atTv ? undefined : pick.ready ? 'Mudar' : 'Escolher',
+                b: 'Menu',
+                x: 'Mudar de lugar',
+                y: vip && !atTv ? 'Jogar' : undefined,
+              },
             },
             p,
           );
@@ -305,9 +342,9 @@ export class Director {
                 kind: 'pad',
                 color: c.color,
                 title: `Pronto com ${c.name}! ✔`,
-                sub: lead ? 'Escolhe o modo no ecrã grande' : allReady() ? `${this.leader?.name ?? 'O VIP'} escolhe o modo…` : 'À espera dos outros…',
+                sub: 'Escolhe o jogo na televisão',
                 stick: 'dpad',
-                buttons: { a: lead ? 'Escolher' : undefined, b: lead ? undefined : 'Mudar', plus: 'Definições' },
+                buttons: { a: 'Escolher', b: 'Voltar', plus: 'Definições' },
               }
             : {
                 kind: 'pad',
@@ -389,6 +426,14 @@ export class Director {
         const pick = this.picks.get(player.id);
         if (!pick) return;
         if (button === 'x') moveSeat(player);
+        else if (button === 'y' && player === this.leader) requestStart(player);
+        else if (button === 'b' && !(atTv && player === this.leader)) this.menu.openFor(player);
+        else if (button === 'a' && pick.ready && !atTv) {
+          // Ⓐ outra vez: volta a escolher.
+          pick.ready = false;
+          sound.play('click');
+          render();
+        }
         else if (button === 'left' || button === 'up') cycle(player, -1);
         else if (button === 'right' || button === 'down') cycle(player, 1);
         else if (button === 'a' && !pick.ready && !mainMenu) {
@@ -405,14 +450,13 @@ export class Director {
           sound.play('coin');
           this.hub.vibrate(player, [30, 40, 60]);
           render();
-        } else if (button === 'b' && pick.ready && !(mainMenu && player === this.leader)) {
-          pick.ready = false;
-          render();
         }
       }),
     ];
     const onKey = (e: KeyboardEvent) => {
       if (e.code === 'KeyI') void cycleLanAddress().then((ok) => ok && void renderRoom());
+      // Sem comando de VIP (só teclado): Enter começa.
+      if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !this.menu.isOpen && (!this.leader || this.leader.source !== 'phone')) requestStart(this.leader);
     };
     window.addEventListener('keydown', onKey);
     offs.push(() => window.removeEventListener('keydown', onKey));
@@ -421,9 +465,14 @@ export class Director {
     render();
     let choice: LobbyChoice | null = null;
     while (!choice) {
-      // Espera que estejam todos prontos.
-      while (!allReady()) await this.engine.wait(0.2);
+      // Fica tudo na sala (pode estar gente a entrar) até o VIP carregar em Ⓨ com todos prontos.
+      startRequested = false;
+      while (!startRequested) await this.engine.wait(0.15);
+      // A câmara anda até à televisão; o menu dos jogos aparece no ecrã dela.
+      setTv(true);
       render();
+      await this.engine.wait(1.1);
+      while (!choice && atTv && allReady()) {
       const leader = this.leader;
       mainMenu = {
         player: leader,
@@ -432,6 +481,7 @@ export class Director {
         title: 'Menu principal',
         name: leader?.name,
         color: leader ? getCharacter(this.picks.get(leader.id)?.char ?? CHARACTERS[0]!.id).color : undefined,
+        cancel: 'room',
         options: [
           { id: 'party', label: '🎲 Festa', sub: 'Tabuleiro, estrelas, itens e minijogos' },
           { id: 'sports', label: '🏆 Desportos', sub: 'Bowling, ténis, golfe, boxe e basebol' },
@@ -439,10 +489,12 @@ export class Director {
           ...(this.portable ? [{ id: 'test', label: '🧪 Testar minijogos', sub: 'Escolhe um minijogo e joga-o já' }] : []),
           { id: 'credits', label: '📜 Créditos' },
           { id: 'quit', label: '🚪 Sair do jogo' },
+          { id: 'room', label: '↩ Voltar à sala' },
         ],
       };
       const pickMode = await this.menus.ask(mainMenu);
       mainMenu = null;
+      if (pickMode === 'room' || pickMode === '__cancel') break;
       if (pickMode === 'party') choice = await this.partySetup(leader);
       else if (pickMode === 'sports') {
         const sport = await this.pickSport(leader);
@@ -476,7 +528,14 @@ export class Director {
         }
       }
       render();
+      }
+      // Voltou à sala (Ⓑ, alguém deixou de estar pronto ou entrou alguém novo).
+      if (!choice) {
+        setTv(false);
+        render();
+      }
     }
+    document.body.classList.remove('tv-mode');
     offs.forEach((off) => off());
     ui.remove();
     this.menu.close();
