@@ -1,18 +1,19 @@
 /**
- * Sala de estar do ecrã inicial, no estilo dos bonecos (formas redondas e cheias, materiais «toon»):
- * soalho de tábuas, lambrim de madeira e papel de parede, janela ao entardecer com cortinas e um
- * raio de sol com pó a flutuar, sofá e cadeirões estofados com almofadas e manta, mesa de centro,
- * almofada no chão e puff, lareira de tijolo acesa (com faúlhas), alvo de dardos, mesa dos petiscos,
- * estante, candeeiro, plantas, quadros, luzinhas de festa e balões.
+ * Sala de estar do ecrã inicial: parquet, lambril com painéis e parede branca. Na parede de trás, o
+ * sofá cinzento com três quadros em fila por cima, uma estante de cada lado e a lareira de pedra
+ * acesa (com faúlhas); à frente, a mesa de centro, duas cadeiras-ovo, um monte de almofadas e um
+ * puff, plantas e a televisão de tubo onde passa o menu dos jogos. Os modelos vêm do Sketchfab
+ * (ver docs/ASSETS.md); sem eles, a sala usa versões feitas à mão.
  *
- * Cabem 10 jogadores, cada um no seu sítio e a fazer alguma coisa: três no sofá, dois nos cadeirões,
- * dois no chão, um a jogar aos dardos, um a aquecer as mãos à lareira e um a petiscar.
+ * Cabem 10 jogadores, cada um no seu sítio e a fazer alguma coisa: três no sofá, dois nas
+ * cadeiras-ovo, dois no chão, um à estante, um a aquecer as mãos à lareira e um a beber.
  */
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { CharacterAnim } from '../three/CharacterModel';
 import { canvasTexture, mesh, toon, toonUnique } from '../three/materials';
 import { prop } from '../three/props';
+import { CrtScreen } from './crtScreen';
 
 /** Lugares por ordem de chegada: posição, para onde olha e o que está a fazer. */
 export const ROOM_SEATS: { x: number; z: number; yaw: number; y?: number; anim: CharacterAnim }[] = [
@@ -23,7 +24,7 @@ export const ROOM_SEATS: { x: number; z: number; yaw: number; y?: number; anim: 
   { x: 5.5, z: -3.05, yaw: -0.8, y: 0.62, anim: 'sit' },
   { x: -2.7, z: -1.15, yaw: 0.35, y: 0.32, anim: 'sit' },
   { x: 2.7, z: -1.15, yaw: -0.35, y: 0.6, anim: 'sit' },
-  // De pé: dardos (alvo na parede de trás), lareira e mesa dos petiscos.
+  // De pé: à estante, à lareira e a beber (acertados quando a sala é montada).
   { x: -6.7, z: -6.6, yaw: 2.62, anim: 'aim' },
   { x: 6.8, z: -6.7, yaw: 2.36, anim: 'warm' },
   { x: -7.3, z: -3.9, yaw: 0.9, anim: 'drink' },
@@ -31,50 +32,169 @@ export const ROOM_SEATS: { x: number; z: number; yaw: number; y?: number; anim: 
 
 /** Modelos usados na sala (carregar antes de a montar; sem eles usa as versões feitas à mão). */
 export const ROOM_PROPS: readonly string[] = [
-  'kaykit-furniture/lamp_standing',
-  'kaykit-furniture/pictureframe_large_A',
-  'kaykit-furniture/cactus_medium_A',
+  // Única peça que não é da KayKit: a TV de tubo (o menu dos jogos passa no vidro dela).
+  'crt-tv/crt-tv',
+  // KayKit (CC0): mobília, quadros, plantas, tapetes, estantes, caneca e pufes.
+  'kaykit-furniture/couch_pillows',
+  'kaykit-furniture/armchair_pillows',
   'kaykit-furniture/table_low',
-  'kaykit-restaurant/table_round_A_decorated',
-  'kaykit-restaurant/food_burger',
-  'q-props/Mug',
-  'q-props/Vase_2',
-  'q-props/Pot_1',
+  'kaykit-furniture/rug_rectangle_stripes_A',
+  'kaykit-furniture/rug_oval_A',
+  'kaykit-furniture/lamp_standing',
+  'kaykit-furniture/cactus_medium_A',
+  'kaykit-furniture/cactus_medium_B',
+  'kaykit-furniture/shelf_B_large_decorated',
+  'kaykit-furniture/book_set',
+  'kaykit-mixed2/frame_A_large',
+  'kaykit-mixed2/frame_B_large',
+  'kaykit-mixed2/ornate_mirror',
+  'kaykit-dungeon/shelves',
+  'kaykit-furniture/cabinet_medium_decorated',
+  'kaykit-holiday/hot_chocolate_decorated',
+  'kaykit-holiday/footstool_red',
+  'kaykit-holiday/footstool_green',
+  'kaykit-mixed1/guitar_A',
+  'kaykit-mixed2/gamer_chair_A',
 ];
 
+/** Parede de trás (face da frente do lambrim): onde se encostam estantes, quadros e a lareira. */
+const WALL_Z = -8.96;
+
+/**
+ * Moldura da KayKit (Mixed Bag 2) com uma pintura nossa no lugar da imagem de exemplo
+ * (o material «placeholder» do modelo).
+ */
+function framed(key: string, height: number, painting: THREE.Texture): THREE.Group | null {
+  const f = prop(key, { height });
+  if (!f) return null;
+  painting.flipY = false; // UVs do glTF
+  const mat = toonUnique('#ffffff', { map: painting });
+  f.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    if (Array.isArray(m.material)) m.material = m.material.map((x) => (x.name === 'placeholder' ? mat : x));
+    else if (m.material.name === 'placeholder') m.material = mat;
+  });
+  return f;
+}
+
+/** Pintura: campo com colinas, casinha, árvore e sol. */
+function landscapePainting(): THREE.CanvasTexture {
+  return canvasTexture(512, (ctx, s) => {
+    const sky = ctx.createLinearGradient(0, 0, 0, s * 0.6);
+    sky.addColorStop(0, '#7cc6ff');
+    sky.addColorStop(1, '#ffe2b0');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, s, s);
+    ctx.fillStyle = '#ffd23f';
+    ctx.beginPath();
+    ctx.arc(s * 0.78, s * 0.22, s * 0.09, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    for (const [x, y, r] of [[0.2, 0.18, 0.06], [0.28, 0.16, 0.07], [0.36, 0.19, 0.05]] as const) {
+      ctx.beginPath();
+      ctx.arc(s * x, s * y, s * r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const hill = (color: string, y: number, amp: number, ph: number) => {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(0, s);
+      for (let x = 0; x <= s; x += 8) ctx.lineTo(x, s * y + Math.sin(x / s * Math.PI * 2 + ph) * s * amp);
+      ctx.lineTo(s, s);
+      ctx.fill();
+    };
+    hill('#6cc06a', 0.6, 0.05, 0.5);
+    hill('#4fa356', 0.72, 0.04, 2.2);
+    // Casinha
+    ctx.fillStyle = '#fff4e0';
+    ctx.fillRect(s * 0.2, s * 0.52, s * 0.18, s * 0.14);
+    ctx.fillStyle = '#d9534f';
+    ctx.beginPath();
+    ctx.moveTo(s * 0.18, s * 0.53);
+    ctx.lineTo(s * 0.29, s * 0.43);
+    ctx.lineTo(s * 0.4, s * 0.53);
+    ctx.fill();
+    ctx.fillStyle = '#7a4f28';
+    ctx.fillRect(s * 0.27, s * 0.59, s * 0.04, s * 0.07);
+    // Árvore
+    ctx.fillStyle = '#7a4f28';
+    ctx.fillRect(s * 0.66, s * 0.5, s * 0.03, s * 0.14);
+    ctx.fillStyle = '#3f8f45';
+    ctx.beginPath();
+    ctx.arc(s * 0.675, s * 0.47, s * 0.08, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+/** Pintura: jarra com flores, fundo azul. */
+function flowersPainting(): THREE.CanvasTexture {
+  return canvasTexture(512, (ctx, s) => {
+    ctx.fillStyle = '#3f6fb5';
+    ctx.fillRect(0, 0, s, s);
+    ctx.fillStyle = '#5a86c9';
+    ctx.fillRect(0, s * 0.7, s, s * 0.3);
+    ctx.strokeStyle = '#3f8f45';
+    ctx.lineWidth = s * 0.015;
+    const heads: [number, number, string][] = [[0.35, 0.3, '#ff6fb5'], [0.5, 0.22, '#ffd23f'], [0.65, 0.32, '#ff7a3c'], [0.42, 0.42, '#ffffff'], [0.58, 0.44, '#b36bff']];
+    for (const [x, y] of heads) {
+      ctx.beginPath();
+      ctx.moveTo(s * 0.5, s * 0.62);
+      ctx.quadraticCurveTo(s * (0.5 + (x - 0.5) * 0.3), s * 0.5, s * x, s * y);
+      ctx.stroke();
+    }
+    for (const [x, y, c] of heads) {
+      ctx.fillStyle = c;
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(s * x + Math.cos(a) * s * 0.035, s * y + Math.sin(a) * s * 0.035, s * 0.03, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#ffe9a8';
+      ctx.beginPath();
+      ctx.arc(s * x, s * y, s * 0.022, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#f2c14e';
+    ctx.beginPath();
+    ctx.moveTo(s * 0.4, s * 0.6);
+    ctx.lineTo(s * 0.6, s * 0.6);
+    ctx.lineTo(s * 0.57, s * 0.8);
+    ctx.lineTo(s * 0.43, s * 0.8);
+    ctx.fill();
+  });
+}
+
+/** Põe `o` em (x, y) com as costas encostadas à parede de trás. */
+function againstWall(g: THREE.Object3D, o: THREE.Object3D | null, x: number, y: number): THREE.Object3D | null {
+  if (!o) return null;
+  o.position.set(x, y, 0);
+  o.updateMatrixWorld(true);
+  o.position.z = WALL_Z - new THREE.Box3().setFromObject(o).min.z;
+  g.add(o);
+  return o;
+}
+
 /** Televisão (canto da frente, à direita, virada para o sofá): onde aparece o menu dos jogos. */
-const TV = { x: 9.9, z: 1.4, y: 2.85 };
-const TV_YAW = Math.atan2(0 - TV.x, -3.6 - TV.z);
-/** Vista da câmara de frente para o ecrã da televisão (o ecrã enche quase todo o ecrã do jogo). */
+const TV = { x: 6.6, z: -1.2, y: 2.0 };
+const TV_YAW = Math.atan2(0 - TV.x, -6.5 - TV.z);
+/**
+ * Vista da câmara de frente para o ecrã da televisão (o ecrã enche quase toda a altura do jogo).
+ * Acertada quando a sala é montada, conforme o tamanho do ecrã da TV.
+ */
 export const TV_VIEW = {
   pos: new THREE.Vector3(TV.x + Math.sin(TV_YAW) * 3.95, TV.y + 0.05, TV.z + Math.cos(TV_YAW) * 3.95),
   look: new THREE.Vector3(TV.x, TV.y, TV.z),
 };
-
-/** Ecrã da televisão: logótipo da festa a brilhar. */
-function tvScreen(): THREE.CanvasTexture {
-  return canvasTexture(512, (ctx, s) => {
-    const g = ctx.createRadialGradient(s / 2, s / 2, 20, s / 2, s / 2, s * 0.7);
-    g.addColorStop(0, '#4b2f8a');
-    g.addColorStop(1, '#160f2e');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, s, s);
-    ctx.font = 'bold 120px Trebuchet MS, Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.lineWidth = 14;
-    ctx.strokeStyle = '#1d1433';
-    ctx.strokeText('FESTA', s / 2, s / 2 - 20);
-    ctx.fillStyle = '#ffd23f';
-    ctx.fillText('FESTA', s / 2, s / 2 - 20);
-    ctx.font = 'bold 34px Trebuchet MS, Arial, sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('Ⓨ para começar', s / 2, s / 2 + 80);
-  });
-}
+/** Abertura vertical da câmara da sala (ShowcaseStage) e quanto da altura o ecrã da TV ocupa. */
+const ROOM_FOV = 40;
+const TV_FILL = 0.86;
 
 export interface LivingRoom {
   group: THREE.Group;
+  /** Ecrã da televisão (desligado até se ir para o menu dos jogos). */
+  tv: CrtScreen;
   update(time: number): void;
 }
 
@@ -214,106 +334,6 @@ function bricks(): THREE.CanvasTexture {
   return t;
 }
 
-/** Tapete retangular com barra e losangos. */
-function rugTexture(): THREE.CanvasTexture {
-  return canvasTexture(512, (ctx, s) => {
-    ctx.fillStyle = '#a8343f';
-    ctx.fillRect(0, 0, s, s);
-    ctx.fillStyle = '#f2c14e';
-    ctx.fillRect(22, 22, s - 44, s - 44);
-    ctx.fillStyle = '#2f5d8a';
-    ctx.fillRect(40, 40, s - 80, s - 80);
-    ctx.fillStyle = '#f6e7c8';
-    for (let x = 80; x < s - 60; x += 70)
-      for (let y = 80; y < s - 60; y += 70) {
-        ctx.beginPath();
-        ctx.moveTo(x, y - 22);
-        ctx.lineTo(x + 22, y);
-        ctx.lineTo(x, y + 22);
-        ctx.lineTo(x - 22, y);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = '#a8343f';
-        ctx.fillRect(x - 5, y - 5, 10, 10);
-        ctx.fillStyle = '#f6e7c8';
-      }
-  });
-}
-
-/** Lá fora, ao fim da tarde: céu laranja, sol, montes e árvores. */
-function outside(): THREE.CanvasTexture {
-  return canvasTexture(256, (ctx, s) => {
-    const g = ctx.createLinearGradient(0, 0, 0, s);
-    g.addColorStop(0, '#6c8fe0');
-    g.addColorStop(0.55, '#ffb37a');
-    g.addColorStop(1, '#ffd9a0');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, s, s);
-    ctx.fillStyle = 'rgba(255,240,200,0.95)';
-    ctx.beginPath();
-    ctx.arc(s * 0.68, s * 0.62, 22, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    for (const [cx, cy] of [[50, 50], [160, 36]] as const) {
-      for (let k = 0; k < 4; k++) {
-        ctx.beginPath();
-        ctx.arc(cx + k * 14, cy + (k % 2) * 4, 12, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    ctx.fillStyle = '#7a8fb8';
-    ctx.beginPath();
-    ctx.moveTo(0, s * 0.78);
-    for (let x = 0; x <= s; x += 16) ctx.lineTo(x, s * 0.72 + Math.sin(x * 0.03) * 14);
-    ctx.lineTo(s, s);
-    ctx.lineTo(0, s);
-    ctx.fill();
-    ctx.fillStyle = '#4f7a4a';
-    ctx.fillRect(0, s * 0.86, s, s * 0.14);
-    for (let x = 6; x < s; x += 26) {
-      ctx.fillStyle = '#3c6a3e';
-      ctx.beginPath();
-      ctx.arc(x, s * 0.84, 12 + (x % 3) * 3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  });
-}
-
-/** Alvo dos dardos. */
-function dartboard(): THREE.CanvasTexture {
-  return canvasTexture(256, (ctx, s) => {
-    const c = s / 2;
-    ctx.fillStyle = '#1b1b1b';
-    ctx.beginPath();
-    ctx.arc(c, c, c, 0, Math.PI * 2);
-    ctx.fill();
-    for (let i = 0; i < 20; i++) {
-      const a0 = (i / 20) * Math.PI * 2;
-      const a1 = ((i + 1) / 20) * Math.PI * 2;
-      for (const [r0, r1, col] of [
-        [c * 0.95, c * 0.85, i % 2 ? '#2e8b47' : '#c8323a'],
-        [c * 0.85, c * 0.55, i % 2 ? '#f3e6c8' : '#1d1d1d'],
-        [c * 0.55, c * 0.48, i % 2 ? '#2e8b47' : '#c8323a'],
-        [c * 0.48, c * 0.12, i % 2 ? '#f3e6c8' : '#1d1d1d'],
-      ] as const) {
-        ctx.fillStyle = col;
-        ctx.beginPath();
-        ctx.arc(c, c, r0, a0, a1);
-        ctx.arc(c, c, r1, a1, a0, true);
-        ctx.fill();
-      }
-    }
-    ctx.fillStyle = '#2e8b47';
-    ctx.beginPath();
-    ctx.arc(c, c, c * 0.12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#c8323a';
-    ctx.beginPath();
-    ctx.arc(c, c, c * 0.05, 0, Math.PI * 2);
-    ctx.fill();
-  });
-}
-
 function soft(): THREE.CanvasTexture {
   return canvasTexture(64, (ctx, s) => {
     const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
@@ -441,125 +461,56 @@ function place(g: THREE.Object3D, o: THREE.Object3D | null, x: number, y: number
   return o;
 }
 
-// ── Sala ──────────────────────────────────────────────────
+/**
+ * Pose sentada das personagens (animação «Sit_Floor_Idle», medida nos modelos KayKit): o rabo fica à
+ * altura da raiz, as costas ≈ 0.45 atrás e os ombros ≈ 0.6 para cada lado.
+ */
+const SIT = { back: 0.47, half: 0.62, chest: 0.45 };
 
-export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
-  const g = new THREE.Group();
-  scene.background = new THREE.Color('#2a1f3d');
-  scene.fog = null;
-  const updaters: ((dt: number, time: number) => void)[] = [];
-
-  // Luz de interior: ambiente quente, sol baixo a entrar pela janela, lareira e candeeiro.
-  g.add(new THREE.HemisphereLight('#ffeedd', '#5a3a2a', 1.25));
-  const sun = new THREE.DirectionalLight('#ffd9a8', 1.9);
-  sun.position.set(-3, 11, -2);
-  sun.target.position.set(1, 0, 2);
-  sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
-  const sc = sun.shadow.camera;
-  sc.left = sc.bottom = -16;
-  sc.right = sc.top = 16;
-  sun.shadow.bias = -0.0005;
-  sun.shadow.normalBias = 0.04;
-  g.add(sun, sun.target);
-  const fill = new THREE.DirectionalLight('#c9d4ff', 0.5);
-  fill.position.set(6, 8, 12);
-  g.add(fill);
-
-  // ── Chão e paredes ──
-  const floor = mesh(new THREE.BoxGeometry(28, 0.3, 20), toonUnique('#ffffff', { map: planks() }), { cast: false, receive: true });
-  floor.position.set(0, -0.15, -1);
-  const paper = toonUnique('#ffffff', { map: wallpaper() });
-  const wood = toonUnique('#ffffff', { map: wainscot() });
-  const trim = toon('#5e3a1e');
-  const back = mesh(new THREE.BoxGeometry(28, 7.4, 0.4), paper, { cast: false, receive: true });
-  back.position.set(0, 1.8 + 3.7, -9.2);
-  const backLow = mesh(new THREE.BoxGeometry(28, 1.8, 0.45), wood, { cast: false, receive: true });
-  backLow.position.set(0, 0.9, -9.18);
-  g.add(floor, back, backLow);
-  for (const sx of [-1, 1]) {
-    const side = mesh(new THREE.BoxGeometry(0.4, 7.4, 20), paper, { cast: false, receive: true });
-    side.position.set(sx * 13.8, 5.5, -1);
-    const sideLow = mesh(new THREE.BoxGeometry(0.45, 1.8, 20), wood, { cast: false, receive: true });
-    sideLow.position.set(sx * 13.78, 0.9, -1);
-    const rail = mesh(new THREE.BoxGeometry(0.2, 0.14, 20), trim, { cast: false });
-    rail.position.set(sx * 13.55, 1.85, -1);
-    g.add(side, sideLow, rail);
-  }
-  const chairRail = mesh(new THREE.BoxGeometry(28, 0.14, 0.2), trim, { cast: false });
-  chairRail.position.set(0, 1.85, -8.95);
-  const skirt = mesh(new THREE.BoxGeometry(28, 0.3, 0.12), trim, { cast: false });
-  skirt.position.set(0, 0.15, -8.92);
-  const crown = mesh(new THREE.BoxGeometry(28, 0.3, 0.3), toon('#f6ead2'), { cast: false });
-  crown.position.set(0, 9.05, -8.9);
-  g.add(chairRail, skirt, crown);
-
-  // ── Tapete ──
-  const rug = mesh(new THREE.BoxGeometry(12, 0.05, 6.8), toonUnique('#ffffff', { map: rugTexture() }), { cast: false, receive: true });
-  rug.position.set(0, 0.025, -2.7);
-  g.add(rug);
-  for (const sz of [-1, 1])
-    for (let i = 0; i < 30; i++) {
-      const fr = mesh(new THREE.BoxGeometry(0.06, 0.02, 0.25), toon('#f6e7c8'), { cast: false });
-      fr.position.set(-5.8 + i * 0.4, 0.02, -2.7 + sz * 3.52);
-      g.add(fr);
+/**
+ * Acerta um lugar sentado em cima de `model`, com raios: o rabo assenta na superfície, as costas
+ * encostam ao encosto (sem entrar nele) e, entre dois braços, fica ao meio. `sink` afunda um
+ * bocadinho (almofadas moles). O modelo já tem de estar no sítio (com a matriz atualizada).
+ */
+function fitSeat(seat: (typeof ROOM_SEATS)[number], model: THREE.Object3D, sink = 0, ceil = 0.7): void {
+  const ray = new THREE.Raycaster();
+  const fwd = new THREE.Vector3(Math.sin(seat.yaw), 0, Math.cos(seat.yaw));
+  const side = new THREE.Vector3(fwd.z, 0, -fwd.x);
+  // Os raios para baixo partem de `ceil` da altura do modelo (para não baterem no topo do encosto ou na cúpula da cadeira-ovo).
+  const mb = new THREE.Box3().setFromObject(model);
+  const top = mb.min.y + (mb.max.y - mb.min.y) * ceil + 0.01;
+  const hit = (from: THREE.Vector3, dir: THREE.Vector3, far: number) => {
+    ray.set(from, dir);
+    ray.far = far;
+    return ray.intersectObject(model, true)[0] ?? null;
+  };
+  const surface = () => hit(new THREE.Vector3(seat.x - fwd.x * 0.15, top, seat.z - fwd.z * 0.15), new THREE.Vector3(0, -1, 0), top + 1)?.point.y ?? 0;
+  let y = surface();
+  for (let i = 0; i < 3; i++) {
+    const chest = new THREE.Vector3(seat.x, y + SIT.chest, seat.z);
+    // Costas: encosta ao que estiver atrás (até 1.2), sem entrar.
+    const b = hit(chest, fwd.clone().negate(), SIT.back + 1.2);
+    if (b) {
+      const shift = SIT.back + 0.03 - b.distance;
+      seat.x += fwd.x * shift;
+      seat.z += fwd.z * shift;
     }
-
-  // ── Janela (por cima do sofá): céu do fim da tarde, cortinas com pregas e raio de sol ──
-  const win = new THREE.Group();
-  const frameMat = toon('#fbf6ec');
-  const frameO = mesh(rbox(5.8, 3.8, 0.3, 0.08), frameMat, { cast: false });
-  const pane = mesh(new THREE.PlaneGeometry(5.2, 3.2), new THREE.MeshBasicMaterial({ map: outside() }), { cast: false });
-  pane.position.z = 0.16;
-  const crossV = mesh(new THREE.BoxGeometry(0.14, 3.2, 0.12), frameMat, { cast: false });
-  crossV.position.z = 0.2;
-  const crossH = mesh(new THREE.BoxGeometry(5.2, 0.14, 0.12), frameMat, { cast: false });
-  crossH.position.z = 0.2;
-  const sill = mesh(rbox(6.4, 0.18, 0.7, 0.06), frameMat);
-  sill.position.set(0, -2, 0.35);
-  win.add(frameO, pane, crossV, crossH, sill);
-  const rod = mesh(new THREE.CylinderGeometry(0.06, 0.06, 8.4, 8), toon('#3a2a1a'));
-  rod.rotation.z = Math.PI / 2;
-  rod.position.set(0, 2.35, 0.5);
-  win.add(rod);
-  const curtainMat = fabric('#b8404d');
-  for (const sx of [-1, 1]) {
-    // Pano com pregas (onda) e apanhado a meio.
-    const geo = new THREE.PlaneGeometry(1.6, 4.9, 16, 10);
-    const p = geo.attributes.position!;
-    for (let i = 0; i < p.count; i++) {
-      const x = p.getX(i);
-      const y = p.getY(i);
-      const pinch = 1 - 0.35 * Math.exp(-(((y + 0.6) / 0.6) ** 2));
-      p.setXYZ(i, x * pinch, y, Math.sin(x * 9) * 0.12);
-    }
-    geo.computeVertexNormals();
-    const c = mesh(geo, curtainMat, { cast: false });
-    (c.material as THREE.MeshToonMaterial).side = THREE.DoubleSide;
-    c.position.set(sx * 3.45, -0.1, 0.45);
-    const tie = mesh(new THREE.TorusGeometry(0.42, 0.06, 6, 16), toon('#f2c14e'), { cast: false });
-    tie.rotation.x = Math.PI / 2;
-    tie.position.set(sx * 3.45, -0.7, 0.45);
-    win.add(c, tie);
+    // Lados: entre dois braços fica ao meio; se só um estiver perto de mais, afasta-se dele.
+    const l = hit(chest, side.clone().negate(), SIT.half + 0.6);
+    const r = hit(chest, side, SIT.half + 0.6);
+    let dx = 0;
+    if (l && r) dx = (r.distance - l.distance) / 2;
+    else if (l && l.distance < SIT.half) dx = SIT.half - l.distance;
+    else if (r && r.distance < SIT.half) dx = r.distance - SIT.half;
+    seat.x += side.x * dx;
+    seat.z += side.z * dx;
+    y = surface();
   }
-  win.position.set(0, 5.4, -8.95);
-  g.add(win);
-  // Pó a flutuar à frente da janela.
-  const motes = new THREE.InstancedMesh(new THREE.SphereGeometry(0.025, 4, 3), new THREE.MeshBasicMaterial({ color: '#fff4d6', transparent: true, opacity: 0.8 }), 60);
-  const moteP = Array.from({ length: 60 }, () => new THREE.Vector3(-1.5 + Math.random() * 4.5, 0.6 + Math.random() * 5.5, -7.5 + Math.random() * 4));
-  motes.frustumCulled = false;
-  g.add(motes);
-  const mm = new THREE.Matrix4();
-  updaters.push((dt, time) => {
-    moteP.forEach((p, i) => {
-      p.y += Math.sin(time * 0.3 + i) * dt * 0.08;
-      p.x += Math.cos(time * 0.2 + i * 1.7) * dt * 0.05;
-      motes.setMatrixAt(i, mm.makeTranslation(p.x, p.y, p.z));
-    });
-    motes.instanceMatrix.needsUpdate = true;
-  });
+  seat.y = y - sink;
+}
 
-  // ── Sofá de 3 lugares, estofado ──
+/** Sofá azul feito à mão (quando o modelo do sofá não carrega). */
+function buildSofa(g: THREE.Group): void {
   const sofaMat = fabric('#3f6fb0');
   const sofaDark = fabric('#2f5690');
   const sofa = new THREE.Group();
@@ -606,341 +557,374 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
     }
   sofa.position.set(0, 0, -6.35);
   g.add(sofa);
+}
 
-  // ── Cadeirões ──
+// ── Sala ──────────────────────────────────────────────────
+
+export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
+  const g = new THREE.Group();
+  scene.background = new THREE.Color('#2a1f3d');
+  scene.fog = null;
+  const updaters: ((dt: number, time: number) => void)[] = [];
+
+  // Luz de interior: ambiente quente, sol baixo a entrar pela janela, lareira e candeeiro.
+  g.add(new THREE.HemisphereLight('#ffeedd', '#5a3a2a', 1.25));
+  const sun = new THREE.DirectionalLight('#ffd9a8', 1.9);
+  sun.position.set(-3, 11, -2);
+  sun.target.position.set(1, 0, 2);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  const sc = sun.shadow.camera;
+  sc.left = sc.bottom = -16;
+  sc.right = sc.top = 16;
+  sun.shadow.bias = -0.0005;
+  sun.shadow.normalBias = 0.04;
+  g.add(sun, sun.target);
+  const fill = new THREE.DirectionalLight('#c9d4ff', 0.5);
+  fill.position.set(6, 8, 12);
+  g.add(fill);
+
+  // ── Chão e paredes ──
+  // Soalho, papel de parede e lambril desenhados à mão (a KayKit não traz texturas de chão/parede
+  // que se repitam: as cores dela vêm de uma paleta). Os tapetes da KayKit vão por cima.
+  const floor = mesh(new THREE.BoxGeometry(28, 0.3, 20), toonUnique('#ffffff', { map: planks() }), { cast: false, receive: true });
+  floor.position.set(0, -0.15, -1);
+  const paper = toonUnique('#ffffff', { map: wallpaper() });
+  const wood = toonUnique('#ffffff', { map: wainscot() });
+  const woodSide = wood;
+  const back = mesh(new THREE.BoxGeometry(28, 7.4, 0.4), paper, { cast: false, receive: true });
+  back.position.set(0, 1.8 + 3.7, -9.2);
+  const backLow = mesh(new THREE.BoxGeometry(28, 1.8, 0.45), wood, { cast: false, receive: true });
+  backLow.position.set(0, 0.9, -9.18);
+  g.add(floor, back, backLow);
   for (const sx of [-1, 1]) {
-    const chair = new THREE.Group();
-    const cm = fabric('#d9774b');
-    const cd = fabric('#b95d36');
-    const seat = mesh(rbox(2.1, 0.55, 2, 0.2), cd, { receive: true });
-    seat.position.y = 0.42;
-    const cush = mesh(rbox(1.5, 0.3, 1.6, 0.12), cm);
-    cush.position.set(0, 0.8, 0.1);
-    const cback = mesh(rbox(2.1, 1.9, 0.6, 0.3), cm);
-    cback.position.set(0, 1.3, -0.75);
-    chair.add(seat, cush, cback);
-    for (const ax of [-1, 1]) {
-      const arm = mesh(rbox(0.45, 1, 2, 0.2), cm);
-      arm.position.set(ax * 0.95, 0.8, 0);
-      chair.add(arm);
-    }
-    chair.position.set(sx * 5.75, 0, -3.3);
-    chair.rotation.y = -sx * 0.8;
-    g.add(chair);
+    const side = mesh(new THREE.BoxGeometry(0.4, 7.4, 20), paper, { cast: false, receive: true });
+    side.position.set(sx * 13.8, 5.5, -1);
+    const sideLow = mesh(new THREE.BoxGeometry(0.45, 1.8, 20), woodSide, { cast: false, receive: true });
+    sideLow.position.set(sx * 13.78, 0.9, -1);
+    g.add(side, sideLow);
   }
 
-  // ── Mesa de centro (com petiscos e caneca) ──
-  const table = prop('kaykit-furniture/table_low', { width: 3.2 });
-  if (table) place(g, table, 0, 0, -3.3);
+  // ── Disposição ──
+  // Tudo à escala das personagens (2.3 de altura, ≈ 1.5 unidades por metro real): sofá encostado à
+  // parede de trás com a mesa de centro à frente; cadeirões dos lados, virados para a mesa e para a
+  // sala; estante e alvo de dardos à esquerda, estante baixa e lareira à direita; mesa dos petiscos
+  // à esquerda, à frente; a TV no canto da frente, à direita, virada para o sofá.
+  // Os lugares sentados acertam-se depois com `fitSeat` (rabo no assento, costas no encosto).
+
+  // ── Sofá de 3 lugares (KayKit «couch_pillows») ──
+  // Esticado na largura para caberem três personagens (são largas).
+  const graySofa = prop('kaykit-furniture/couch_pillows', { height: 1.75 });
+  const sofaSeats: THREE.Object3D[] = [];
+  if (graySofa) {
+    graySofa.scale.x *= 4.8 / Math.max(0.01, new THREE.Box3().setFromObject(graySofa).getSize(new THREE.Vector3()).x);
+    graySofa.updateMatrixWorld(true);
+    const sb = new THREE.Box3().setFromObject(graySofa);
+    graySofa.position.set(0, 0, WALL_Z + 0.15 - sb.min.z);
+    g.add(graySofa);
+    const front = graySofa.position.z + sb.max.z;
+    [0, -1.25, 1.25].forEach((x, i) => Object.assign(ROOM_SEATS[i]!, { x, z: front - 0.45, yaw: 0 }));
+    sofaSeats.push(graySofa, graySofa, graySofa);
+  } else buildSofa(g);
+  const sofaFront = graySofa ? ROOM_SEATS[0]!.z + 0.45 : -5.6;
+
+  // ── Por cima do sofá, em fila e ao centro: dois quadros e um espelho (KayKit Mixed Bag 2) ──
+  // A base fica acima das cabeças de quem está sentado (≈ 2.7).
+  const PIC_Y = 2.95;
+  againstWall(g, framed('kaykit-mixed2/frame_A_large', 1.3, landscapePainting()), -1.75, PIC_Y);
+  againstWall(g, prop('kaykit-mixed2/ornate_mirror', { height: 1.5 }), 0, PIC_Y - 0.1);
+  againstWall(g, framed('kaykit-mixed2/frame_B_large', 1.3, flowersPainting()), 1.75, PIC_Y);
+  // Prateleira com livros e coisas por cima dos quadros.
+  againstWall(g, prop('kaykit-furniture/shelf_B_large_decorated', { width: 2.4 }), 0, PIC_Y + 1.75);
+
+  // ── Mesa de centro (KayKit «table_low») em cima de um tapete às riscas, com chocolate quente e livros ──
+  const TABLE_Z = sofaFront + 2.0;
+  place(g, prop('kaykit-furniture/rug_rectangle_stripes_A', { width: 7.5 }), 0, 0.005, TABLE_Z + 0.6);
+  const table = prop('kaykit-furniture/table_low', { width: 3.0 });
+  if (table) place(g, table, 0, 0, TABLE_Z);
   else {
-    const top = mesh(rbox(3.2, 0.18, 1.5, 0.06), toon('#8a5a34'));
-    top.position.set(0, 0.7, -3.3);
+    const top = mesh(rbox(3.0, 0.18, 1.5, 0.06), toon('#8a5a34'));
+    top.position.set(0, 0.6, TABLE_Z);
     g.add(top);
     for (const sx of [-1, 1])
       for (const sz of [-1, 1]) {
-        const leg = mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.65, 8), toon('#5e3a1e'));
-        leg.position.set(sx * 1.4, 0.32, -3.3 + sz * 0.6);
+        const leg = mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.55, 8), toon('#5e3a1e'));
+        leg.position.set(sx * 1.3, 0.27, TABLE_Z + sz * 0.6);
         g.add(leg);
       }
   }
-  const tableTop = table ? new THREE.Box3().setFromObject(table).max.y : 0.79;
-  place(g, prop('q-props/Mug', { height: 0.32 }), -0.8, tableTop, -3.2, 0.4);
-  // Taça de pipocas.
-  const bowl = mesh(new THREE.SphereGeometry(0.42, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), toonUnique('#e8413c', { side: THREE.DoubleSide }));
-  bowl.position.set(0.5, tableTop + 0.4, -3.35);
-  g.add(bowl);
-  for (let i = 0; i < 26; i++) {
-    const pc = mesh(new THREE.DodecahedronGeometry(0.09, 0), toon(i % 5 ? '#fff6d8' : '#f2c14e'), { cast: false });
-    const a = Math.random() * 6.3;
-    const d = Math.random() * 0.32;
-    pc.position.set(0.5 + Math.cos(a) * d, tableTop + 0.36 + Math.random() * 0.12, -3.35 + Math.sin(a) * d);
-    g.add(pc);
+  const tableTop = table ? new THREE.Box3().setFromObject(table).max.y : 0.69;
+  place(g, prop('kaykit-holiday/hot_chocolate_decorated', { height: 0.3 }), -0.7, tableTop, TABLE_Z + 0.1, 0.4);
+  place(g, prop('kaykit-furniture/book_set', { height: 0.35 }), 0.8, tableTop, TABLE_Z - 0.1, -0.3);
+
+  // ── Cadeirões (KayKit «armchair_pillows»), um de cada lado ──
+  // Virados para a mesa e um pouco para a sala; largos q.b. para uma personagem (≈ 1.7).
+  const chairSeats: (THREE.Object3D | null)[] = [];
+  for (const sx of [-1, 1]) {
+    const seat = ROOM_SEATS[sx < 0 ? 3 : 4]!;
+    Object.assign(seat, { x: sx * 3.5, z: TABLE_Z + 0.2, yaw: -sx * 1.05 });
+    const model = prop('kaykit-furniture/armchair_pillows', { height: 1.75 });
+    if (model) {
+      // Alarga para ≈ 1.7 de largura (as personagens têm a cabeça e os braços largos).
+      const cb = new THREE.Box3().setFromObject(model);
+      const k = 1.7 / Math.max(0.01, cb.max.x - cb.min.x);
+      model.scale.set(k, 1, k);
+      model.position.set(seat.x, 0, seat.z);
+      model.rotation.y = seat.yaw;
+      g.add(model);
+      chairSeats.push(model);
+      continue;
+    }
+    chairSeats.push(null);
+    const chair = new THREE.Group();
+    const cm = fabric('#d9774b');
+    const cd = fabric('#b95d36');
+    const cseat = mesh(rbox(1.7, 0.45, 1.6, 0.2), cd, { receive: true });
+    cseat.position.y = 0.32;
+    const cush = mesh(rbox(1.2, 0.2, 1.3, 0.1), cm);
+    cush.position.set(0, 0.62, 0.1);
+    const cback = mesh(rbox(1.7, 1.5, 0.45, 0.2), cm);
+    cback.position.set(0, 1.0, -0.6);
+    chair.add(cseat, cush, cback);
+    for (const ax of [-1, 1]) {
+      const arm = mesh(rbox(0.3, 0.8, 1.6, 0.15), cm);
+      arm.position.set(ax * 0.75, 0.6, 0);
+      chair.add(arm);
+    }
+    chair.position.set(seat.x, 0, seat.z);
+    chair.rotation.y = seat.yaw;
+    g.add(chair);
+    chairSeats[chairSeats.length - 1] = chair;
   }
-  // Comando de consola em cima da mesa.
-  const pad = mesh(rbox(0.5, 0.1, 0.3, 0.05), toon('#2b2b38'));
-  pad.position.set(1.2, tableTop + 0.05, -3.0);
-  pad.rotation.y = 0.5;
-  g.add(pad);
 
-  // ── Almofada grande no chão e puff ──
-  const floorCush = mesh(rbox(1.7, 0.32, 1.7, 0.15), fabric('#f2c14e'), { receive: true });
-  floorCush.position.set(-2.7, 0.16, -1.15);
-  floorCush.rotation.y = 0.35;
-  const bean = mesh(new THREE.SphereGeometry(0.95, 20, 14), fabric('#4cad7a'));
-  bean.scale.set(1, 0.48, 1);
-  bean.position.set(2.7, 0.4, -1.15);
-  g.add(floorCush, bean);
+  // ── No chão, à frente da mesa: dois pufes (KayKit Holiday «footstool»), em cima de um tapete oval ──
+  // Sem os modelos, uma almofada amarela e um puff verde feitos à mão.
+  const seat5 = Object.assign(ROOM_SEATS[5]!, { x: -2.1, z: TABLE_Z + 2.6, yaw: 0.3 });
+  const seat6 = Object.assign(ROOM_SEATS[6]!, { x: 2.1, z: TABLE_Z + 2.6, yaw: -0.3 });
+  place(g, prop('kaykit-furniture/rug_oval_A', { width: 6.5 }), 0, 0.01, TABLE_Z + 2.8);
+  let pile: THREE.Object3D | null = prop('kaykit-holiday/footstool_red', { width: 1.5 });
+  if (pile) place(g, pile, seat5.x, 0, seat5.z, seat5.yaw);
+  else {
+    pile = mesh(rbox(1.5, 0.3, 1.5, 0.14), fabric('#f2c14e'), { receive: true });
+    pile.position.set(seat5.x, 0.15, seat5.z);
+    pile.rotation.y = seat5.yaw;
+    g.add(pile);
+  }
+  let bean: THREE.Object3D | null = prop('kaykit-holiday/footstool_green', { width: 1.5 });
+  if (bean) place(g, bean, seat6.x, 0, seat6.z, seat6.yaw);
+  else {
+    bean = mesh(new THREE.SphereGeometry(0.85, 20, 14), fabric('#4cad7a'));
+    bean.scale.set(1, 0.5, 1);
+    bean.position.set(seat6.x, 0.36, seat6.z);
+    g.add(bean);
+  }
 
-  // ── Lareira de tijolo, acesa, com faúlhas ──
+  // ── Lareira acesa, com faúlhas (à direita, na parede de trás) ──
+  // A KayKit não tem lareira: é a de tijolo feita à mão.
+  const FIRE_X = 7.3;
   const fire = new THREE.Group();
-  const brick = toonUnique('#ffffff', { map: bricks() });
-  const body = mesh(new THREE.BoxGeometry(4.2, 4.6, 1.2), brick, { receive: true });
-  body.position.y = 2.3;
-  const chimney = mesh(new THREE.BoxGeometry(2.6, 4.4, 0.9), brick);
-  chimney.position.set(0, 6.8, -0.15);
-  const mantel = mesh(rbox(4.9, 0.3, 1.6, 0.08), toon('#6b4524'));
-  mantel.position.set(0, 3.3, 0.15);
-  const hearth = mesh(new THREE.BoxGeometry(4.6, 0.18, 1.2), toon('#8f8a80'), { receive: true });
-  hearth.position.set(0, 0.09, 1.1);
-  const hole = mesh(new THREE.BoxGeometry(2.4, 2, 0.7), toon('#1a1210'), { cast: false });
-  hole.position.set(0, 1.1, 0.3);
-  const arch = mesh(new THREE.TorusGeometry(1.2, 0.18, 6, 16, Math.PI), brick);
-  arch.position.set(0, 2.05, 0.62);
-  fire.add(body, chimney, mantel, hearth, hole, arch);
-  for (const [lx, rz] of [[-0.2, 0.25], [0.25, -0.2]] as const) {
-    const log = mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.5, 8), toon('#5b3a1e'), { cast: false });
-    log.rotation.set(0, 0.3, Math.PI / 2 + rz);
-    log.position.set(lx, 0.32, 0.45);
-    fire.add(log);
+  const stone = null as THREE.Group | null;
+  /** Boca do lume (centro, tamanho e face da frente) e tampo, no referencial da lareira. */
+  const mouth = { y: 1.1, w: 2.4, h: 2, z: 0.3 };
+  let fireZ = -8.4;
+  let fireFront = 0.6;
+  if (stone) {
+    fire.add(stone);
+    const box = new THREE.Box3().setFromObject(stone);
+    const W = box.max.x - box.min.x;
+    const H = box.max.y;
+    const D = box.max.z - box.min.z;
+    // No modelo: a boca vai de 18% a 54% da altura e ocupa 34% da largura; a face fica 22% atrás da frente.
+    Object.assign(mouth, { y: 0.36 * H, w: 0.34 * W, h: 0.36 * H, z: box.max.z - 0.22 * D });
+    fireZ = WALL_Z - box.min.z;
+    fireFront = box.max.z;
+  } else {
+    const brick = toonUnique('#ffffff', { map: bricks() });
+    const body = mesh(new THREE.BoxGeometry(4.2, 4.6, 1.2), brick, { receive: true });
+    body.position.y = 2.3;
+    const chimney = mesh(new THREE.BoxGeometry(2.6, 4.4, 0.9), brick);
+    chimney.position.set(0, 6.8, -0.15);
+    const mantel = mesh(rbox(4.9, 0.3, 1.6, 0.08), toon('#6b4524'));
+    mantel.position.set(0, 3.3, 0.15);
+    const hearth = mesh(new THREE.BoxGeometry(4.6, 0.18, 1.2), toon('#8f8a80'), { receive: true });
+    hearth.position.set(0, 0.09, 1.1);
+    const arch = mesh(new THREE.TorusGeometry(1.2, 0.18, 6, 16, Math.PI), brick);
+    arch.position.set(0, 2.05, 0.62);
+    fire.add(body, chimney, mantel, hearth, arch);
+    fireFront = 1.7;
   }
+  const hole = mesh(new THREE.BoxGeometry(mouth.w, mouth.h, stone ? 0.06 : 0.7), toon('#1a1210'), { cast: false });
+  hole.position.set(0, mouth.y, stone ? mouth.z + 0.03 : mouth.z);
+  fire.add(hole);
+  // Chamas (encolhem com a boca do lume).
+  const k = mouth.w / 2.4;
+  const floorY = mouth.y - mouth.h / 2;
+  const flameZ = stone ? mouth.z + 0.22 : 0.45;
   const flames: THREE.Mesh[] = [];
   const flameColors = ['#ff6a1a', '#ffa41b', '#ffd23f'];
   for (let i = 0; i < 7; i++) {
-    const f = mesh(new THREE.ConeGeometry(0.3 - (i % 3) * 0.06, 1.05 - (i % 3) * 0.25, 8), toonUnique(flameColors[i % 3]!, { emissive: flameColors[i % 3]!, emissiveIntensity: 1.5 }), { cast: false });
-    f.position.set(-0.75 + i * 0.25, 0.85, 0.45 + (i % 2) * 0.1);
+    const fh = (1.05 - (i % 3) * 0.25) * k;
+    const f = mesh(new THREE.ConeGeometry((0.3 - (i % 3) * 0.06) * k, fh, 8), toonUnique(flameColors[i % 3]!, { emissive: flameColors[i % 3]!, emissiveIntensity: 1.5 }), { cast: false });
+    f.geometry.translate(0, fh / 2, 0);
+    f.position.set((-0.75 + i * 0.25) * k, floorY + 0.05 * k, flameZ + (i % 2) * 0.1 * k);
+    f.userData.x = f.position.x;
     fire.add(f);
     flames.push(f);
   }
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: soft(), color: '#ff9a3c', transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
-  glow.scale.set(3.2, 2.4, 1);
-  glow.position.set(0, 1, 0.9);
+  glow.scale.set(3.2 * k, 2.4 * k, 1);
+  glow.position.set(0, mouth.y - 0.1, flameZ + 0.45);
   fire.add(glow);
   const fireLight = new THREE.PointLight('#ff9a3c', 16, 13);
-  fireLight.position.set(0, 1.2, 1.6);
+  fireLight.position.set(0, mouth.y + 0.1, flameZ + 1.15);
   fire.add(fireLight);
-  // Em cima da lareira: velas, um relógio e um quadro.
-  for (const vx of [-1.8, -1.45]) {
-    const candle = mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.4 + (vx + 2) * 0.3, 10), toon('#fff6e0'));
-    candle.position.set(vx, 3.65, 0.3);
-    const fl = mesh(new THREE.ConeGeometry(0.05, 0.16, 6), toonUnique('#ffd23f', { emissive: '#ffb020', emissiveIntensity: 2 }), { cast: false });
-    fl.position.set(vx, 3.95 + (vx + 2) * 0.15, 0.3);
-    fire.add(candle, fl);
-  }
-  const clock = mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.15, 20), toon('#f6ead2'));
-  clock.rotation.x = Math.PI / 2;
-  clock.position.set(1.2, 3.9, 0.25);
-  fire.add(clock);
-  const hand = mesh(new THREE.BoxGeometry(0.04, 0.3, 0.02), toon('#2b2b38'), { cast: false });
-  hand.geometry.translate(0, 0.13, 0);
-  hand.position.set(1.2, 3.9, 0.34);
-  fire.add(hand);
-  // Utensílios da lareira.
-  const tools = new THREE.Group();
-  const stand = mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 6), toon('#2b2b38'));
-  stand.position.y = 0.7;
-  const tbase = mesh(new THREE.CylinderGeometry(0.25, 0.28, 0.08, 10), toon('#2b2b38'));
-  tbase.position.y = 0.04;
-  tools.add(stand, tbase);
-  for (let i = 0; i < 3; i++) {
-    const t2 = mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.2, 6), toon('#4a4a58'));
-    t2.position.set(Math.cos(i * 2.1) * 0.12, 0.75, Math.sin(i * 2.1) * 0.12);
-    tools.add(t2);
-  }
-  tools.position.set(2.5, 0, 0.9);
-  fire.add(tools);
-  fire.position.set(8.6, 0, -8.4);
+  fire.position.set(FIRE_X, 0, fireZ);
   g.add(fire);
-  // Faúlhas a subir.
+  // Quem aquece as mãos fica de pé à frente da lareira, um pouco de lado, virado para o lume.
+  {
+    const s = ROOM_SEATS[8]!;
+    s.x = FIRE_X - 0.9;
+    s.z = fireZ + fireFront + 1.0;
+    s.yaw = Math.atan2(FIRE_X - s.x, fireZ - s.z);
+    s.y = 0;
+  }
+  // Faúlhas a subir da boca do lume.
+  const mm = new THREE.Matrix4();
+  const sparkY = floorY + 0.3;
+  const sparkZ = fireZ + flameZ + 0.1;
   const sparks = new THREE.InstancedMesh(new THREE.SphereGeometry(0.035, 4, 3), new THREE.MeshBasicMaterial({ color: '#ffcf5a', blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }), 24);
-  const sparkP = Array.from({ length: 24 }, () => ({ p: new THREE.Vector3(8.6, 0.6 + Math.random() * 1.4, -7.9), v: 0.6 + Math.random() }));
+  const sparkP = Array.from({ length: 24 }, () => ({ p: new THREE.Vector3(FIRE_X, sparkY + Math.random() * 1.4, sparkZ), v: 0.6 + Math.random() }));
   sparks.frustumCulled = false;
   g.add(sparks);
   updaters.push((dt, time) => {
     sparkP.forEach((s, i) => {
       s.p.y += s.v * dt;
-      s.p.x = 8.6 + Math.sin(time * 3 + i) * 0.35;
-      if (s.p.y > 2) s.p.set(8.6 + (Math.random() - 0.5) * 1.2, 0.6, -7.9 + Math.random() * 0.2);
+      s.p.x = FIRE_X + Math.sin(time * 3 + i) * 0.35 * k;
+      if (s.p.y > sparkY + 1.4) s.p.set(FIRE_X + (Math.random() - 0.5) * 1.2 * k, sparkY, sparkZ + Math.random() * 0.2);
       sparks.setMatrixAt(i, mm.makeTranslation(s.p.x, s.p.y, s.p.z));
     });
     sparks.instanceMatrix.needsUpdate = true;
-    hand.rotation.z = -time * 0.5;
   });
 
-  // ── Alvo de dardos na parede de trás (à esquerda) com dardos espetados ──
-  const board = new THREE.Group();
-  const cork = mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.16, 32), [toon('#2b2b2b'), new THREE.MeshToonMaterial({ map: dartboard() }), toon('#2b2b2b')]);
-  cork.rotation.x = Math.PI / 2;
-  board.add(cork);
-  for (const [dx, dy] of [[0.15, 0.1], [-0.3, -0.25], [0.4, -0.35]] as const) {
-    const dart = new THREE.Group();
-    const shaft = mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 6), toon('#c0c0c8'), { cast: false });
-    shaft.rotation.x = Math.PI / 2;
-    shaft.position.z = 0.25;
-    const flight = mesh(new THREE.BoxGeometry(0.16, 0.01, 0.14), toon('#ff3b5c'), { cast: false });
-    flight.position.z = 0.45;
-    const flight2 = flight.clone();
-    flight2.rotation.z = Math.PI / 2;
-    dart.add(shaft, flight, flight2);
-    dart.position.set(dx, dy, 0.05);
-    dart.rotation.set((Math.random() - 0.5) * 0.3, (Math.random() - 0.5) * 0.3, 0);
-    board.add(dart);
-  }
-  board.position.set(-5.3, 3.4, -8.85);
-  g.add(board);
-  // Quadro de ardósia com os pontos.
-  const slate = mesh(rbox(1.1, 1.4, 0.08, 0.04), toon('#2f3a3a'), { cast: false });
-  slate.position.set(-3.6, 3.3, -8.92);
-  const chalk = mesh(new THREE.PlaneGeometry(0.8, 1), new THREE.MeshBasicMaterial({ transparent: true, map: canvasTexture(64, (ctx, s) => {
-    ctx.clearRect(0, 0, s, s);
-    ctx.fillStyle = '#e8e8e8';
-    for (let y = 8; y < s - 4; y += 10) ctx.fillRect(6, y, 10 + ((y * 7) % 30), 2);
-  }) }), { cast: false });
-  chalk.position.set(-3.6, 3.3, -8.87);
-  g.add(slate, chalk);
+  // ── Cómoda baixa à direita do sofá (KayKit «cabinet_medium_decorated») ──
+  againstWall(g, prop('kaykit-furniture/cabinet_medium_decorated', { width: 2.0 }), 3.95, 0);
+  // Candeeiro de pé no canto da esquerda (ao pé da lareira entrava pelos tijolos dentro).
+  againstWall(g, prop('kaykit-furniture/lamp_standing', { height: 2.6 }), -7.4, 0);
 
-  // ── Mesa dos petiscos (à esquerda): hambúrgueres, refrigerantes, pizza ──
-  const snack = prop('kaykit-restaurant/table_round_A_decorated', { width: 2.2 });
-  const snackTop = snack ? (place(g, snack, -8.7, 0, -4.9), new THREE.Box3().setFromObject(snack).max.y) : 1.0;
-  if (!snack) {
-    const top = mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.12, 24), toon('#f6ead2'));
-    top.position.set(-8.7, 0.95, -4.9);
-    const leg = mesh(new THREE.CylinderGeometry(0.1, 0.25, 0.95, 10), toon('#5e3a1e'));
-    leg.position.set(-8.7, 0.47, -4.9);
-    g.add(top, leg);
-  }
-  place(g, prop('kaykit-restaurant/food_burger', { width: 0.55 }), -8.4, snackTop, -4.5, 0.6);
-  const sodaColors = ['#e8413c', '#3fa7ff', '#4cd964'];
-  sodaColors.forEach((c, i) => {
-    const can = mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.36, 12), toon(c));
-    can.position.set(-9.2 + i * 0.3, snackTop + 0.18, -5.2);
-    g.add(can);
-  });
-  const pizzaBox = mesh(new THREE.BoxGeometry(0.9, 0.1, 0.9), toon('#d8b07a'));
-  pizzaBox.position.set(-8.8, snackTop + 0.05, -5.1);
-  pizzaBox.rotation.y = 0.3;
-  g.add(pizzaBox);
+  // ── À esquerda do sofá: estante de livros (KayKit Dungeon «shelves») ──
+  const SHELF_X = -3.95;
+  if (!againstWall(g, prop('kaykit-dungeon/shelves', { height: 2.9 }), SHELF_X, 0)) g.add(bookshelf(SHELF_X, -8.45));
+  // Guitarra encostada à parede e cadeira de gamer ao canto (KayKit Mixed Bag).
+  againstWall(g, prop('kaykit-mixed1/guitar_A', { height: 1.5 }), -5.6, 0);
+  place(g, prop('kaykit-mixed2/gamer_chair_A', { height: 1.9 }), -9.5, 0, -6.5, 0.6);
+  // Quem está à estante fica de pé, de costas para a sala, a mexer nos livros.
+  Object.assign(ROOM_SEATS[7]!, { x: SHELF_X - 0.2, z: WALL_Z + 1.45, yaw: Math.PI - 0.25, y: 0, anim: 'fiddle' });
+  // Do outro lado da lareira, alguém de pé a beber, virado para a sala.
+  Object.assign(ROOM_SEATS[9]!, { x: FIRE_X + 2.1, z: fireZ + fireFront + 1.3, yaw: -0.5, y: 0, anim: 'drink' });
 
-  // ── Estante, candeeiro, plantas e quadros ──
-  g.add(bookshelf(-10.9, -8.45));
-  const lamp = place(g, prop('kaykit-furniture/lamp_standing', { height: 4.2 }), -4.6, 0, -7.6);
-  if (!lamp) {
-    const pole = mesh(new THREE.CylinderGeometry(0.05, 0.05, 4), toon('#3a3150'));
-    pole.position.set(-4.6, 2, -7.6);
-    const shade = mesh(new THREE.ConeGeometry(0.7, 0.8, 16, 1, true), toonUnique('#fff1c2', { emissive: '#ffd27a', emissiveIntensity: 0.5, side: THREE.DoubleSide }));
-    shade.position.set(-4.6, 4, -7.6);
-    g.add(pole, shade);
-  }
-  const bulb = new THREE.PointLight('#ffd9a0', 9, 9);
-  bulb.position.set(-4.6, 3.7, -7.4);
-  g.add(bulb);
-  const lampGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: soft(), color: '#ffe2a8', transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending }));
-  lampGlow.scale.setScalar(2.2);
-  lampGlow.position.set(-4.6, 3.8, -7.5);
-  g.add(lampGlow);
-  // Plantas em vasos, nos cantos (feitas à mão, à escala da sala).
-  for (const [px, pz, seed] of [[4.6, -8.3, 3], [12.2, -3.2, 7], [-12.3, -1.6, 11]] as const) g.add(pottedPlant(px, pz, seed));
-  place(g, prop('kaykit-furniture/cactus_medium_A', { height: 0.7 }), -1.6, 3.42, -8.6);
-  place(g, prop('q-props/Vase_2', { height: 0.6 }), 1.8, 3.42, -8.6);
-  // Quadros (a moldura do pack, ou uma feita à mão) com paisagens.
-  const art = (w: number, h: number, colors: [string, string, string]) =>
-    canvasTexture(128, (ctx, s) => {
-      const gr = ctx.createLinearGradient(0, 0, 0, s);
-      gr.addColorStop(0, colors[0]);
-      gr.addColorStop(1, colors[1]);
-      ctx.fillStyle = gr;
-      ctx.fillRect(0, 0, s, s);
-      ctx.fillStyle = colors[2];
-      ctx.beginPath();
-      ctx.moveTo(0, s * 0.75);
-      ctx.quadraticCurveTo(s * 0.3, s * 0.45, s * 0.6, s * 0.7);
-      ctx.quadraticCurveTo(s * 0.8, s * 0.55, s, s * 0.7);
-      ctx.lineTo(s, s);
-      ctx.lineTo(0, s);
-      ctx.fill();
-      void w;
-      void h;
-    });
-  for (const [x, y, w, h, cols] of [
-    [8.6, 6.6, 2.2, 1.6, ['#8fd3ff', '#fff1c2', '#4caf50']],
-    [-8.4, 5.6, 1.6, 2.1, ['#ffb37a', '#ffd9a0', '#9b5de5']],
-    [5.1, 5.9, 1.3, 1.3, ['#c9d0ff', '#ffffff', '#5468ff']],
-  ] as const) {
-    const fr = mesh(rbox(w + 0.25, h + 0.25, 0.1, 0.05), toon('#d9a441'), { cast: false });
-    // O da lareira fica pendurado na chaminé (mais à frente).
-    fr.position.set(x, y, x === 8.6 ? -7.98 : -8.93);
-    const pic = mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: art(w, h, cols as unknown as [string, string, string]) }), { cast: false });
-    pic.position.set(x, y, fr.position.z + 0.06);
-    g.add(fr, pic);
-  }
+  // ── Plantas nos cantos (catos em vaso da KayKit; sem eles, feitas à mão) ──
+  for (const [px, pz, seed] of [[-6.0, -8.0, 3], [10.0, -8.0, 7], [-5.6, -3.0, 11]] as const)
+    place(g, prop(seed === 7 ? 'kaykit-furniture/cactus_medium_B' : 'kaykit-furniture/cactus_medium_A', { height: 1.2 }), px, 0, pz, seed) ?? g.add(pottedPlant(px, pz, seed));
 
-  // ── Luzinhas de festa ao longo da parede de trás ──
-  const bulbs: THREE.MeshToonMaterial[] = [];
-  const lightColors = ['#ff5a5f', '#ffd23f', '#4cd964', '#3fa7ff', '#ff8fc8'];
-  const wire: THREE.Vector3[] = [];
-  for (let i = 0; i <= 3; i++) {
-    const x0 = -12.5 + i * 6.25;
-    for (let k = 0; k <= 10; k++) {
-      const t = k / 10;
-      wire.push(new THREE.Vector3(x0 + t * 6.25, 8.5 - Math.sin(t * Math.PI) * 0.7, -8.85));
-    }
-  }
-  g.add(mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(wire), 120, 0.015, 4), toon('#2b2b38'), { cast: false }));
-  wire.forEach((p, i) => {
-    if (i % 2) return;
-    const m = toonUnique(lightColors[i % lightColors.length]!, { emissive: lightColors[i % lightColors.length]!, emissiveIntensity: 1.2 });
-    bulbs.push(m);
-    const b = mesh(new THREE.SphereGeometry(0.09, 8, 6), m, { cast: false });
-    b.position.copy(p).add(new THREE.Vector3(0, -0.12, 0.05));
-    b.scale.y = 1.4;
-    g.add(b);
-  });
-  updaters.push((_dt, time) => bulbs.forEach((m, i) => (m.emissiveIntensity = 0.7 + Math.max(0, Math.sin(time * 2 + i * 1.3)) * 1.2)));
+  // ── Lugares sentados: rabo no assento e costas no encosto, sem entrar nos modelos ──
+  g.updateMatrixWorld(true);
+  sofaSeats.forEach((m, i) => fitSeat(ROOM_SEATS[i]!, m));
+  chairSeats.forEach((m, i) => m && fitSeat(ROOM_SEATS[3 + i]!, m));
+  fitSeat(seat5, pile, 0, 1);
+  fitSeat(seat6, bean, 0.06, 1);
 
-  // ── Televisão num móvel baixo, no canto da frente (virada para o sofá) ──
+  // ── Televisão de tubo num móvel baixo, no canto da frente (virada para o sofá) ──
+  // Desligada até o VIP carregar em Ⓨ; aí liga e o menu dos jogos passa no vidro dela.
+  let tv: CrtScreen;
   {
     const tvg = new THREE.Group();
-    const cab = mesh(rbox(4.6, 1.05, 1.2, 0.08), toon('#6b4524'), { receive: true });
-    cab.position.y = 0.55;
-    for (const dx of [-1.15, 1.15]) {
-      const door = mesh(rbox(2.1, 0.8, 0.05, 0.03), toon('#7a5230'), { cast: false });
-      door.position.set(dx, 0.55, 0.6);
+    const CAB_TOP = 0.8;
+    const CAB_FRONT = 0.6;
+    /** Centro e tamanho do vidro (no referencial do móvel). */
+    const glass = { center: new THREE.Vector3(0, TV.y, 0.12), w: 2.0, h: 1.13 };
+    /** Largura do móvel (um pouco mais larga do que a TV). */
+    const CAB_W = 2.6;
+    let depth = 1.2;
+    // Modelo «CRT TV» (Timothy Ahene, Sketchfab, Free Standard). Vem virado para trás.
+    const crt = prop('crt-tv/crt-tv', { height: 1.7 });
+    let screenMesh = null as THREE.Mesh | null;
+    if (crt) {
+      crt.rotation.y = Math.PI;
+      crt.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(crt);
+      depth = Math.max(1.0, box.max.z - box.min.z + 0.3);
+      crt.position.set(0, CAB_TOP, CAB_FRONT - 0.15 - box.max.z);
+      crt.updateMatrixWorld(true);
+      crt.getObjectByName('Screen')?.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) screenMesh = o as THREE.Mesh;
+      });
+      tvg.add(crt);
+    }
+    const cab = mesh(rbox(CAB_W, CAB_TOP, depth, 0.06), toon('#6b4524'), { receive: true });
+    cab.position.set(0, CAB_TOP / 2, CAB_FRONT - depth / 2);
+    for (const dx of [-CAB_W / 4, CAB_W / 4]) {
+      const door = mesh(rbox(CAB_W / 2 - 0.15, CAB_TOP - 0.25, 0.05, 0.03), toon('#7a5230'), { cast: false });
+      door.position.set(dx, CAB_TOP / 2, CAB_FRONT);
       const knob = mesh(new THREE.SphereGeometry(0.05, 8, 6), toon('#d9a441'), { cast: false });
-      knob.position.set(dx + (dx < 0 ? 0.85 : -0.85), 0.55, 0.65);
+      knob.position.set(dx * 0.35, CAB_TOP / 2, CAB_FRONT + 0.05);
       tvg.add(door, knob);
     }
-    const stand = mesh(rbox(1.2, 0.12, 0.6, 0.05), toon('#1d1d24'));
-    stand.position.y = 1.14;
-    const neck = mesh(new THREE.BoxGeometry(0.2, 0.5, 0.12), toon('#1d1d24'));
-    neck.position.y = 1.4;
-    const bezel = mesh(rbox(4.1, 2.45, 0.22, 0.08), toon('#15151c'));
-    bezel.position.y = TV.y;
-    const screen = mesh(new THREE.PlaneGeometry(3.8, 2.14), new THREE.MeshBasicMaterial({ map: tvScreen() }), { cast: false });
-    screen.position.set(0, TV.y, 0.12);
-    const led = mesh(new THREE.SphereGeometry(0.03, 6, 4), toonUnique('#4cd964', { emissive: '#4cd964', emissiveIntensity: 2 }), { cast: false });
-    led.position.set(1.9, TV.y - 1.13, 0.12);
-    const console = mesh(rbox(1.1, 0.22, 0.75, 0.06), toon('#f2f2f7'));
-    console.position.set(-1.4, 1.19, 0.1);
-    tvg.add(cab, stand, neck, bezel, screen, led, console);
+    tvg.add(cab);
+    if (screenMesh) {
+      const sm = screenMesh;
+      const box = new THREE.Box3().setFromObject(sm);
+      box.getCenter(glass.center);
+      glass.w = box.max.x - box.min.x;
+      glass.h = box.max.y - box.min.y;
+      // A parte do vidro que tem imagem (as coordenadas de textura não ocupam o quadrado todo).
+      const uv = sm.geometry.getAttribute('uv');
+      const r: [number, number, number, number] = [Infinity, Infinity, -Infinity, -Infinity];
+      for (let i = 0; i < uv.count; i++) {
+        r[0] = Math.min(r[0], uv.getX(i));
+        r[1] = Math.min(r[1], uv.getY(i));
+        r[2] = Math.max(r[2], uv.getX(i));
+        r[3] = Math.max(r[3], uv.getY(i));
+      }
+      tv = new CrtScreen(sm, sm.material, { aspect: glass.w / glass.h, uvRect: r });
+    } else {
+      // Sem o modelo: TV plana feita à mão.
+      const stand = mesh(rbox(0.8, 0.1, 0.5, 0.04), toon('#1d1d24'));
+      stand.position.y = CAB_TOP + 0.05;
+      const neck = mesh(new THREE.BoxGeometry(0.16, 0.4, 0.1), toon('#1d1d24'));
+      neck.position.y = CAB_TOP + 0.3;
+      const bezel = mesh(rbox(glass.w + 0.25, glass.h + 0.25, 0.18, 0.06), toon('#15151c'));
+      bezel.position.y = TV.y;
+      const off = new THREE.MeshBasicMaterial({ color: '#0b0b10' });
+      const screen = mesh(new THREE.PlaneGeometry(glass.w, glass.h), off, { cast: false });
+      screen.position.copy(glass.center);
+      tvg.add(stand, neck, bezel, screen);
+      tv = new CrtScreen(screen, off, { aspect: glass.w / glass.h, uvRect: [0, 0, 1, 1] });
+    }
     tvg.position.set(TV.x, 0, TV.z);
     tvg.rotation.y = TV_YAW;
     g.add(tvg);
-    const tvGlow = new THREE.PointLight('#8f7bff', 4, 6);
-    tvGlow.position.set(TV.x + Math.sin(TV_YAW) * 1.2, TV.y, TV.z + Math.cos(TV_YAW) * 1.2);
+    // A câmara pára de frente para o vidro, à distância certa para o ecrã encher o jogo.
+    tvg.updateMatrixWorld(true);
+    const front = new THREE.Vector3(Math.sin(TV_YAW), 0, Math.cos(TV_YAW));
+    const center = tvg.localToWorld(glass.center.clone());
+    const dist = glass.h / 2 / Math.tan(THREE.MathUtils.degToRad(ROOM_FOV / 2)) / TV_FILL;
+    TV_VIEW.look.copy(center);
+    TV_VIEW.pos.copy(center).addScaledVector(front, dist);
+    // Luz que a TV deita na sala quando está ligada.
+    const tvGlow = new THREE.PointLight('#a9b8ff', 0, 7);
+    tvGlow.position.copy(center).addScaledVector(front, 1.2);
     g.add(tvGlow);
+    updaters.push((_dt, time) => {
+      tv.update(time);
+      tvGlow.intensity = 4 * tv.level;
+    });
   }
-
-  // ── Balões presos ao braço do sofá ──
-  const balloons: THREE.Object3D[] = [];
-  [['#ff5a5f', -0.3], ['#ffd23f', 0.1], ['#3fa7ff', 0.45]].forEach(([c, off], i) => {
-    const bg = new THREE.Group();
-    const b = mesh(new THREE.SphereGeometry(0.42, 16, 12), toonUnique(c as string, { emissive: c as string, emissiveIntensity: 0.12 }));
-    b.scale.y = 1.2;
-    b.position.y = 3.2 + i * 0.35;
-    const knot = mesh(new THREE.ConeGeometry(0.07, 0.12, 6), toon(c as string), { cast: false });
-    knot.position.y = b.position.y - 0.52;
-    const str = mesh(new THREE.CylinderGeometry(0.01, 0.01, b.position.y - 1.1), toon('#ffffff'), { cast: false });
-    str.position.y = (b.position.y + 1.1) / 2 - 0.5;
-    bg.add(b, knot, str);
-    bg.position.set(4.3 + (off as number), 0.6, -6.2 + i * 0.2);
-    g.add(bg);
-    balloons.push(bg);
-  });
-  updaters.push((_dt, time) => balloons.forEach((b, i) => (b.rotation.z = Math.sin(time * 0.8 + i) * 0.06)));
 
   scene.add(g);
   let last = -1;
   return {
     group: g,
+    tv,
     update(time: number) {
       const dt = last < 0 ? 0 : Math.min(0.1, time - last);
       last = time;
@@ -949,7 +933,7 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
       (glow.material as THREE.SpriteMaterial).opacity = 0.45 + Math.sin(time * 11) * 0.08;
       flames.forEach((f, i) => {
         f.scale.y = 1 + Math.sin(time * (7 + i) + i) * 0.2;
-        f.position.x = -0.75 + i * 0.25 + Math.sin(time * 5 + i * 2) * 0.04;
+        f.position.x = (f.userData.x as number) + Math.sin(time * 5 + i * 2) * 0.04;
       });
       for (const u of updaters) u(dt, time);
     },

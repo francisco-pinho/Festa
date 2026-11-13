@@ -34,7 +34,7 @@ class HammerRun extends ArenaMinigame {
     floor.position.y = -0.5;
     this.scene.add(floor);
     for (const o of OBSTACLES) {
-      const crate = pickProp(['q-props/Crate_Wooden', 'q-props/Barrel', 'q-props/Crate_Metal'], ctx.rng.next(), { width: o.r * 2 }) ?? mesh(new THREE.BoxGeometry(o.r * 1.6, 1.4, o.r * 1.6), toon('#a8743f'));
+      const crate = pickProp(['kaykit-dungeon/box_large', 'kaykit-dungeon/barrel_large', 'kaykit-medieval/crate_A_big'], ctx.rng.next(), { width: o.r * 2 }) ?? mesh(new THREE.BoxGeometry(o.r * 1.6, 1.4, o.r * 1.6), toon('#a8743f'));
       crate.position.set(o.x, crate instanceof THREE.Mesh ? 0.7 : 0, o.z);
       this.scene.add(crate);
     }

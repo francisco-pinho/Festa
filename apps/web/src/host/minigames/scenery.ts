@@ -46,9 +46,9 @@ function look(theme: Theme): Look {
     case 'park':
       return {
         ground: '#7ccf5b',
-        small: PROPS.park.filter((k) => /flowers|bench|trash/.test(k)).concat(PROPS.plants),
-        big: [...PROPS.park.filter((k) => /tree|stall/.test(k)), ...PROPS.trees],
-        back: [...PROPS.park.filter((k) => /entrance|station|train/.test(k)), ...PROPS.minigolf.filter((k) => /windmill|castle/.test(k)), ...PROPS.trees],
+        small: PROPS.park.filter((k) => /flower|bench|trash/.test(k)).concat(PROPS.plants),
+        big: [...PROPS.park.filter((k) => /tree|market|circus/i.test(k)), ...PROPS.trees],
+        back: [...PROPS.park.filter((k) => /arch|stage|train/.test(k)), ...PROPS.minigolf.filter((k) => /windmill|castle/.test(k)), ...PROPS.trees],
         backH: [8, 13],
       };
     case 'city':

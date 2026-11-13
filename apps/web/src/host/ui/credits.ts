@@ -30,6 +30,8 @@ export function creditsHtml(): string {
       <h2>Jingles</h2>
       <p>«Music Jingles» — Kenney (kenney.nl), CC0</p>
       <h2>Modelos 3D</h2>
-      <p>KayKit — Kay Lousberg (kaylousberg.com), CC0 · Kenney (kenney.nl), CC0 · Quaternius (quaternius.com), CC0</p>
+      <p>KayKit (Adventurers, Skeletons, Character Animations, Forest Nature, Dungeon, Medieval Hexagon, Platformer, City Builder, Furniture, Restaurant, Halloween, Holiday, Mixed Bag 1 e 2, Board Game, Fantasy Weapons, RPG Tools, Resource, Block, Prototype e Space Base Bits) — Kay Lousberg (kaylousberg.com), CC0</p>
+      <p>Palmeiras, navios, cais e canhão: Pirate Kit — Kenney (kenney.nl), CC0</p>
+      <p>«CRT TV» — Timothy Ahene (sketchfab.com/timothyahene) — Sketchfab Free Standard</p>
     </div>`;
 }

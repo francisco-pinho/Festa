@@ -888,7 +888,7 @@ export class BoardStage implements Stage {
     const t = this.token(id);
     const p = t.root.position.clone();
     const chest =
-      prop('kenney-pirate/chest', { width: 1.4 }) ??
+      prop('kaykit-dungeon/chest_gold', { width: 1.4 }) ??
       (() => {
         const g = new THREE.Group();
         const box = mesh(new THREE.BoxGeometry(1.4, 0.8, 0.9), toon('#8b5a2b'));

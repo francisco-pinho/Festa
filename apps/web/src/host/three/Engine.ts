@@ -162,6 +162,36 @@ export class Engine {
     this.resize();
   }
 
+  /**
+   * Prepara um palco na placa gráfica antes de se ver (texturas enviadas e shaders compilados),
+   * para o primeiro segundo não engasgar. Espera ainda uns fotogramas (sombras e efeitos).
+   */
+  async warmUp(stage: Stage): Promise<void> {
+    const r = this.renderer;
+    const seen = new Set<THREE.Texture>();
+    const upload = (v: unknown) => {
+      const t = v as THREE.Texture | null;
+      if (t?.isTexture && !seen.has(t)) {
+        seen.add(t);
+        r.initTexture(t);
+      }
+    };
+    stage.scene.traverse((o) => {
+      const mats = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+      for (const m of mats ? [mats].flat() : []) {
+        for (const v of Object.values(m)) upload(v);
+        const u = (m as THREE.ShaderMaterial).uniforms;
+        if (u) for (const x of Object.values(u)) upload(x.value);
+      }
+    });
+    try {
+      await r.compileAsync(stage.scene, stage.camera);
+    } catch {
+      // Sem compilação em paralelo: compila no primeiro fotograma (só demora mais um pouco).
+    }
+    await this.wait(0.2);
+  }
+
   get current(): Stage | null {
     return this.stage;
   }

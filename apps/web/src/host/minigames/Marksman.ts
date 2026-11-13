@@ -200,7 +200,7 @@ class MarksmanRun extends DuelMinigame {
       const sz = i % 2 ? 1 : -1;
       place(pickProp([...PROPS.plants, ...PROPS.rocks], rng.next(), { height: 0.6 + rng.next() * 0.8 }), -18 + rng.next() * 30, sz * (6.4 + rng.next() * 1.4), rng.next() * 6);
     }
-    place(pickProp(['kaykit-medieval/tent', 'kenney-nature/tent_detailedOpen'], rng.next(), { height: 2.6 }), -11, -5, 0.6); // afastada para não tapar a câmara (atrás dos arqueiros)
+    place(pickProp(['kaykit-medieval/tent'], rng.next(), { height: 2.6 }), -11, -5, 0.6); // afastada para não tapar a câmara (atrás dos arqueiros)
     place(pickProp(['kaykit-medieval/barrel', 'kenney-pirate/barrel'], 0, { height: 1 }) ?? barrel(), -8.2, 2.6);
     place(pickProp(['kaykit-medieval/barrel', 'kenney-pirate/barrel'], 0.5, { height: 1 }) ?? barrel(), -8.9, 3.3);
     place(pickProp(['kaykit-medieval/crate_A_big', 'kenney-pirate/crate'], 0, { height: 0.9 }), 9.5, 3, 0.4);

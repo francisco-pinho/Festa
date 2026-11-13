@@ -55,7 +55,17 @@ export type CharacterAnim =
   | 'aim'
   | 'warm'
   | 'drink'
-  | 'fiddle';
+  | 'fiddle'
+  | 'wave'
+  | 'sitChair'
+  | 'sneak'
+  | 'crawl'
+  | 'pushUps'
+  | 'dig'
+  | 'fish'
+  | 'hammer'
+  | 'taunt'
+  | 'kick';
 
 interface AnimSpec {
   clip: string;
@@ -66,18 +76,19 @@ interface AnimSpec {
   thenIdle?: boolean;
 }
 
+/** Nomes das animações do pack «KayKit Character Animations 1.1» (Rig_Medium). */
 const ANIMS: Record<CharacterAnim, AnimSpec> = {
-  idle: { clip: 'Idle', loop: true },
+  idle: { clip: 'Idle_A', loop: true },
   walk: { clip: 'Walking_A', loop: true },
   run: { clip: 'Running_A', loop: true },
-  cheer: { clip: 'Cheer', loop: true },
-  sad: { clip: 'Idle', loop: true, speed: 0.5 },
+  cheer: { clip: 'Cheering', loop: true },
+  sad: { clip: 'Idle_B', loop: true, speed: 0.5 },
   dizzy: { clip: 'Hit_B', loop: true, speed: 0.6 },
-  hit: { clip: 'Unarmed_Melee_Attack_Punch_A', loop: false, speed: 1.4 },
+  hit: { clip: 'Melee_Unarmed_Attack_Punch_A', loop: false, speed: 1.4 },
   jump: { clip: 'Jump_Full_Short', loop: false, thenIdle: true },
-  punchLeft: { clip: 'Unarmed_Melee_Attack_Punch_A', loop: false, speed: 1.6, thenIdle: true },
-  punchRight: { clip: 'Unarmed_Melee_Attack_Punch_B', loop: false, speed: 1.6, thenIdle: true },
-  block: { clip: 'Blocking', loop: true },
+  punchLeft: { clip: 'Melee_Unarmed_Attack_Punch_A', loop: false, speed: 1.6, thenIdle: true },
+  punchRight: { clip: 'Melee_1H_Attack_Stab', loop: false, speed: 1.8, thenIdle: true },
+  block: { clip: 'Melee_Blocking', loop: true },
   hurt: { clip: 'Hit_A', loop: false, speed: 1.3, thenIdle: true },
   dodgeLeft: { clip: 'Dodge_Left', loop: false, speed: 1.4, thenIdle: true },
   dodgeRight: { clip: 'Dodge_Right', loop: false, speed: 1.4, thenIdle: true },
@@ -87,26 +98,37 @@ const ANIMS: Record<CharacterAnim, AnimSpec> = {
   lie: { clip: 'Lie_Idle', loop: true },
   getUp: { clip: 'Lie_StandUp', loop: false, speed: 1.3, thenIdle: true },
   sit: { clip: 'Sit_Floor_Idle', loop: true },
-  fightIdle: { clip: 'Unarmed_Idle', loop: true },
-  hook: { clip: '1H_Melee_Attack_Slice_Horizontal', loop: false, speed: 1.9, thenIdle: true },
-  uppercut: { clip: 'Spellcast_Raise', loop: false, speed: 2.2, thenIdle: true },
-  blockHit: { clip: 'Block_Hit', loop: false, speed: 1.4, thenIdle: true },
+  fightIdle: { clip: 'Melee_Unarmed_Idle', loop: true },
+  hook: { clip: 'Melee_1H_Attack_Slice_Horizontal', loop: false, speed: 1.9, thenIdle: true },
+  uppercut: { clip: 'Ranged_Magic_Raise', loop: false, speed: 2.2, thenIdle: true },
+  blockHit: { clip: 'Melee_Block_Hit', loop: false, speed: 1.4, thenIdle: true },
   strafeLeft: { clip: 'Running_Strafe_Left', loop: true, speed: 0.7 },
   strafeRight: { clip: 'Running_Strafe_Right', loop: true, speed: 0.7 },
   walkBack: { clip: 'Walking_Backwards', loop: true },
-  batIdle: { clip: '2H_Melee_Idle', loop: true },
-  batSwing: { clip: '2H_Melee_Attack_Slice', loop: false, speed: 2.2, thenIdle: true },
+  batIdle: { clip: 'Melee_2H_Idle', loop: true },
+  batSwing: { clip: 'Melee_2H_Attack_Slice', loop: false, speed: 2.2, thenIdle: true },
   crouch: { clip: 'Sit_Chair_Idle', loop: true },
-  catch: { clip: 'Block', loop: false, speed: 1.6, thenIdle: true },
-  backhand: { clip: '1H_Melee_Attack_Slice_Diagonal', loop: false, speed: 1.9, thenIdle: true },
-  serve: { clip: '1H_Melee_Attack_Chop', loop: false, speed: 1.6, thenIdle: true },
+  catch: { clip: 'Melee_Block', loop: false, speed: 1.6, thenIdle: true },
+  backhand: { clip: 'Melee_1H_Attack_Slice_Diagonal', loop: false, speed: 1.9, thenIdle: true },
+  serve: { clip: 'Melee_1H_Attack_Chop', loop: false, speed: 1.6, thenIdle: true },
   talk: { clip: 'Interact', loop: false, speed: 0.9, thenIdle: true },
-  talk2: { clip: 'Spellcast_Long', loop: false, speed: 1.1, thenIdle: true },
+  talk2: { clip: 'Ranged_Magic_Spellcasting_Long', loop: false, speed: 1.1, thenIdle: true },
   // Sala de estar (ecrã inicial): a apontar um dardo, a aquecer as mãos à lareira, a beber, a mexer em algo.
-  aim: { clip: '1H_Ranged_Aiming', loop: true, speed: 0.6 },
-  warm: { clip: 'Spellcasting', loop: true, speed: 0.35 },
-  drink: { clip: 'Use_Item', loop: true, speed: 0.45 },
-  fiddle: { clip: 'Interact', loop: true, speed: 0.5 },
+  aim: { clip: 'Ranged_1H_Aiming', loop: true, speed: 0.6 },
+  warm: { clip: 'Ranged_Magic_Spellcasting', loop: true, speed: 0.35 },
+  drink: { clip: 'Holding_A', loop: true, speed: 0.45 },
+  fiddle: { clip: 'Working_A', loop: true, speed: 0.5 },
+  // Novas (pack de animações grátis).
+  wave: { clip: 'Waving', loop: false, thenIdle: true },
+  sitChair: { clip: 'Sit_Chair_Idle', loop: true },
+  sneak: { clip: 'Sneaking', loop: true },
+  crawl: { clip: 'Crawling', loop: true },
+  pushUps: { clip: 'Push_Ups', loop: true },
+  dig: { clip: 'Digging', loop: true },
+  fish: { clip: 'Fishing_Idle', loop: true },
+  hammer: { clip: 'Hammering', loop: true },
+  taunt: { clip: 'Skeletons_Taunt', loop: false, thenIdle: true },
+  kick: { clip: 'Melee_Unarmed_Attack_Kick', loop: false, speed: 1.4, thenIdle: true },
 };
 
 /** Altura final das personagens no mundo (topo da cabeça). */
@@ -243,7 +265,8 @@ export class CharacterModel {
         const m = o as THREE.Mesh;
         // Sem armas/escudos/livros nas mãos.
         if (parentName.startsWith('handslot')) m.visible = false;
-        if (/_(Hat|Helmet)$/.test(m.name)) m.visible = look.hat;
+        if (/(Hat|Helmet|HelmetVisor|Hood)$/.test(m.name)) m.visible = look.hat;
+        if (/_Quiver$/.test(m.name)) m.visible = false;
         m.material = material;
         m.castShadow = true;
         m.frustumCulled = false; // malhas com esqueleto: a caixa não acompanha a animação

@@ -769,7 +769,7 @@ export class GolfStage extends SportStage {
           ? pickProp(rng.next() < 0.8 ? PROPS.trees : PROPS.treesFall, rng.next(), { height: 4 + rng.next() * 3.5 })
           : r < 0.85
             ? pickProp(PROPS.plants, rng.next(), { height: 0.7 + rng.next() * 0.8 })
-            : pickProp([...PROPS.rocks, ...PROPS.natureBits.filter((k) => /log|stump/.test(k))], rng.next(), { height: 0.6 + rng.next() * 1 })) ??
+            : pickProp([...PROPS.rocks, ...PROPS.natureBits.filter((k) => /log|cut/i.test(k))], rng.next(), { height: 0.6 + rng.next() * 1 })) ??
         (rng.next() < 0.6 ? palmTree(rng, 1 + rng.next() * 0.6) : bush(rng));
       tree.rotation.y = rng.next() * Math.PI * 2;
       tree.position.set(x, heightAt(hole, x, z), z);

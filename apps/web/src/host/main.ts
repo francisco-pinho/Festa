@@ -9,6 +9,9 @@ import { Director } from './game/Director';
 import { GameMenu } from './ui/GameMenu';
 import { ScreenMenus } from './ui/ScreenMenu';
 import { getAsset, loadCharacterAssets } from './three/characterAssets';
+import { loadProps } from './three/props';
+import { ROOM_PROPS } from './stages/livingRoom';
+import { loading } from './ui/loading';
 import { sound } from './audio/Sound';
 import { narrator } from './audio/Narrator';
 import { ScreenShare } from './ScreenShare';
@@ -53,14 +56,34 @@ window.addEventListener('keydown', (e) => {
 const params = new URLSearchParams(location.search);
 const testMinigame = import.meta.env.DEV ? params.get('minigame') : null;
 const testSport = import.meta.env.DEV ? params.get('sport') : null;
-// Os modelos 3D das personagens carregam-se antes de tudo (são precisos em todos os ecrãs).
-hud.panel('<h1>FESTA 🎉</h1><p id="loading">A carregar personagens…</p>');
-const ready = loadCharacterAssets((done, total) => {
-  const el = document.getElementById('loading');
-  if (el) el.textContent = `A carregar personagens… ${done}/${total}`;
-}).then(() => hud.panel(null));
-
+// Ecrã de carregamento: as personagens (precisas em todos os ecrãs) e a sala de estar com a
+// televisão carregam antes de tudo. O lobby esconde-o depois de a placa gráfica preparar a sala.
 const testParty = import.meta.env.DEV ? params.get('party') : null;
+const toLobby = !testParty && !testSport && !testMinigame;
+let chars = 0;
+let charsTotal = 1;
+let room = 0;
+const progress = () => {
+  const p = (chars + room) / (charsTotal + ROOM_PROPS.length);
+  loading.show(chars < charsTotal ? 'A carregar personagens…' : 'A carregar a sala…', p * 0.9);
+};
+progress();
+const ready = Promise.all([
+  loadCharacterAssets((done, total) => {
+    chars = done;
+    charsTotal = total;
+    progress();
+  }),
+  ...ROOM_PROPS.map((k) =>
+    loadProps([k]).then(() => {
+      room++;
+      progress();
+    }),
+  ),
+]).then(() => {
+  if (!toLobby) loading.hide();
+});
+
 const main = ready.then(() => testParty
   ? director.testParty(testParty, Number(params.get('players') ?? 4), Number(params.get('rounds') ?? 2))
   : testSport
@@ -74,6 +97,7 @@ const main = ready.then(() => testParty
   : director.run());
 main.catch((err: unknown) => {
   console.error(err);
+  loading.hide();
   const msg = err instanceof Error ? `${err.message}\n${(err.stack ?? '').split('\n').slice(1, 4).join('\n')}` : String(err);
   const safe = msg.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!);
   hud.panel(`<h1>Ups!</h1><p>Algo correu mal. Carrega em <b>Recomeçar</b> (ou F5) para voltar ao início.</p>

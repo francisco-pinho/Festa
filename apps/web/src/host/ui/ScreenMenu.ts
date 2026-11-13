@@ -57,9 +57,14 @@ interface OpenMenu {
   finish: (id: string) => void;
 }
 
+/** O menu de cima, para quem o desenha noutro sítio (ex.: no ecrã da televisão da sala). */
+export type MenuSink = (view: { req: MenuRequest; sel: number } | null) => void;
+
 export class ScreenMenus {
   private readonly root: HTMLElement;
   private readonly open: OpenMenu[] = [];
+  /** Enquanto houver, os menus não aparecem no ecrã: vão para aqui (ex.: a televisão da sala). */
+  private sink: MenuSink | null = null;
 
   constructor(
     private readonly engine: Engine,
@@ -99,6 +104,19 @@ export class ScreenMenus {
     return this.open.length > 0;
   }
 
+  /** Passa a desenhar os menus noutro sítio (null = volta ao ecrã normal). */
+  setSink(sink: MenuSink | null): void {
+    this.sink = sink;
+    for (const m of this.open) this.render(m);
+    this.pushSink();
+  }
+
+  private pushSink(): void {
+    if (!this.sink) return;
+    const top = [...this.open].reverse().find((m) => !m.req.hidden);
+    this.sink(top ? { req: top.req, sel: top.sel } : null);
+  }
+
   ask(req: MenuRequest): Promise<string> {
     return new Promise((resolve) => {
       const el = document.createElement('div');
@@ -118,6 +136,7 @@ export class ScreenMenus {
           el.classList.add('closing');
           setTimeout(() => el.remove(), 180);
           this.layout();
+          this.pushSink();
           resolve(id);
         },
       };
@@ -229,8 +248,9 @@ export class ScreenMenus {
 
   private render(m: OpenMenu): void {
     const r = m.req;
-    m.el.hidden = !!r.hidden;
+    m.el.hidden = !!r.hidden || !!this.sink;
     if (r.hidden) return;
+    if (this.sink) return this.pushSink();
     const cols = Math.max(1, r.columns ?? 1);
     m.el.innerHTML = `
       <div class="smenu-head">${r.name ? `<span class="dot"></span><b>${esc(r.name)}</b> · ` : ''}${esc(r.title)}</div>

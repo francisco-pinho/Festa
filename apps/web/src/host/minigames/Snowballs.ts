@@ -73,7 +73,7 @@ class SnowballsRun extends ArenaMinigame {
       const side = i % 2 ? 1 : -1;
       const z = BOTTOM + 6 - (i / 26) * (BOTTOM - TOP + SLOPE_LEN + 6);
       const x = side * (W + 3 + ((i * 7) % 9));
-      const tree = pickProp(PROPS.trees.filter((k) => /Pine/.test(k)), ctx.rng.next(), { height: 5 + ctx.rng.next() * 3 });
+      const tree = pickProp(PROPS.pines, ctx.rng.next(), { height: 5 + ctx.rng.next() * 3 });
       if (!tree) continue;
       tree.position.set(x, slopeY(z), z);
       this.scene.add(tree);

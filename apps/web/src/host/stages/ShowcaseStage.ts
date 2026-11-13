@@ -63,6 +63,11 @@ export class ShowcaseStage implements Stage {
   /** Sala de estar (ecrã inicial) em vez da ilha. */
   private readonly room: LivingRoom | null = null;
 
+  /** Televisão da sala (null fora da sala). */
+  get tv(): LivingRoom['tv'] | null {
+    return this.room?.tv ?? null;
+  }
+
   constructor(opts: { room?: boolean } = {}) {
     if (opts.room) {
       this.room = buildLivingRoom(this.scene);

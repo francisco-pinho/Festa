@@ -30,6 +30,7 @@ import { BOT_LEVELS, settings } from './Settings';
 import { BotPad, SeatControl, type Seat } from './Seats';
 import { PartyFlow } from './PartyFlow';
 import { creditsHtml } from '../ui/credits';
+import { loading } from '../ui/loading';
 
 type LobbyChoice = { mode: 'party'; rounds: number; boardId: string } | { mode: 'sports'; sport: SportDef } | { mode: 'test' };
 
@@ -48,6 +49,8 @@ export class Director {
   private readonly picks = new Map<string, { char: string; ready: boolean }>();
   private lastRounds: number = RULES.roundOptions[1];
   private lastBoard = BOARDS[0]!.id;
+  /** A sala de estar já foi preparada na placa gráfica (ao abrir o jogo). */
+  private roomWarm = false;
 
   constructor(
     private readonly engine: Engine,
@@ -114,12 +117,22 @@ export class Director {
 
   private async lobby(): Promise<LobbyChoice> {
     // Ecrã inicial: a sala de estar (quem entra vai-se sentando no sofá, cadeirões…).
-    // A mobília da sala (sofá, estante, candeeiro, mesas…) carrega antes de a montar.
+    // A mobília da sala (sofá, estantes, lareira, mesa…) carrega antes de a montar.
     await loadProps(ROOM_PROPS);
     const stage = new ShowcaseStage({ room: true });
     this.engine.setStage(stage);
-    // Afastada o suficiente para caberem os 10 lugares (sofá, cadeirões, chão, dardos, lareira, petiscos).
-    stage.view({ distance: 13.6, height: 4.4, orbitSpeed: 0, target: new THREE.Vector3(-0.3, 1.9, -4) });
+    // Perto e ao centro, a apanhar os 10 lugares (sofá, cadeirões, chão, estante e lareira).
+    stage.view({ distance: 11, height: 3.6, orbitSpeed: 0, target: new THREE.Vector3(0.5, 1.6, -5.2) });
+    // A placa gráfica prepara a sala (e o ecrã ligado da TV) ainda atrás do ecrã de carregamento.
+    // (Só da primeira vez: ao voltar de um jogo já está tudo preparado.)
+    if (!this.roomWarm) {
+      loading.show('A preparar a sala…', 0.95);
+      stage.tv?.preview(true);
+      await this.engine.warmUp(stage);
+      stage.tv?.preview(false);
+      this.roomWarm = true;
+    }
+    loading.hide();
     this.conn.setLocked(false);
     this.menu.mode = 'lobby';
     this.hud.setRound(null);
@@ -233,12 +246,26 @@ export class Director {
     /** O VIP carregou em Ⓨ (com todos prontos): a câmara vai à televisão e aparece lá o menu dos jogos. */
     let startRequested = false;
     let atTv = false;
-    const setTv = (on: boolean) => {
+    const tv = stage.tv;
+    /**
+     * Ir à televisão: a câmara anda até ela, a TV liga (como as de tubo) e os menus passam no ecrã dela.
+     * Voltar: a TV desliga e só depois a câmara regressa à sala.
+     */
+    const setTv = async (on: boolean) => {
       atTv = on;
-      document.body.classList.toggle('tv-mode', on);
       ui.classList.toggle('at-tv', on);
-      if (on) stage.flyTo(TV_VIEW.pos, TV_VIEW.look);
-      else stage.flyHome();
+      if (on) {
+        stage.flyTo(TV_VIEW.pos, TV_VIEW.look);
+        if (tv) this.menus.setSink((v) => tv.show(v));
+        await this.engine.wait(0.9);
+        tv?.powerOn();
+        await this.engine.wait(0.6);
+      } else {
+        this.menus.setSink(null);
+        const t = tv?.powerOff() ?? 0;
+        await this.engine.wait(t * 0.8);
+        stage.flyHome();
+      }
     };
     const requestStart = (p: HubPlayer | null) => {
       if (atTv) return;
@@ -496,9 +523,9 @@ export class Director {
       startRequested = false;
       while (!startRequested) await this.engine.wait(0.15);
       // A câmara anda até à televisão; o menu dos jogos aparece no ecrã dela.
-      setTv(true);
+      const going = setTv(true);
       render();
-      await this.engine.wait(1.1);
+      await going;
       while (!choice && atTv && allReady()) {
       const leader = this.leader;
       mainMenu = {
@@ -558,11 +585,11 @@ export class Director {
       }
       // Voltou à sala (Ⓑ, alguém deixou de estar pronto ou entrou alguém novo).
       if (!choice) {
-        setTv(false);
+        await setTv(false);
         render();
       }
     }
-    document.body.classList.remove('tv-mode');
+    this.menus.setSink(null);
     offs.forEach((off) => off());
     ui.remove();
     this.menu.close();

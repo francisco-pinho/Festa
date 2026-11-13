@@ -38,7 +38,9 @@ export type Sfx =
   | 'boom'
   | 'coinBig'
   | 'countdown'
-  | 'pop';
+  | 'pop'
+  | 'tvOn'
+  | 'tvOff';
 
 export type Track = 'lobby' | 'board' | 'minigame' | 'sports' | 'finale';
 
@@ -330,6 +332,19 @@ class SoundEngine {
         break;
       case 'lose':
         [67, 66, 65, 64].forEach((n, i) => this.tone(NOTE(n) * p, i === 3 ? 0.6 : 0.22, { type: 'triangle', vol: 0.14 * v, at: t + i * 0.22 }));
+        break;
+      case 'tvOn':
+        // TV de tubo a ligar: estalo do interruptor, «tum» grave, zumbido agudo do tubo e chuvisco.
+        this.hiss(0.04, { vol: 0.35 * v, freq: 3000, q: 0.7, attack: 0.001 });
+        this.tone(70 * p, 0.35, { vol: 0.35 * v, to: 40, at: t + 0.02 });
+        this.tone(7800 * p, 1.6, { vol: 0.025 * v, attack: 0.15, at: t + 0.1 });
+        this.hiss(0.55, { vol: 0.12 * v, filter: 'highpass', freq: 2500, attack: 0.05, at: t + 0.3 });
+        break;
+      case 'tvOff':
+        // TV de tubo a desligar: estalo e um «zip» a descer enquanto a imagem fecha.
+        this.hiss(0.04, { vol: 0.3 * v, freq: 2800, q: 0.7, attack: 0.001 });
+        this.tone(1400 * p, 0.3, { type: 'sine', vol: 0.06 * v, to: 90 });
+        this.tone(60 * p, 0.25, { vol: 0.25 * v, to: 35, at: t + 0.05 });
         break;
     }
   }

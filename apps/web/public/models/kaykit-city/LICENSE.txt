@@ -1,3 +1,4 @@
+	
 
 	KayKit : City Builder Bits (1.0)
 
@@ -20,7 +21,6 @@
 	And a big, special thank you to my Super Supporters:
 
 	- Brian McBarron
-	- Silva
 
 
 

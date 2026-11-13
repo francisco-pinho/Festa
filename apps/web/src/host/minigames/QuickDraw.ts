@@ -192,7 +192,7 @@ class QuickDrawRun extends DuelMinigame {
     this.pennants.push(...bunting(this.scene, new THREE.Vector3(-span, FLOOR + 3.7, -3.7), new THREE.Vector3(span, FLOOR + 3.7, -3.7)));
 
     // Barris e caixotes nos cantos de trás, tochas à frente, cerca baixa atrás do estrado.
-    const barrels = ['q-props/Barrel', 'q-props/Barrel_Apples', 'kenney-pirate/barrel', 'kaykit-medieval/barrel', 'q-props/Crate_Wooden', 'kenney-pirate/crate'];
+    const barrels = ['kaykit-dungeon/barrel_large', 'kaykit-restaurant/crate_tomatoes', 'kaykit-dungeon/keg', 'kaykit-medieval/barrel', 'kaykit-dungeon/box_large', 'kaykit-medieval/crate_A_big'];
     for (const [x, z, h] of [[-6, -2.6, 1.1], [-5.2, -3.3, 0.9], [6, -2.6, 1.1], [5.3, -3.3, 0.9], [-1.6, -3.4, 0.8], [1.7, -3.3, 0.8]] as const) {
       const o = pickProp(barrels, rng.next(), { height: h });
       if (!o) continue;
@@ -201,7 +201,7 @@ class QuickDrawRun extends DuelMinigame {
       this.scene.add(o);
     }
     for (const x of [-6.5, 6.5]) {
-      const torch = pickProp(['q-props/Torch_Metal', 'kaykit-halloween/post_lantern', 'kaykit-city/streetlight'], rng.next(), { height: 1.8 });
+      const torch = pickProp(['kaykit-dungeon/torch_lit', 'kaykit-halloween/post_lantern', 'kaykit-city/streetlight'], rng.next(), { height: 1.8 });
       if (!torch) continue;
       torch.position.set(x, FLOOR, 1.2);
       this.scene.add(torch);

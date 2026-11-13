@@ -1,8 +1,9 @@
 /**
- * Modelos 3D das personagens (KayKit Adventurers, CC0 — ver docs/ASSETS.md).
+ * Modelos 3D das personagens (KayKit Adventurers 2.0 + Skeletons, CC0 — ver docs/ASSETS.md).
  *
- * São 5 modelos base com o mesmo esqueleto e 76 animações. Cada uma das nossas
- * 10 personagens usa um modelo base com:
+ * São 10 modelos base com o mesmo esqueleto (Rig_Medium). As animações vêm à parte
+ * (KayKit Character Animations, ~140 para o Rig_Medium) e servem a todos. Cada uma das nossas
+ * personagens usa um modelo base com:
  *  - roupa recolorida para a cor da personagem (a pele mantém-se);
  *  - chapéu/capacete do modelo, ou o nosso acessório (orelhas, coroa…);
  *  - sem armas (as mãos ficam livres para raquetes, tacos, bolas…).
@@ -14,7 +15,20 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { CHARACTERS, type CharacterDef } from '@festa/game';
 
-export type BaseModel = 'Barbarian' | 'Knight' | 'Mage' | 'Rogue' | 'Rogue_Hooded';
+export type BaseModel =
+  | 'Barbarian'
+  | 'Knight'
+  | 'Mage'
+  | 'Ranger'
+  | 'Rogue'
+  | 'Rogue_Hooded'
+  | 'Skeleton_Mage'
+  | 'Skeleton_Minion'
+  | 'Skeleton_Rogue'
+  | 'Skeleton_Warrior';
+
+/** Ficheiros de animações do Rig_Medium (todos os modelos base usam esse esqueleto). */
+const ANIM_FILES = ['General', 'MovementBasic', 'MovementAdvanced', 'CombatMelee', 'CombatRanged', 'Simulation', 'Special', 'Tools'];
 
 export interface CharacterLook {
   base: BaseModel;
@@ -35,7 +49,7 @@ export const LOOKS: Record<string, CharacterLook> = {
   nuvem: { base: 'Mage', hat: false, accessory: true },
   ameixa: { base: 'Knight', hat: false, accessory: true },
   brasa: { base: 'Rogue', hat: false, accessory: true },
-  gelado: { base: 'Rogue_Hooded', hat: false, accessory: false },
+  gelado: { base: 'Ranger', hat: false, accessory: false },
   narrador: { base: 'Rogue', hat: false, accessory: false },
 };
 
@@ -44,6 +58,7 @@ export const NARRATOR: CharacterDef = { id: 'narrador', name: 'Zé Microfone', c
 
 export interface BaseAsset {
   scene: THREE.Group;
+  /** Animações (partilhadas por todos os modelos base). */
   clips: Map<string, THREE.AnimationClip>;
   /** Imagem original da textura (paleta), para recolorir. */
   image: CanvasImageSource & { width: number; height: number };
@@ -59,7 +74,16 @@ export function loadCharacterAssets(onProgress?: (done: number, total: number) =
   loading ??= (async () => {
     const loader = new GLTFLoader();
     const bases = [...new Set(Object.values(LOOKS).map((l) => l.base))];
+    const total = bases.length + ANIM_FILES.length;
     let done = 0;
+    const clips = new Map<string, THREE.AnimationClip>();
+    await Promise.all(
+      ANIM_FILES.map(async (file) => {
+        const gltf = await loader.loadAsync(`/models/kaykit/anims/Rig_Medium_${file}.glb`);
+        for (const c of gltf.animations) if (c.name !== 'T-Pose') clips.set(c.name, c);
+        onProgress?.(++done, total);
+      }),
+    );
     await Promise.all(
       bases.map(async (base) => {
         const gltf = await loader.loadAsync(`/models/kaykit/${base}.glb`);
@@ -76,11 +100,11 @@ export function loadCharacterAssets(onProgress?: (done: number, total: number) =
         const box = new THREE.Box3().setFromObject(scene);
         assets.set(base, {
           scene,
-          clips: new Map(gltf.animations.map((c) => [c.name, c])),
+          clips,
           image,
           height: box.max.y - box.min.y,
         });
-        onProgress?.(++done, bases.length);
+        onProgress?.(++done, total);
       }),
     );
     // Texturas recoloridas, uma por personagem.

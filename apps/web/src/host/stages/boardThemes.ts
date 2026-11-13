@@ -75,7 +75,7 @@ function extraDecor(board: Board, theme: BoardTheme): void {
   const sizes = (rng: ReturnType<typeof createRng>, keys: readonly string[], h: [number, number]) => pick(keys, { height: h[0] + rng.next() * (h[1] - h[0]) })(rng);
   switch (board.theme) {
     case 'city':
-      decorate(board, theme.group, area, 30, 701, (rng) => (rng.next() < 0.5 ? sizes(rng, PROPS.street.filter((k) => k.startsWith('q-')), [0.8, 1.4]) : sizes(rng, [...PROPS.trees.slice(0, 5), ...PROPS.plants.slice(0, 2)], [1.2, 4.5])), 2.4);
+      decorate(board, theme.group, area, 30, 701, (rng) => (rng.next() < 0.5 ? sizes(rng, PROPS.streetSmall, [0.8, 1.4]) : sizes(rng, [...PROPS.trees.slice(0, 5), ...PROPS.plants.slice(0, 2)], [1.2, 4.5])), 2.4);
       break;
     case 'volcano':
       decorate(board, theme.group, area, 26, 702, (rng) => (rng.next() < 0.5 ? sizes(rng, PROPS.fences, [1, 1.4]) : sizes(rng, [...PROPS.camp, ...PROPS.pebbles], [0.6, 1.6])), 2.6, (x, z) => Math.hypot(x, z) < 16);
@@ -89,14 +89,14 @@ function extraDecor(board: Board, theme: BoardTheme): void {
       const inside = (x: number, z: number) => floors.some((f) => x > f.minX && x < f.maxX && z > f.minZ && z < f.maxZ);
       decorate(board, theme.group, { ...area, w: area.w + 30, d: area.d + 30 }, 34, 703, (rng) => {
         const r = rng.next();
-        return r < 0.35 ? sizes(rng, PROPS.fences, [1, 1.6]) : r < 0.65 ? sizes(rng, PROPS.village, [0.8, 2.4]) : sizes(rng, ['q-props/CandleStick_Stand', 'q-props/Banner_1', 'q-props/Banner_2', 'q-props/Torch_Metal', 'q-props/Cauldron', 'q-props/Barrel'], [1, 2.6]);
+        return r < 0.35 ? sizes(rng, PROPS.fences, [1, 1.6]) : r < 0.65 ? sizes(rng, PROPS.village, [0.8, 2.4]) : sizes(rng, ['kaykit-halloween/candle_triple', 'kaykit-medieval/flag_red', 'kaykit-medieval/flag_blue', 'kaykit-dungeon/torch_lit', 'kaykit-restaurant/pot_A_stew', 'kaykit-dungeon/barrel_large', 'kaykit-dungeon/keg'], [1, 2.6]);
       }, 2.6, inside);
       break;
     }
     case 'park':
       decorate(board, theme.group, area, 30, 704, (rng) => {
         const r = rng.next();
-        return r < 0.4 ? sizes(rng, ['q-props/Stall_Empty', 'q-props/Stall_Cart_Empty', 'q-props/Bench', 'q-props/Barrel_Apples', 'q-props/FarmCrate_Apple'], [1, 2.6]) : sizes(rng, PROPS.plants, [0.6, 1.4]);
+        return r < 0.4 ? sizes(rng, ['kaykit-medieval/building_market_red', 'kaykit-medieval/building_market_blue', 'kaykit-city/bench', 'kaykit-restaurant/crate_tomatoes', 'kaykit-restaurant/crate_carrots'], [1, 2.6]) : sizes(rng, PROPS.plants, [0.6, 1.4]);
       }, 2.6);
       break;
   }
@@ -437,7 +437,7 @@ class IslandTheme implements BoardTheme {
             : r < 0.72
               ? deco(PROPS.plants, rng, { height: 0.6 + rng.next() * 0.9 }, () => bush(rng))
               : r < 0.84
-                ? deco([...PROPS.beach.slice(1, 5), 'q-props/Barrel', 'q-props/Chest_Wood', 'q-props/Crate_Wooden'], rng, { height: 0.8 + rng.next() * 0.4 }, () => bush(rng))
+                ? deco([...PROPS.beach.slice(1, 5), 'kaykit-dungeon/barrel_large', 'kaykit-dungeon/chest', 'kaykit-dungeon/box_large'], rng, { height: 0.8 + rng.next() * 0.4 }, () => bush(rng))
                 : r < 0.92
                   ? deco(PROPS.pebbles, rng, { width: 1.2 + rng.next() }, () => rock(rng))
                   : deco([...PROPS.sandRocks, ...PROPS.rocks], rng, { height: 1 + rng.next() * 1.2 }, () => rock(rng));
@@ -1122,7 +1122,7 @@ class ParkTheme implements BoardTheme {
     decorate(board, this.group, { cx: 0, cz: 0, w: (maxX - minX) + 40, d: (maxZ - minZ) + 40 }, 70, 21, (rng) => {
       const r = rng.next();
       if (r < 0.3) {
-        const stalls = PROPS.park.filter((k) => k.includes('stall'));
+        const stalls = PROPS.park.filter((k) => /market|circus/.test(k));
         const food = PROPS.food.filter((k) => k.includes('table'));
         return deco(rng.next() < 0.75 ? stalls : food, rng, { height: 3.2 + rng.next() * 0.6 }, () => {
           const g = new THREE.Group();
@@ -1136,9 +1136,9 @@ class ParkTheme implements BoardTheme {
         });
       }
       if (r < 0.42) {
-        const bits = [...PROPS.park.filter((k) => /bench|trash|flowers/.test(k)), 'kaykit-city/streetlight'];
+        const bits = [...PROPS.park.filter((k) => /bench|trash|flower/.test(k)), 'kaykit-city/streetlight'];
         const key = bits[Math.floor(rng.next() * bits.length)]!;
-        return deco([key], rng, key.includes('streetlight') ? { height: 4.2 } : key.includes('flowers') ? { width: 2.4 } : { height: 1 }, () => new THREE.Group());
+        return deco([key], rng, key.includes('streetlight') ? { height: 4.2 } : key.includes('flower') ? { height: 1.2 } : { height: 1 }, () => new THREE.Group());
       }
       if (r < 0.65) {
         const g = new THREE.Group();
@@ -1151,13 +1151,13 @@ class ParkTheme implements BoardTheme {
         this.balloons.push(balloon);
         return g;
       }
-      return deco([...PROPS.park.filter((k) => k.includes('tree')), ...PROPS.trees.slice(0, 4)], rng, { height: 3.5 + rng.next() * 2 }, () => palmTree(rng, 0.8 + rng.next() * 0.4));
+      return deco([...PROPS.park.filter((k) => /tree/i.test(k)), ...PROPS.trees.slice(0, 4)], rng, { height: 3.5 + rng.next() * 2 }, () => palmTree(rng, 0.8 + rng.next() * 0.4));
     }, 3, (x, z) => coasterPts.some((p) => Math.hypot(p.x - x, p.z - z) < 4.5));
     this.confetti = new Particles('leaf', 70, { cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2, w: maxX - minX + 20, d: maxZ - minZ + 20, h: 14 }, '#ff6fb5');
     this.group.add(this.confetti.mesh);
     // Entrada do parque junto à partida e moinhos de minigolfe.
     const start = getSpace(board, board.startId);
-    const entrance = prop('kenney-coaster/park-entrance', { width: 9 });
+    const entrance = prop('kaykit-platformer/arch_wide_red', { width: 9 });
     if (entrance) {
       const o = outward(start, (minX + maxX) / 2, (minZ + maxZ) / 2);
       entrance.position.set(start.x + o.x * 5, 0, start.z + o.y * 5);
@@ -1165,7 +1165,7 @@ class ParkTheme implements BoardTheme {
       this.group.add(entrance);
     }
     [[maxX + 14, minZ + 6], [minX - 14, maxZ - 6]].forEach(([x, z], i) => {
-      const w = prop(i ? 'kenney-minigolf/structure-windmill' : 'kenney-minigolf/windmill', { height: 6 });
+      const w = prop(i ? 'kaykit-medieval/building_windmill_red' : 'kaykit-medieval/building_windmill_yellow', { height: 6 });
       if (!w) return;
       w.position.set(x!, 0, z!);
       w.rotation.y = i * 2;
