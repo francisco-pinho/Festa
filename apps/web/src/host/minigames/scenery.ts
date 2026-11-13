@@ -165,7 +165,7 @@ export function ringDecor(scene: THREE.Scene, rng: Rng, radius: number, count = 
  * pendurados nela. Devolve os triângulos para se abanarem com `swayBunting`.
  */
 export function bunting(
-  scene: THREE.Scene,
+  scene: THREE.Object3D,
   a: THREE.Vector3,
   b: THREE.Vector3,
   opts: { sag?: number; gap?: number; size?: number; colors?: readonly string[] } = {},

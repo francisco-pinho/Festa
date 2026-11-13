@@ -10,6 +10,7 @@ import { damp } from '../three/tweens';
 import { Clouds, Water, bush, palmTree, rock, setupSky } from './environment';
 import { PROPS, pickProp, prop } from '../three/props';
 import { addGrassField, pathTexture } from './realism';
+import { addBoardExtras, stoneTexture, volcanicGround } from './boardExtras';
 
 export interface BoardTheme {
   readonly group: THREE.Group;
@@ -44,6 +45,19 @@ export function createBoardTheme(board: Board, scene: THREE.Scene): BoardTheme {
     }
   })();
   extraDecor(board, theme);
+  // Pormenor à Jamboree (marcos, vida, bordas dos caminhos, bases das casas). Antes da relva, para ela
+  // não nascer debaixo das coisas novas.
+  const extras = addBoardExtras(board, theme.group);
+  const update = theme.update.bind(theme);
+  const setFlags = theme.setFlags.bind(theme);
+  theme.update = (dt, time) => {
+    update(dt, time);
+    extras.update(dt, time);
+  };
+  theme.setFlags = (flags) => {
+    setFlags(flags);
+    extras.setFlags(flags);
+  };
   // Relva em 3D por cima dos relvados (depois do cenário, para não nascer debaixo dos adereços).
   addGrassField(board, theme.group, theme.bounds);
   return theme;
@@ -90,7 +104,7 @@ function extraDecor(board: Board, theme: BoardTheme): void {
 
 // ── Utilidades comuns ─────────────────────────────────────
 
-function boundsOf(spaces: Space[]) {
+export function boundsOf(spaces: Space[]) {
   return {
     minX: Math.min(...spaces.map((s) => s.x)),
     maxX: Math.max(...spaces.map((s) => s.x)),
@@ -100,7 +114,7 @@ function boundsOf(spaces: Space[]) {
 }
 
 /** Casas com objetos interativos ao lado (alavancas, canhões, banco, portagens): a decoração fica longe. */
-function interactiveSpaces(board: Board): Space[] {
+export function interactiveSpaces(board: Board): Space[] {
   return [
     ...board.levers.map((l) => getSpace(board, l.spaceId)),
     ...board.cannons.map((c) => getSpace(board, c.spaceId)),
@@ -110,7 +124,7 @@ function interactiveSpaces(board: Board): Space[] {
   ];
 }
 
-function segmentsOf(board: Board): [number, number, number, number][] {
+export function segmentsOf(board: Board): [number, number, number, number][] {
   const out: [number, number, number, number][] = [];
   for (const s of board.spaces)
     for (const n of s.next) {
@@ -121,7 +135,7 @@ function segmentsOf(board: Board): [number, number, number, number][] {
   return out;
 }
 
-function distToSegment(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
+export function distToSegment(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number {
   const dx = bx - ax;
   const dz = bz - az;
   const l2 = dx * dx + dz * dz;
@@ -559,7 +573,7 @@ function rails(curve: THREE.Curve<THREE.Vector3>, color: string, supports: boole
   });
 }
 
-function tunnelCurve(board: Board, t: Board['tunnels'][number]): THREE.CatmullRomCurve3 {
+export function tunnelCurve(board: Board, t: Board['tunnels'][number]): THREE.CatmullRomCurve3 {
   const a = getSpace(board, t.from);
   const b = getSpace(board, t.to);
   const kind = t.kind === 'coaster' ? 'coaster' : t.kind === 'elevator' ? 'elevator' : 'cart';
@@ -567,7 +581,7 @@ function tunnelCurve(board: Board, t: Board['tunnels'][number]): THREE.CatmullRo
 }
 
 /** Partículas leves num volume: pirilampos (flutuam e piscam), brasas (sobem) ou folhas (caem a rodar). */
-class Particles {
+export class Particles {
   readonly mesh: THREE.InstancedMesh;
   private readonly pos: THREE.Vector3[] = [];
   private readonly vel: THREE.Vector3[] = [];
@@ -617,7 +631,7 @@ class Particles {
 }
 
 /** Modelo de cenário rodado ao acaso; se não estiver carregado usa `fallback`. */
-function deco(keys: readonly string[], rng: ReturnType<typeof createRng>, size: { height?: number; width?: number }, fallback: () => THREE.Object3D): THREE.Object3D {
+export function deco(keys: readonly string[], rng: ReturnType<typeof createRng>, size: { height?: number; width?: number }, fallback: () => THREE.Object3D): THREE.Object3D {
   const o = pickProp(keys, rng.next(), size) ?? fallback();
   o.rotation.y = rng.next() * Math.PI * 2;
   o.userData.deco = true; // decoração: pode ser afastada das casas (ver BoardStage.declutter)
@@ -678,34 +692,17 @@ class VolcanoTheme implements BoardTheme {
     Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 220 });
     scene.add(sun);
 
-    const ground = mesh(new THREE.CircleGeometry(110, 64), toon('#6b4a3a'), { cast: false, receive: true });
+    const ground = mesh(new THREE.CircleGeometry(110, 64), volcanicGround(), { cast: false, receive: true });
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.02;
     this.group.add(ground);
     addPathStrips(board, this.group, (s, t) => ({ width: 1.3, height: 0.08, color: s.zone === 'crater' || t.zone === 'crater' ? '#2b1d1d' : '#a88a6a', y: 0.04 }));
 
-    // Vulcão ao centro
-    const cone = mesh(new THREE.CylinderGeometry(4, 14, 14, 24, 1, true), toon('#4a2f28'), { receive: true });
-    cone.position.y = 7;
-    const rim = mesh(new THREE.TorusGeometry(4.2, 0.8, 8, 24), toon('#3a221e'));
-    rim.rotation.x = Math.PI / 2;
-    rim.position.y = 14;
+    // O vulcão (cone, cratera, rios de lava e fumo) é feito no boardExtras; aqui fica a luz e as pedras da erupção.
     this.glow = toonUnique('#ff5a1f', { emissive: '#ff5a1f', emissiveIntensity: 1.2 });
-    const lava = mesh(new THREE.CircleGeometry(3.8, 24), this.glow, { cast: false });
-    lava.rotation.x = -Math.PI / 2;
-    lava.position.y = 13.6;
     this.light = new THREE.PointLight('#ff6a2a', 80, 60);
     this.light.position.set(0, 18, 0);
-    this.group.add(cone, rim, lava, this.light);
-    // Rios de lava a descer a encosta
-    for (let i = 0; i < 5; i++) {
-      const a = (i / 5) * Math.PI * 2 + 0.4;
-      const river = mesh(new THREE.BoxGeometry(0.8, 0.1, 10), this.glow, { cast: false });
-      river.position.set(Math.cos(a) * 9, 6, Math.sin(a) * 9);
-      river.rotation.y = -a + Math.PI / 2;
-      river.rotation.x = -0.75;
-      this.group.add(river);
-    }
+    this.group.add(this.light);
 
     // Barreira da cratera (durante a erupção)
     const gate = board.gates[0];
@@ -877,22 +874,18 @@ class CastleTheme implements BoardTheme {
       const w = b.maxX - b.minX + 7;
       const d = b.maxZ - b.minZ + 7;
       const h = Math.max(0.3, y);
-      const slab = mesh(new THREE.BoxGeometry(w, h, d), toon(zone === 'floor0' ? '#6b6f78' : '#7d7466'), { receive: true });
+      const slabTex = stoneTexture(zone === 'floor0' ? '#6b6f78' : '#7d7466').clone();
+      slabTex.needsUpdate = true;
+      slabTex.repeat.set(w / 4, Math.max(1, h / 1.2));
+      const slab = mesh(new THREE.BoxGeometry(w, h, d), toonUnique('#ffffff', { map: slabTex }), { receive: true });
       slab.position.set((b.minX + b.maxX) / 2, h / 2 - (y ? 0 : 0.28), (b.minZ + b.maxZ) / 2);
       this.group.add(slab);
-      // Ameias à volta dos andares altos
-      if (y > 0) {
-        for (let x = b.minX - 3; x <= b.maxX + 3; x += 2.4) {
-          for (const z of [b.minZ - 3.2, b.maxZ + 3.2]) {
-            const m = mesh(new THREE.BoxGeometry(1, 1, 0.6), toon('#8a8072'));
-            m.position.set(x, y + 0.5, z);
-            this.group.add(m);
-          }
-        }
-      }
       // Torres nos cantos
       for (const [cx, cz] of [[b.minX - 3.5, b.minZ - 3.5], [b.maxX + 3.5, b.minZ - 3.5], [b.minX - 3.5, b.maxZ + 3.5], [b.maxX + 3.5, b.maxZ + 3.5]] as const) {
-        const tower = mesh(new THREE.CylinderGeometry(1.6, 1.8, y + 6, 12), toon('#8a8072'));
+        const towerTex = stoneTexture('#8a8072').clone();
+        towerTex.needsUpdate = true;
+        towerTex.repeat.set(3, (y + 6) / 1.4);
+        const tower = mesh(new THREE.CylinderGeometry(1.6, 1.8, y + 6, 16), toonUnique('#ffffff', { map: towerTex }));
         tower.position.set(cx, (y + 6) / 2, cz);
         const roof = mesh(new THREE.ConeGeometry(2.1, 3, 12), toon('#5b3a8a'));
         roof.position.set(cx, y + 7.5, cz);
@@ -1122,6 +1115,7 @@ class ParkTheme implements BoardTheme {
       }
     }
     this.group.add(this.carousel);
+    this.group.userData.carousel = this.carousel.position.clone();
 
     shopsFor(board, this.group, (minX + maxX) / 2, (minZ + maxZ) / 2, false);
     // Tendas, balões e bancas

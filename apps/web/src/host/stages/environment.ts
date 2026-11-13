@@ -30,7 +30,7 @@ export function setupSky(scene: THREE.Scene, opts: { fog?: [number, number] } = 
 
 /** Mapa de normais da água (ondinhas): soma de ondas com frequências inteiras, por isso repete-se sem costuras. */
 let waterNormals: THREE.CanvasTexture | null = null;
-function waterNormalMap(): THREE.CanvasTexture {
+export function waterNormalMap(): THREE.CanvasTexture {
   if (waterNormals) return waterNormals;
   const S = 256;
   const c = document.createElement('canvas');
