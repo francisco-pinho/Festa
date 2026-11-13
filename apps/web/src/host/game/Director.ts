@@ -298,6 +298,34 @@ export class Director {
         // Escolha da personagem no telemóvel: carrossel com as caras e o que cada botão faz
         // (Ⓐ escolher, Ⓑ menu, Ⓧ mudar de lugar, Ⓨ começar a jogar — só o VIP).
         // Só o VIP, já na televisão, volta ao comando normal, para navegar no menu dos jogos.
+        // Depois de escolher: comando completo (cruz e todos os botões), com Ⓐ para mudar de personagem
+        // (volta ao carrossel).
+        if (pick.ready && !lead) {
+          this.hub.setLayout(
+            {
+              kind: 'pad',
+              color: c.color,
+              title: `Pronto com ${c.name}! ✔`,
+              sub: atTv
+                ? `${this.leader?.name ?? 'O VIP'} está a escolher o jogo na televisão…`
+                : vip
+                  ? allReady()
+                    ? 'Todos prontos! Carrega em Ⓨ para começar'
+                    : 'À espera dos outros… (Ⓨ começa quando estiverem prontos)'
+                  : `À espera que ${this.leader?.name ?? 'o VIP'} comece (Ⓨ)…`,
+              stick: 'dpad',
+              buttons: {
+                a: atTv ? undefined : 'Mudar personagem',
+                b: 'Menu',
+                x: 'Mudar de lugar',
+                y: vip && !atTv ? 'Jogar' : undefined,
+                plus: 'Definições',
+              },
+            },
+            p,
+          );
+          continue;
+        }
         if (!lead) {
           // As caras vão uma a uma (cada mensagem tem de ser pequena), só da primeira vez.
           if (!facesSent.has(p.id)) {
@@ -326,7 +354,7 @@ export class Director {
               index: Math.max(0, CHARACTERS.findIndex((ch) => ch.id === pick.char)),
               ready: pick.ready,
               buttons: {
-                a: atTv ? undefined : pick.ready ? 'Mudar' : 'Escolher',
+                a: atTv ? undefined : 'Escolher',
                 b: 'Menu',
                 x: 'Mudar de lugar',
                 y: vip && !atTv ? 'Jogar' : undefined,
@@ -429,7 +457,7 @@ export class Director {
         else if (button === 'y' && player === this.leader) requestStart(player);
         else if (button === 'b' && !(atTv && player === this.leader)) this.menu.openFor(player);
         else if (button === 'a' && pick.ready && !atTv) {
-          // Ⓐ outra vez: volta a escolher.
+          // Ⓐ «Mudar personagem»: volta ao carrossel com todas as personagens.
           pick.ready = false;
           sound.play('click');
           render();
