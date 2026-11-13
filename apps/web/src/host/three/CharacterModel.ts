@@ -51,7 +51,11 @@ export type CharacterAnim =
   | 'backhand'
   | 'serve'
   | 'talk'
-  | 'talk2';
+  | 'talk2'
+  | 'aim'
+  | 'warm'
+  | 'drink'
+  | 'fiddle';
 
 interface AnimSpec {
   clip: string;
@@ -98,6 +102,11 @@ const ANIMS: Record<CharacterAnim, AnimSpec> = {
   serve: { clip: '1H_Melee_Attack_Chop', loop: false, speed: 1.6, thenIdle: true },
   talk: { clip: 'Interact', loop: false, speed: 0.9, thenIdle: true },
   talk2: { clip: 'Spellcast_Long', loop: false, speed: 1.1, thenIdle: true },
+  // Sala de estar (ecrã inicial): a apontar um dardo, a aquecer as mãos à lareira, a beber, a mexer em algo.
+  aim: { clip: '1H_Ranged_Aiming', loop: true, speed: 0.6 },
+  warm: { clip: 'Spellcasting', loop: true, speed: 0.35 },
+  drink: { clip: 'Use_Item', loop: true, speed: 0.45 },
+  fiddle: { clip: 'Interact', loop: true, speed: 0.5 },
 };
 
 /** Altura final das personagens no mundo (topo da cabeça). */

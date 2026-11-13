@@ -18,6 +18,7 @@ import type { HubPlayer, PlayerHub } from '../PlayerHub';
 import { cycleLanAddress, getJoinBaseUrl, getJoinUrl, isOnline } from '../joinUrl';
 import type { Engine } from '../three/Engine';
 import { ShowcaseStage } from '../stages/ShowcaseStage';
+import { ROOM_PROPS } from '../stages/livingRoom';
 import { Hud, esc } from '../ui/Hud';
 import type { MenuRequest, ScreenMenus } from '../ui/ScreenMenu';
 import { MINIGAMES } from '../minigames';
@@ -111,9 +112,12 @@ export class Director {
 
   private async lobby(): Promise<LobbyChoice> {
     // Ecrã inicial: a sala de estar (quem entra vai-se sentando no sofá, cadeirões…).
+    // A mobília da sala (sofá, estante, candeeiro, mesas…) carrega antes de a montar.
+    await loadProps(ROOM_PROPS);
     const stage = new ShowcaseStage({ room: true });
     this.engine.setStage(stage);
-    stage.view({ distance: 11.5, height: 3.6, orbitSpeed: 0, target: new THREE.Vector3(0, 1.6, -3.4) });
+    // Afastada o suficiente para caberem os 10 lugares (sofá, cadeirões, chão, dardos, lareira, petiscos).
+    stage.view({ distance: 13.6, height: 4.4, orbitSpeed: 0, target: new THREE.Vector3(-0.3, 1.9, -4) });
     this.conn.setLocked(false);
     this.menu.mode = 'lobby';
     this.hud.setRound(null);

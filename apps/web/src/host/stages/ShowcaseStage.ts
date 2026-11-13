@@ -15,8 +15,11 @@ interface Slot {
   model: CharacterModel;
   label: THREE.Sprite | null;
   labelLift?: number;
-  /** Sentado (sofá, cadeirão, almofada): «idle» passa a «sit». */
-  sit?: boolean;
+  /** Na sala: o que faz quando está parado (sentado, aos dardos, à lareira…); «idle» passa a isto. */
+  rest?: CharacterAnim;
+  /** Última animação pedida (para não a recomeçar a cada atualização) e quando volta ao descanso. */
+  asked?: CharacterAnim;
+  backAt?: number;
 }
 
 interface Confetti {
@@ -85,12 +88,15 @@ export class ShowcaseStage implements Stage {
       }
       const seat = this.room ? ROOM_SEATS[i] : undefined;
       if (seat) {
-        // Sala de estar: cada um no seu lugar (sofá, cadeirões, almofadas, de pé junto à lareira).
+        // Sala de estar: cada um no seu lugar e a fazer alguma coisa (sofá, cadeirões, chão, dardos,
+        // lareira, petiscos).
         slot.model.root.position.set(seat.x, seat.y ?? 0.02, seat.z);
         slot.model.faceYaw(seat.yaw, true);
-        slot.sit = seat.sit;
-        slot.model.restAnim = seat.sit ? 'sit' : 'idle';
-        if (seat.sit && slot.model.anim === 'idle') slot.model.setAnim('sit');
+        if (slot.rest !== seat.anim) {
+          slot.rest = seat.anim;
+          slot.model.restAnim = seat.anim;
+          if (!slot.asked || slot.asked === 'idle') slot.model.setAnim(seat.anim);
+        }
       } else {
         const a = n === 1 ? 0 : -spread / 2 + (i / (n - 1)) * spread;
         const r = 8.5;
@@ -125,7 +131,21 @@ export class ShowcaseStage implements Stage {
   setAnim(key: string, anim: CharacterAnim): void {
     const slot = this.slots.get(key);
     if (!slot) return;
-    slot.model.setAnim(slot.sit && anim === 'idle' ? 'sit' : anim);
+    if (!slot.rest) {
+      slot.model.setAnim(anim);
+      return;
+    }
+    // Na sala: não recomeça a mesma animação a cada atualização do ecrã.
+    if (slot.asked === anim) return;
+    slot.asked = anim;
+    if (anim === 'idle') {
+      slot.backAt = undefined;
+      slot.model.setAnim(slot.rest);
+    } else if (anim === 'cheer') {
+      // Pronto: festeja um bocadinho e volta ao que estava a fazer.
+      slot.model.setAnim('cheer');
+      slot.backAt = this.clock + 2;
+    } else slot.model.setAnim(anim);
   }
 
   setFaded(key: string, faded: boolean): void {
@@ -216,8 +236,17 @@ export class ShowcaseStage implements Stage {
     this.slots.delete(key);
   }
 
+  private clock = 0;
+
   update(dt: number, time: number): void {
+    this.clock = time;
     this.room?.update(time);
+    for (const slot of this.slots.values()) {
+      if (slot.backAt !== undefined && time >= slot.backAt && slot.rest) {
+        slot.backAt = undefined;
+        slot.model.setAnim(slot.rest);
+      }
+    }
     if (!this.room) {
       this.water.update(time);
       this.clouds.update(dt);
