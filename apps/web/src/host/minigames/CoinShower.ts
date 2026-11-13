@@ -22,7 +22,7 @@ const JUMP_T = 0.7;
 const JUMP_H = 1.7;
 const SAFE_H = 0.5;
 /** Inclinação máxima da ilha na 2.ª ronda (rad) e quanto se escorrega. */
-const TILT_MAX = 0.13;
+const TILT_MAX = 0.11;
 const SLIDE = 26;
 
 interface Falling {
@@ -58,8 +58,9 @@ class CoinShowerRun extends ArenaMinigame {
 
   constructor(ctx: MinigameContext) {
     super(ctx);
-    const ground = mesh(new THREE.CylinderGeometry(ARENA_R + 0.6, ARENA_R + 1.5, 2, 48), toon(themeGround(ctx.theme)), { cast: false, receive: true });
-    ground.position.y = -1;
+    // Ilha alta (vai bem para dentro de água): quando inclina e sobe, os lados nunca ficam no ar.
+    const ground = mesh(new THREE.CylinderGeometry(ARENA_R + 0.6, ARENA_R + 2.2, 8, 48), toon(themeGround(ctx.theme)), { cast: false, receive: true });
+    ground.position.y = -4;
     const rimColor = ctx.theme === 'volcano' ? '#3a2a26' : ctx.theme === 'city' || ctx.theme === 'castle' ? '#8a8478' : '#f2d58b';
     const rim = mesh(new THREE.TorusGeometry(ARENA_R + 0.6, 0.35, 8, 64), toon(rimColor));
     rim.rotation.x = Math.PI / 2;
@@ -75,7 +76,7 @@ class CoinShowerRun extends ArenaMinigame {
 
   /** Altura do chão da ilha num ponto (com a inclinação). */
   private surfaceY(x: number, z: number): number {
-    return x * Math.tan(this.tilt.z) - z * Math.tan(this.tilt.x);
+    return this.platform.position.y + x * Math.tan(this.tilt.z) - z * Math.tan(this.tilt.x);
   }
 
   private addScore(id: string, delta: number): void {
@@ -325,6 +326,8 @@ class CoinShowerRun extends ArenaMinigame {
     tl.x += (tl.tx - tl.x) * k;
     tl.z += (tl.tz - tl.z) * k;
     this.platform.rotation.set(tl.x, 0, tl.z);
+    // Sobe o suficiente para a borda mais baixa ficar sempre acima da água.
+    this.platform.position.y = (ARENA_R + 1) * Math.sin(Math.hypot(tl.x, tl.z)) + 0.1 * Math.min(1, Math.hypot(tl.x, tl.z) * 20);
   }
 
   /** Número de moedas por cima da cabeça de cada um (só se refaz quando muda, com um «pop»). */
