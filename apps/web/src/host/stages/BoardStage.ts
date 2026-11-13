@@ -68,7 +68,6 @@ export class BoardStage implements Stage {
   private readonly floaters: Floater[] = [];
   private readonly arrows = new THREE.Group();
   private stepSprite: THREE.Sprite | null = null;
-  private time = 0;
 
   private camPos = new THREE.Vector3(0, 60, 50);
   private camLook = new THREE.Vector3(0, 0, 0);
@@ -639,7 +638,6 @@ export class BoardStage implements Stage {
   // ── Ciclo ───────────────────────────────────────────────
 
   update(dt: number, time: number): void {
-    this.time = time;
     this.theme.update(dt, time);
     this.objects.update(dt);
     for (const l of this.mapLabels.children) l.position.y += Math.sin(time * 3 + l.id) * 0.004;

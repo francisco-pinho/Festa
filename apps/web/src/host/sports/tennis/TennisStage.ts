@@ -32,7 +32,7 @@ import {
 import type { SwingInput } from '@festa/shared';
 import { CharacterModel } from '../../three/CharacterModel';
 import { PROPS, pickProp, prop } from '../../three/props';
-import { disposeObject, mesh, textSprite, toon, toonUnique } from '../../three/materials';
+import { mesh, textSprite, toon, toonUnique } from '../../three/materials';
 import { SportStage } from '../SportStage';
 import type { SportContext, SportStanding } from '../types';
 import type { Seat } from '../../game/Seats';

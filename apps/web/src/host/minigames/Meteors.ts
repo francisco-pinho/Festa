@@ -3,7 +3,6 @@
  * depressa. Um círculo vermelho avisa onde vão cair. Quem for atingido sai; ganha quem sobrar
  * (se saírem todos, ganham os últimos a cair). Ⓐ dá um sprint para fugir à pressa.
  */
-import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';

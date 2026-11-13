@@ -7,7 +7,7 @@
 import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { getCharacter } from '@festa/game';
-import { disposeObject, mesh, textSprite, toon, toonUnique } from '../three/materials';
+import { disposeObject, mesh, toon, toonUnique } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { rankBy } from './rank';

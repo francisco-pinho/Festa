@@ -26,7 +26,6 @@ import {
   punchRange,
   type FighterRecord,
   type Hand,
-  type PunchGesture,
   type PunchKind,
 } from '@festa/game/sports/boxing';
 import { CharacterModel, type CharacterAnim } from '../../three/CharacterModel';

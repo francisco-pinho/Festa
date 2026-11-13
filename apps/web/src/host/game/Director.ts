@@ -39,7 +39,6 @@ export class Director {
   private readonly seatsCtl: SeatControl;
   private seats: Seat[] = [];
   private rng: Rng = createRng();
-  private lastMinigame: string | null = null;
   private forcedMinigame: string | null = null;
   /** Versão portátil da app: o menu principal tem «Testar minijogos». */
   private portable = false;
@@ -652,10 +651,6 @@ export class Director {
   }
 
   // ── Festa ───────────────────────────────────────────────
-
-  private waitAll(message: string, except?: string): void {
-    for (const s of this.seats) if (s.id !== except) this.seatsCtl.setLayout(s, { kind: 'wait', message });
-  }
 
   /**
    * Desenvolvimento: corre um minijogo sozinho (abrir /?minigame=<id>&mode=<modo>).

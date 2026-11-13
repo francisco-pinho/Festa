@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { CharacterAnim } from '../three/CharacterModel';
 import { canvasTexture, mesh, toon, toonUnique } from '../three/materials';
-import { pickProp, prop } from '../three/props';
+import { prop } from '../three/props';
 
 /** Lugares por ordem de chegada: posição, para onde olha e o que está a fazer. */
 export const ROOM_SEATS: { x: number; z: number; yaw: number; y?: number; anim: CharacterAnim }[] = [
