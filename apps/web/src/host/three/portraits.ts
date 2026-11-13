@@ -47,3 +47,29 @@ export function portrait(characterId: string): string {
   cache.set(characterId, url);
   return url;
 }
+
+const small = new Map<string, string>();
+
+/**
+ * Cara pequena (80 px, JPEG, fundo da cor da personagem) para mandar para o telemóvel: leve o
+ * suficiente para ir numa mensagem. '' se ainda não der para desenhar.
+ */
+export function portraitSmall(characterId: string): string {
+  const hit = small.get(characterId);
+  if (hit) return hit;
+  const png = portrait(characterId);
+  if (!png || !renderer) return '';
+  // O último desenho do renderizador é esta personagem só se acabou de ser desenhada; desenha de novo.
+  cache.delete(characterId);
+  portrait(characterId);
+  const c = document.createElement('canvas');
+  c.width = c.height = 80;
+  const ctx = c.getContext('2d')!;
+  const col = new THREE.Color(getCharacter(characterId).color).lerp(new THREE.Color('#ffffff'), 0.35);
+  ctx.fillStyle = `#${col.getHexString()}`;
+  ctx.fillRect(0, 0, 80, 80);
+  ctx.drawImage(renderer.domElement, 0, 0, 80, 80);
+  const url = c.toDataURL('image/jpeg', 0.8);
+  small.set(characterId, url);
+  return url;
+}

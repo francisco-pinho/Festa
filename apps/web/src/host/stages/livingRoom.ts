@@ -32,7 +32,6 @@ export const ROOM_SEATS: { x: number; z: number; yaw: number; y?: number; anim: 
 /** Modelos usados na sala (carregar antes de a montar; sem eles usa as versões feitas à mão). */
 export const ROOM_PROPS: readonly string[] = [
   'kaykit-furniture/lamp_standing',
-  'kaykit-furniture/shelf_B_large_decorated',
   'kaykit-furniture/pictureframe_large_A',
   'kaykit-furniture/cactus_medium_A',
   'kaykit-furniture/table_low',
@@ -41,9 +40,6 @@ export const ROOM_PROPS: readonly string[] = [
   'q-props/Mug',
   'q-props/Vase_2',
   'q-props/Pot_1',
-  'q-nature/Plant_7_Big',
-  'q-nature/Plant_1_Big',
-  'q-nature/Fern_1',
 ];
 
 export interface LivingRoom {
@@ -297,6 +293,113 @@ function soft(): THREE.CanvasTexture {
   });
 }
 
+/** Planta num vaso: folhas compridas em leque, a sair do meio (como uma costela-de-adão). */
+function pottedPlant(x: number, z: number, seed: number): THREE.Group {
+  const r = rand(seed);
+  const g = new THREE.Group();
+  const pot = mesh(new THREE.CylinderGeometry(0.5, 0.38, 0.85, 16), toon('#c96a45'));
+  pot.position.y = 0.42;
+  const rim = mesh(new THREE.TorusGeometry(0.5, 0.06, 6, 18), toon('#b35a38'));
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = 0.85;
+  const soil = mesh(new THREE.CircleGeometry(0.46, 16), toon('#4a3020'), { cast: false });
+  soil.rotation.x = -Math.PI / 2;
+  soil.position.y = 0.8;
+  g.add(pot, rim, soil);
+  const leafGeo = new THREE.SphereGeometry(0.3, 10, 6);
+  leafGeo.scale(0.55, 0.06, 1);
+  leafGeo.translate(0, 0, 0.28);
+  const greens = ['#3f9d4a', '#4cad55', '#2f8a40'];
+  const n = 9;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + r() * 0.4;
+    const len = 0.9 + r() * 0.7;
+    const stem = mesh(new THREE.CylinderGeometry(0.02, 0.03, len, 5), toon('#2f7a3a'), { cast: false });
+    const tilt = 0.35 + r() * 0.45;
+    const pivot = new THREE.Group();
+    pivot.position.y = 0.82;
+    pivot.rotation.set(0, a, 0);
+    stem.position.set(0, (len / 2) * Math.cos(tilt), (len / 2) * Math.sin(tilt));
+    stem.rotation.x = tilt;
+    const leaf = mesh(leafGeo, toon(greens[i % 3]!));
+    leaf.position.set(0, len * Math.cos(tilt), len * Math.sin(tilt));
+    leaf.rotation.x = tilt - 0.9;
+    leaf.scale.setScalar(1.6 + r() * 0.8);
+    pivot.add(stem, leaf);
+    g.add(pivot);
+  }
+  g.position.set(x, 0, z);
+  return g;
+}
+
+/** Estante de madeira com prateleiras, livros (de pé e deitados), uma caixa e uma jarra. */
+function bookshelf(x: number, z: number): THREE.Group {
+  const r = rand(5);
+  const g = new THREE.Group();
+  const woodM = toon('#7a4f2a');
+  const W = 2.6;
+  const H = 4.6;
+  const D = 0.85;
+  const back = mesh(new THREE.BoxGeometry(W, H, 0.08), toon('#5e3a1e'), { receive: true });
+  back.position.set(0, H / 2, -D / 2 + 0.04);
+  g.add(back);
+  for (const sx of [-1, 1]) {
+    const side = mesh(new THREE.BoxGeometry(0.12, H, D), woodM);
+    side.position.set(sx * (W / 2 - 0.06), H / 2, 0);
+    g.add(side);
+  }
+  const shelves = [0.12, 1.25, 2.35, 3.45, H - 0.06];
+  for (const y of shelves) {
+    const sh = mesh(new THREE.BoxGeometry(W, 0.1, D), woodM, { receive: true });
+    sh.position.set(0, y, 0);
+    g.add(sh);
+  }
+  const bookColors = ['#c8323a', '#2f5d8a', '#f2c14e', '#3f8f5a', '#8a4fb0', '#e86a5a', '#f6e7c8', '#1f6f7a'];
+  for (let s = 0; s < 4; s++) {
+    const y0 = shelves[s]! + 0.05;
+    let bx = -W / 2 + 0.18;
+    const end = W / 2 - 0.18;
+    while (bx < end - 0.2) {
+      if (r() < 0.12) {
+        // Pilha de livros deitados.
+        for (let k = 0; k < 3; k++) {
+          const bk = mesh(new THREE.BoxGeometry(0.55, 0.12, 0.5), toon(bookColors[Math.floor(r() * bookColors.length)]!));
+          bk.position.set(bx + 0.28, y0 + 0.06 + k * 0.12, 0.05);
+          bk.rotation.y = (r() - 0.5) * 0.3;
+          g.add(bk);
+        }
+        bx += 0.65;
+        continue;
+      }
+      if (r() < 0.08 && s > 0) {
+        const vase = mesh(new THREE.SphereGeometry(0.2, 12, 10), toon('#5fa8c8'));
+        vase.scale.y = 1.3;
+        vase.position.set(bx + 0.22, y0 + 0.26, 0.05);
+        g.add(vase);
+        bx += 0.5;
+        continue;
+      }
+      const w = 0.1 + r() * 0.08;
+      const h = 0.62 + r() * 0.3;
+      const bk = mesh(new THREE.BoxGeometry(w, h, 0.5 + r() * 0.1), toon(bookColors[Math.floor(r() * bookColors.length)]!));
+      const lean = r() < 0.1 ? 0.25 : 0;
+      bk.position.set(bx + w / 2, y0 + h / 2, 0.05);
+      bk.rotation.z = -lean;
+      g.add(bk);
+      bx += w + 0.015 + lean * 0.3;
+    }
+  }
+  const box = mesh(new THREE.BoxGeometry(0.8, 0.45, 0.6), toon('#d9a441'));
+  box.position.set(-0.5, H + 0.22, 0);
+  const globe = mesh(new THREE.SphereGeometry(0.3, 14, 10), toon('#3fa7ff'));
+  globe.position.set(0.6, H + 0.42, 0);
+  const gstand = mesh(new THREE.CylinderGeometry(0.06, 0.18, 0.2, 10), toon('#3a2a1a'));
+  gstand.position.set(0.6, H + 0.1, 0);
+  g.add(box, globe, gstand);
+  g.position.set(x, 0, z);
+  return g;
+}
+
 const rbox = (w: number, h: number, d: number, r = 0.18) => new RoundedBoxGeometry(w, h, d, 3, Math.min(r, w / 2, h / 2, d / 2) * 0.98);
 
 function place(g: THREE.Object3D, o: THREE.Object3D | null, x: number, y: number, z: number, ry = 0): THREE.Object3D | null {
@@ -410,12 +513,7 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
   }
   win.position.set(0, 5.4, -8.95);
   g.add(win);
-  // Raio de sol a entrar e pó a flutuar nele.
-  const beamGeo = new THREE.CylinderGeometry(2.6, 3.6, 9, 4, 1, true);
-  const beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({ color: '#ffe2b0', transparent: true, opacity: 0.07, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
-  beam.position.set(0.8, 3.4, -5.6);
-  beam.rotation.set(0.75, Math.PI / 4, 0);
-  g.add(beam);
+  // Pó a flutuar à frente da janela.
   const motes = new THREE.InstancedMesh(new THREE.SphereGeometry(0.025, 4, 3), new THREE.MeshBasicMaterial({ color: '#fff4d6', transparent: true, opacity: 0.8 }), 60);
   const moteP = Array.from({ length: 60 }, () => new THREE.Vector3(-1.5 + Math.random() * 4.5, 0.6 + Math.random() * 5.5, -7.5 + Math.random() * 4));
   motes.frustumCulled = false;
@@ -682,13 +780,7 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
   g.add(pizzaBox);
 
   // ── Estante, candeeiro, plantas e quadros ──
-  place(g, prop('kaykit-furniture/shelf_B_large_decorated', { height: 4.6 }), -10.9, 0, -8.5) ??
-    (() => {
-      const shelf = mesh(new THREE.BoxGeometry(2.4, 4.6, 0.9), toon('#8a5a2b'));
-      shelf.position.set(-10.9, 2.3, -8.5);
-      g.add(shelf);
-      return shelf;
-    })();
+  g.add(bookshelf(-10.9, -8.45));
   const lamp = place(g, prop('kaykit-furniture/lamp_standing', { height: 4.2 }), -4.6, 0, -7.6);
   if (!lamp) {
     const pole = mesh(new THREE.CylinderGeometry(0.05, 0.05, 4), toon('#3a3150'));
@@ -704,22 +796,8 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
   lampGlow.scale.setScalar(2.2);
   lampGlow.position.set(-4.6, 3.8, -7.5);
   g.add(lampGlow);
-  for (const [px, pz, key] of [[4.4, -8.2, 'q-nature/Plant_7_Big'], [12.2, -3.2, 'q-nature/Plant_1_Big'], [-12.2, -1.4, 'q-nature/Fern_1']] as const) {
-    const pot = mesh(new THREE.CylinderGeometry(0.5, 0.38, 0.85, 14), toon('#c96a45'));
-    pot.position.set(px, 0.42, pz);
-    const rimP = mesh(new THREE.TorusGeometry(0.5, 0.06, 6, 16), toon('#b35a38'));
-    rimP.rotation.x = Math.PI / 2;
-    rimP.position.set(px, 0.85, pz);
-    g.add(pot, rimP);
-    const plant = prop(key, { height: 1.9 }) ?? pickProp(['kaykit-furniture/cactus_medium_A'], 0, { height: 1.5 });
-    if (plant) place(g, plant, px, 0.8, pz, Math.random() * 6);
-    else {
-      const leaves = mesh(new THREE.SphereGeometry(0.95, 12, 10), toon('#3f9d4a'));
-      leaves.scale.set(1, 1.3, 1);
-      leaves.position.set(px, 1.8, pz);
-      g.add(leaves);
-    }
-  }
+  // Plantas em vasos, nos cantos (feitas à mão, à escala da sala).
+  for (const [px, pz, seed] of [[4.6, -8.3, 3], [12.2, -3.2, 7], [-12.3, -1.6, 11]] as const) g.add(pottedPlant(px, pz, seed));
   place(g, prop('kaykit-furniture/cactus_medium_A', { height: 0.7 }), -1.6, 3.42, -8.6);
   place(g, prop('q-props/Vase_2', { height: 0.6 }), 1.8, 3.42, -8.6);
   // Quadros (a moldura do pack, ou uma feita à mão) com paisagens.

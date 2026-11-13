@@ -177,6 +177,7 @@ export class SeatControl {
       case 'pad':
       case 'board':
       case 'info':
+      case 'pick':
         return l;
       case 'choices':
         return pad({ title: l.prompt, sub: 'Escolhe no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher', plus: 'Menu' } });

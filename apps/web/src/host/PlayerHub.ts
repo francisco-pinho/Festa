@@ -213,6 +213,11 @@ export class PlayerHub {
     this.conn.send(p.id, { t: 'layout', layout });
   }
 
+  /** Manda a cara (imagem pequena) de uma personagem para o telemóvel (carrossel de escolha). */
+  sendFace(target: HubPlayer, id: string, img: string): void {
+    this.sendTo(target, { t: 'face', id, img });
+  }
+
   vibrate(player: HubPlayer, pattern: number | number[]): void {
     this.sendTo(player, { t: 'vibrate', pattern });
   }

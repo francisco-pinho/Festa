@@ -72,7 +72,7 @@ export class ShowcaseStage implements Stage {
   }
 
   /** Mostra personagens em arco, viradas para a câmara. */
-  setLineup(entries: { key: string; characterId: string; label?: string; labelColor?: string }[]): void {
+  setLineup(entries: { key: string; characterId: string; label?: string; labelColor?: string; seat?: number }[]): void {
     for (const key of [...this.slots.keys()]) if (!entries.some((e) => e.key === key)) this.remove(key);
     const n = entries.length;
     const spread = Math.min(1.25, 0.15 + n * 0.11);
@@ -86,7 +86,7 @@ export class ShowcaseStage implements Stage {
         this.slots.set(e.key, slot);
         model.root.scale.setScalar(0.01);
       }
-      const seat = this.room ? ROOM_SEATS[i] : undefined;
+      const seat = this.room ? ROOM_SEATS[e.seat ?? i] : undefined;
       if (seat) {
         // Sala de estar: cada um no seu lugar e a fazer alguma coisa (sofá, cadeirões, chão, dardos,
         // lareira, petiscos).

@@ -143,6 +143,27 @@ export const controllerLayoutSchema = z.discriminatedUnion('kind', [
       .optional(),
     color: hexColor.optional(),
   }),
+  /** Escolha da personagem: carrossel com as caras (setas ◀ ▶, tocar numa, «Pronto!»). */
+  z.object({
+    kind: z.literal('pick'),
+    title: z.string().max(80),
+    sub: z.string().max(160).optional(),
+    color: hexColor.optional(),
+    items: z
+      .array(
+        z.object({
+          id: z.string().min(1).max(32),
+          name: z.string().max(24),
+          color: hexColor,
+          taken: z.boolean().optional(),
+        }),
+      )
+      .min(1)
+      .max(16),
+    index: z.number().int().min(0).max(15),
+    ready: z.boolean(),
+    buttons: z.object({ a: legend, b: legend, x: legend, plus: legend }),
+  }),
   z.object({
     kind: z.literal('pad'),
     /** Linha principal (o que se está a fazer). */
@@ -182,6 +203,8 @@ export const hostToControllerSchema = z.discriminatedUnion('t', [
     ]),
   }),
   z.object({ t: z.literal('toast'), text: z.string().max(120) }),
+  /** Cara de uma personagem (imagem pequena) para o carrossel de escolha; o telemóvel guarda-a. */
+  z.object({ t: z.literal('face'), id: z.string().min(1).max(32), img: z.string().max(12_000).regex(/^data:image\/(jpeg|png|webp);base64,/) }),
   /** Medição de atraso: o telemóvel responde logo com `pong`. */
   z.object({ t: z.literal('ping'), id: z.number().int().min(0) }),
   /** Estado do jogo para o menu 📊 do telemóvel (abre-se a qualquer altura). `null` esconde o botão. */

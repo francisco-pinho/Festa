@@ -18,6 +18,7 @@ import { ACK_TIMEOUT_MS, connectSocket } from '../common/socket';
 import { renderPad } from './pad';
 import { renderBoard } from './boardview';
 import { renderInfo, statsHtml } from './infoview';
+import { renderPick, setFace } from './pickview';
 import { sensors } from './sensors';
 import { ScreenViewer } from '../common/screenViewer';
 import { hapticPattern } from './haptics';
@@ -183,6 +184,9 @@ socket.on('controller:message', (msg) => {
       break;
     case 'vibrate':
       hapticPattern(msg.pattern);
+      break;
+    case 'face':
+      setFace(msg.id, msg.img);
       break;
     case 'toast':
       showToast(msg.text);
@@ -374,6 +378,11 @@ function renderLayout(): void {
     case 'info':
       setView('');
       renderInfo(view, l, send);
+      break;
+    case 'pick':
+      // Mesmo carrossel já no ecrã: só atualiza (para deslizar de uma personagem para a outra).
+      if (!view.querySelector('.pickview')) setView('');
+      cleanupView = renderPick(view, l, send);
       break;
   }
   shownLayout = layout;

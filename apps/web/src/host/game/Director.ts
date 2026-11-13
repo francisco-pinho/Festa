@@ -18,7 +18,8 @@ import type { HubPlayer, PlayerHub } from '../PlayerHub';
 import { cycleLanAddress, getJoinBaseUrl, getJoinUrl, isOnline } from '../joinUrl';
 import type { Engine } from '../three/Engine';
 import { ShowcaseStage } from '../stages/ShowcaseStage';
-import { ROOM_PROPS } from '../stages/livingRoom';
+import { ROOM_PROPS, ROOM_SEATS } from '../stages/livingRoom';
+import { portraitSmall } from '../three/portraits';
 import { Hud, esc } from '../ui/Hud';
 import type { MenuRequest, ScreenMenus } from '../ui/ScreenMenu';
 import { MINIGAMES } from '../minigames';
@@ -42,6 +43,8 @@ export class Director {
   private forcedMinigame: string | null = null;
   /** Versão portátil da app: o menu principal tem «Testar minijogos». */
   private portable = false;
+  /** Lugar de cada jogador na sala de estar (ecrã inicial). */
+  private readonly roomSeats = new Map<string, number>();
   /** Personagem de cada jogador (escolhida ao entrar; fica até sair da sala). */
   private readonly picks = new Map<string, { char: string; ready: boolean }>();
   private lastRounds: number = RULES.roundOptions[1];
@@ -199,15 +202,43 @@ export class Director {
       }
     };
     const allReady = () => players().length > 0 && players().every((p) => this.picks.get(p.id)?.ready || !p.connected);
+    // Lugar de cada um na sala (Ⓧ muda): quem entra fica no primeiro lugar livre.
+    const ensureRoomSeats = () => {
+      const here = new Set(players().map((p) => p.id));
+      for (const id of [...this.roomSeats.keys()]) if (!here.has(id)) this.roomSeats.delete(id);
+      for (const p of players()) {
+        if (this.roomSeats.has(p.id)) continue;
+        const used = new Set(this.roomSeats.values());
+        const free = ROOM_SEATS.findIndex((_, i) => !used.has(i));
+        this.roomSeats.set(p.id, Math.max(0, free));
+      }
+    };
+    /** Ⓧ: passa para o lugar seguinte da sala (se estiver ocupado, troca com quem lá está). */
+    const moveSeat = (p: HubPlayer) => {
+      const cur = this.roomSeats.get(p.id) ?? 0;
+      const n = ROOM_SEATS.length;
+      const owner = (i: number) => [...this.roomSeats].find(([, s]) => s === i)?.[0];
+      let next = (cur + 1) % n;
+      for (let k = 0; k < n - 1 && owner(next); k++) next = (next + 1) % n;
+      const other = owner(next);
+      if (other) this.roomSeats.set(other, cur);
+      this.roomSeats.set(p.id, next);
+      sound.play('whoosh', { vol: 0.4 });
+      this.hub.vibrate(p, 15);
+      render();
+    };
+    // As caras das personagens vão para cada telemóvel uma vez (o telemóvel guarda-as).
+    const facesSent = new Set<string>();
 
     let mainMenu: MenuRequest | null = null;
     const render = () => {
       ensurePicks();
+      ensureRoomSeats();
       const list = players();
       stage.setLineup(
         list.map((p) => {
           const pick = this.picks.get(p.id)!;
-          return { key: p.id, characterId: pick.char, label: `${p.isVip ? '⭐ ' : ''}${p.name}`, labelColor: pick.ready ? '#ffd23f' : '#ffffff' };
+          return { key: p.id, characterId: pick.char, label: `${p.isVip ? '⭐ ' : ''}${p.name}`, labelColor: pick.ready ? '#ffd23f' : '#ffffff', seat: this.roomSeats.get(p.id) };
         }),
       );
       for (const p of list) {
@@ -233,13 +264,41 @@ export class Director {
       ui.querySelector('#help')!.textContent = !humans
         ? 'Lê o código com o telemóvel para entrar!'
         : waiting.length
-          ? `◀ ▶ escolhe a personagem · Ⓐ pronto · À espera de ${waiting.join(', ')}`
+          ? `◀ ▶ escolhe a personagem · Ⓐ pronto · Ⓧ muda de lugar · À espera de ${waiting.join(', ')}`
           : `Todos prontos! ${this.leader ? `${this.leader.name} escolhe o modo` : 'Enter para escolher'}${bots ? ` · na Festa entram ${bots} bot${bots > 1 ? 's' : ''}` : ''}`;
       // Comandos
       for (const p of list) {
         const pick = this.picks.get(p.id)!;
         const c = getCharacter(pick.char);
         const lead = p === this.leader && allReady();
+        if (!p.connected) facesSent.delete(p.id);
+        // Escolha da personagem no telemóvel: carrossel com as caras (◀ ▶, tocar numa, Ⓐ pronto, Ⓧ lugar).
+        // Só quem escolhe o modo (com todos prontos) volta ao comando normal, para navegar no menu.
+        if (!lead) {
+          // As caras vão uma a uma (cada mensagem tem de ser pequena), só da primeira vez.
+          if (!facesSent.has(p.id)) {
+            const faces = CHARACTERS.map((ch) => [ch.id, portraitSmall(ch.id)] as const);
+            if (faces.every(([, img]) => img)) {
+              for (const [id, img] of faces) this.hub.sendFace(p, id, img);
+              facesSent.add(p.id);
+            }
+          }
+          const items = CHARACTERS.map((ch) => ({ id: ch.id, name: ch.name, color: ch.color, taken: takenBy(ch.id, p.id) }));
+          this.hub.setLayout(
+            {
+              kind: 'pick',
+              color: c.color,
+              title: pick.ready ? `Pronto com ${c.name}! ✔` : 'Escolhe a tua personagem',
+              sub: pick.ready ? (allReady() ? `${this.leader?.name ?? 'O VIP'} escolhe o modo…` : 'À espera dos outros…') : `${c.name} · ◀ ▶ para mudar`,
+              items,
+              index: Math.max(0, CHARACTERS.findIndex((ch) => ch.id === pick.char)),
+              ready: pick.ready,
+              buttons: pick.ready ? { b: 'Mudar', x: 'Lugar', plus: 'Definições' } : { a: 'Pronto!', x: 'Lugar', plus: 'Definições' },
+            },
+            p,
+          );
+          continue;
+        }
         this.hub.setLayout(
           pick.ready
             ? {
@@ -312,12 +371,25 @@ export class Director {
       () => window.clearInterval(infoTimer),
       this.conn.events.on('room', () => void renderRoom()),
       this.hub.events.on('changed', render),
+      // Tocar numa cara no carrossel do telemóvel escolhe logo essa personagem.
+      this.hub.events.on('choice', ({ player, id }) => {
+        const pick = this.picks.get(player.id);
+        if (!pick || pick.ready || this.menu.isOpen) return;
+        if (!CHARACTERS.some((ch) => ch.id === id) || takenBy(id, player.id)) {
+          sound.play('block');
+          return;
+        }
+        pick.char = id;
+        sound.play('tick');
+        render();
+      }),
       settings.events.on('changed', render),
       this.hub.events.on('press', ({ player, button }) => {
         if (this.menu.isOpen) return;
         const pick = this.picks.get(player.id);
         if (!pick) return;
-        if (button === 'left' || button === 'up') cycle(player, -1);
+        if (button === 'x') moveSeat(player);
+        else if (button === 'left' || button === 'up') cycle(player, -1);
         else if (button === 'right' || button === 'down') cycle(player, 1);
         else if (button === 'a' && !pick.ready && !mainMenu) {
           if (takenBy(pick.char, player.id)) {
