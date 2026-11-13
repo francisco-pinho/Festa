@@ -103,20 +103,24 @@ export class Dice {
     this.numberTexture!.needsUpdate = true;
   }
 
-  /** Para o dado num valor. `yaw` roda-o para a face ficar virada para a câmara. */
-  settle(value: number, yaw = 0): void {
+  /**
+   * Para o dado num valor. `yaw` roda-o para a face ficar virada para a câmara e `pitch` é quanto a
+   * câmara está acima do dado (rad): a face com o valor fica de frente para ela.
+   */
+  settle(value: number, yaw = 0, pitch = 0.9): void {
     this.value = value;
     this.spinning = false;
     if (this.numbers) {
       // Bloco numerado: todas as faces mostram o número; vira uma face para a câmara.
       this.drawNumber(value);
-      // Face da frente virada para a câmara (que está acima): inclina-a para cima.
-      this.target = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.75, yaw, 0, 'YXZ'));
+      // Face da frente virada para a câmara: inclina-a para cima conforme a câmara está mais alta.
+      this.target = new THREE.Quaternion().setFromEuler(new THREE.Euler(-pitch, yaw, 0, 'YXZ'));
       return;
     }
     const up = new THREE.Quaternion().setFromEuler(UP_ROTATION[value]!);
-    // Inclina um pouco para a câmara ver a face de cima.
-    const tilt = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.55, yaw, 0, 'YXZ'));
+    // A face de cima (com o valor) roda para a câmara: de pé se a câmara estiver à altura do dado,
+    // mais deitada se estiver por cima.
+    const tilt = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2 - pitch, yaw, 0, 'YXZ'));
     this.target = tilt.multiply(up);
   }
 

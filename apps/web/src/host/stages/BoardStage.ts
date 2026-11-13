@@ -371,10 +371,16 @@ export class BoardStage implements Stage {
     const base = t.root.position.y;
     t.setAnim('hit');
     await this.engine.tween(0.18, (k) => (t.root.position.y = base + k * 1.1), ease.out);
-    const yaw = this.cameraYawTo(t.root.position.x, t.root.position.z);
+    // Cada dado vira a face para onde a câmara vai ficar (ângulo de lado e de cima).
+    const cam = this.camTargetPos;
     // Só para os primeiros dados ainda a girar (um de cada vez, se vier só um valor).
     const pending = this.dice.filter((d) => d.value === null).slice(0, values.length);
-    pending.forEach((d, i) => d.settle(values[i] ?? 1, yaw));
+    pending.forEach((d, i) => {
+      const p = d.root.position;
+      const yaw = Math.atan2(cam.x - p.x, cam.z - p.z);
+      const pitch = Math.atan2(cam.y - p.y, Math.hypot(cam.x - p.x, cam.z - p.z));
+      d.settle(values[i] ?? 1, yaw, Math.max(0, pitch));
+    });
     for (const d of pending) {
       const y = d.root.position.y;
       this.engine.tween(0.25, (k) => (d.root.position.y = y + Math.sin(k * Math.PI) * 0.5), ease.out);
