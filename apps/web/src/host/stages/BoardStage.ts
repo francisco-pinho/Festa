@@ -148,6 +148,8 @@ export class BoardStage implements Stage {
   private camYaw = 0;
   /** Personagens escondidas atrás de quem está a lançar (repostas no fim). */
   private readonly hiddenForRoll = new Set<string>();
+  /** Altura do chão de quem está a lançar (o salto para bater nos dados não mexe no enquadramento). */
+  private rollGroundY = 0;
 
   /**
    * Câmara pessoal de lançar os dados: atrás da personagem, virada para o caminho (`towards`),
@@ -163,6 +165,7 @@ export class BoardStage implements Stage {
       this.camYaw = Math.atan2(towards.x - t.root.position.x, towards.z - t.root.position.z);
     } else this.camYaw = t.root.rotation.y;
     this.camMode = 'roll';
+    this.rollGroundY = t.root.position.y;
     for (const [id, o] of this.tokens) {
       if (id === seatId || this.hiddenForRoll.has(id)) continue;
       if (o.root.position.distanceTo(t.root.position) < 3.2) {
@@ -670,10 +673,24 @@ export class BoardStage implements Stage {
         const fx = Math.sin(this.camYaw);
         const fz = Math.cos(this.camYaw);
         if (this.camMode === 'roll') {
-          // Lançar: à frente da personagem, baixa e perto (vê-se a cara, o salto e os dados).
+          // Lançar: à frente da personagem, afastada o suficiente para caber o boneco inteiro
+          // (dos pés à cabeça, também no salto) e todos os dados (até 3, lado a lado, com o ressalto).
           // Só passa para trás quando começa a andar.
-          this.camTargetPos.set(p.x + fx * 5.2 + fz * 0.4, p.y + 2.9, p.z + fz * 5.2 - fx * 0.4);
-          this.camTargetLook.set(p.x, p.y + 2.3, p.z);
+          const g = this.rollGroundY;
+          let top = g + HEAD_Y + 1.6;
+          let half = 1.2;
+          for (const die of this.dice) {
+            const dp = die.root.position;
+            top = Math.max(top, dp.y + 1.2);
+            half = Math.max(half, Math.hypot(dp.x - p.x, dp.z - p.z) + 0.9);
+          }
+          const bottom = g - 0.15;
+          const tanV = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
+          const tanH = tanV * this.camera.aspect;
+          const midY = (top + bottom) / 2;
+          const dist = Math.max(5.2, (((top - bottom) / 2) / tanV) * 1.2, (half / tanH) * 1.25);
+          this.camTargetPos.set(p.x + fx * dist + fz * 0.4, midY + dist * 0.12, p.z + fz * dist - fx * 0.4);
+          this.camTargetLook.set(p.x, midY, p.z);
         } else {
           // Andar: segue de perto, um pouco mais alta para se ver o caminho.
           this.camTargetPos.set(p.x - fx * 6.2, p.y + 4.6, p.z - fz * 6.2);
