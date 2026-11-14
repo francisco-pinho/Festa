@@ -1,6 +1,6 @@
 /**
  * Sala de estar do ecrã inicial: parquet, lambril com painéis e parede branca. Na parede de trás, o
- * sofá cinzento com três quadros em fila por cima, uma estante de cada lado e a lareira de pedra
+ * sofá cinzento com três quadros em fila por cima, uma estante alta e a lareira de pedra
  * acesa (com faúlhas); à frente, a mesa de centro, duas cadeiras-ovo, um monte de almofadas e um
  * puff, plantas e a televisão de tubo onde passa o menu dos jogos. Os modelos vêm do Sketchfab
  * (ver docs/ASSETS.md); sem eles, a sala usa versões feitas à mão.
@@ -38,8 +38,6 @@ export const ROOM_PROPS: readonly string[] = [
   'kaykit-furniture/couch_pillows',
   'kaykit-furniture/armchair_pillows',
   'kaykit-furniture/table_low',
-  'kaykit-furniture/rug_rectangle_stripes_A',
-  'kaykit-furniture/rug_oval_A',
   'kaykit-furniture/lamp_standing',
   'kaykit-furniture/cactus_medium_A',
   'kaykit-furniture/cactus_medium_B',
@@ -48,7 +46,6 @@ export const ROOM_PROPS: readonly string[] = [
   'kaykit-mixed2/frame_A_large',
   'kaykit-mixed2/frame_B_large',
   'kaykit-mixed2/ornate_mirror',
-  'kaykit-dungeon/shelves',
   'kaykit-furniture/cabinet_medium_decorated',
   'kaykit-holiday/hot_chocolate_decorated',
   'kaykit-holiday/footstool_red',
@@ -383,74 +380,6 @@ function pottedPlant(x: number, z: number, seed: number): THREE.Group {
   return g;
 }
 
-/** Estante de madeira com prateleiras, livros (de pé e deitados), uma caixa e uma jarra. */
-function bookshelf(x: number, z: number): THREE.Group {
-  const r = rand(5);
-  const g = new THREE.Group();
-  const woodM = toon('#7a4f2a');
-  const W = 2.6;
-  const H = 4.6;
-  const D = 0.85;
-  const back = mesh(new THREE.BoxGeometry(W, H, 0.08), toon('#5e3a1e'), { receive: true });
-  back.position.set(0, H / 2, -D / 2 + 0.04);
-  g.add(back);
-  for (const sx of [-1, 1]) {
-    const side = mesh(new THREE.BoxGeometry(0.12, H, D), woodM);
-    side.position.set(sx * (W / 2 - 0.06), H / 2, 0);
-    g.add(side);
-  }
-  const shelves = [0.12, 1.25, 2.35, 3.45, H - 0.06];
-  for (const y of shelves) {
-    const sh = mesh(new THREE.BoxGeometry(W, 0.1, D), woodM, { receive: true });
-    sh.position.set(0, y, 0);
-    g.add(sh);
-  }
-  const bookColors = ['#c8323a', '#2f5d8a', '#f2c14e', '#3f8f5a', '#8a4fb0', '#e86a5a', '#f6e7c8', '#1f6f7a'];
-  for (let s = 0; s < 4; s++) {
-    const y0 = shelves[s]! + 0.05;
-    let bx = -W / 2 + 0.18;
-    const end = W / 2 - 0.18;
-    while (bx < end - 0.2) {
-      if (r() < 0.12) {
-        // Pilha de livros deitados.
-        for (let k = 0; k < 3; k++) {
-          const bk = mesh(new THREE.BoxGeometry(0.55, 0.12, 0.5), toon(bookColors[Math.floor(r() * bookColors.length)]!));
-          bk.position.set(bx + 0.28, y0 + 0.06 + k * 0.12, 0.05);
-          bk.rotation.y = (r() - 0.5) * 0.3;
-          g.add(bk);
-        }
-        bx += 0.65;
-        continue;
-      }
-      if (r() < 0.08 && s > 0) {
-        const vase = mesh(new THREE.SphereGeometry(0.2, 12, 10), toon('#5fa8c8'));
-        vase.scale.y = 1.3;
-        vase.position.set(bx + 0.22, y0 + 0.26, 0.05);
-        g.add(vase);
-        bx += 0.5;
-        continue;
-      }
-      const w = 0.1 + r() * 0.08;
-      const h = 0.62 + r() * 0.3;
-      const bk = mesh(new THREE.BoxGeometry(w, h, 0.5 + r() * 0.1), toon(bookColors[Math.floor(r() * bookColors.length)]!));
-      const lean = r() < 0.1 ? 0.25 : 0;
-      bk.position.set(bx + w / 2, y0 + h / 2, 0.05);
-      bk.rotation.z = -lean;
-      g.add(bk);
-      bx += w + 0.015 + lean * 0.3;
-    }
-  }
-  const box = mesh(new THREE.BoxGeometry(0.8, 0.45, 0.6), toon('#d9a441'));
-  box.position.set(-0.5, H + 0.22, 0);
-  const globe = mesh(new THREE.SphereGeometry(0.3, 14, 10), toon('#3fa7ff'));
-  globe.position.set(0.6, H + 0.42, 0);
-  const gstand = mesh(new THREE.CylinderGeometry(0.06, 0.18, 0.2, 10), toon('#3a2a1a'));
-  gstand.position.set(0.6, H + 0.1, 0);
-  g.add(box, globe, gstand);
-  g.position.set(x, 0, z);
-  return g;
-}
-
 const rbox = (w: number, h: number, d: number, r = 0.18) => new RoundedBoxGeometry(w, h, d, 3, Math.min(r, w / 2, h / 2, d / 2) * 0.98);
 
 function place(g: THREE.Object3D, o: THREE.Object3D | null, x: number, y: number, z: number, ry = 0): THREE.Object3D | null {
@@ -639,7 +568,6 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
 
   // ── Mesa de centro (KayKit «table_low») em cima de um tapete às riscas, com chocolate quente e livros ──
   const TABLE_Z = sofaFront + 2.0;
-  place(g, prop('kaykit-furniture/rug_rectangle_stripes_A', { width: 7.5 }), 0, 0.005, TABLE_Z + 0.6);
   const table = prop('kaykit-furniture/table_low', { width: 3.0 });
   if (table) place(g, table, 0, 0, TABLE_Z);
   else {
@@ -701,7 +629,6 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
   // Sem os modelos, uma almofada amarela e um puff verde feitos à mão.
   const seat5 = Object.assign(ROOM_SEATS[5]!, { x: -2.1, z: TABLE_Z + 2.6, yaw: 0.3 });
   const seat6 = Object.assign(ROOM_SEATS[6]!, { x: 2.1, z: TABLE_Z + 2.6, yaw: -0.3 });
-  place(g, prop('kaykit-furniture/rug_oval_A', { width: 6.5 }), 0, 0.01, TABLE_Z + 2.8);
   let pile: THREE.Object3D | null = prop('kaykit-holiday/footstool_red', { width: 1.5 });
   if (pile) place(g, pile, seat5.x, 0, seat5.z, seat5.yaw);
   else {
@@ -808,17 +735,14 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
 
   // ── Cómoda baixa à direita do sofá (KayKit «cabinet_medium_decorated») ──
   againstWall(g, prop('kaykit-furniture/cabinet_medium_decorated', { width: 2.0 }), 3.95, 0);
-  // Candeeiro de pé no canto da esquerda (ao pé da lareira entrava pelos tijolos dentro).
-  againstWall(g, prop('kaykit-furniture/lamp_standing', { height: 2.6 }), -7.4, 0);
+  // Candeeiro entre o sofá principal e o cadeirão esquerdo, atrás do tapete.
+  place(g, prop('kaykit-furniture/lamp_standing', { height: 2.6 }), -2.65, 0, TABLE_Z - 2.0, 0);
 
-  // ── À esquerda do sofá: estante de livros (KayKit Dungeon «shelves») ──
-  const SHELF_X = -3.95;
-  if (!againstWall(g, prop('kaykit-dungeon/shelves', { height: 2.9 }), SHELF_X, 0)) g.add(bookshelf(SHELF_X, -8.45));
   // Guitarra encostada à parede e cadeira de gamer ao canto (KayKit Mixed Bag).
   againstWall(g, prop('kaykit-mixed1/guitar_A', { height: 1.5 }), -5.6, 0);
   place(g, prop('kaykit-mixed2/gamer_chair_A', { height: 1.9 }), -9.5, 0, -6.5, 0.6);
-  // Quem está à estante fica de pé, de costas para a sala, a mexer nos livros.
-  Object.assign(ROOM_SEATS[7]!, { x: SHELF_X - 0.2, z: WALL_Z + 1.45, yaw: Math.PI - 0.25, y: 0, anim: 'fiddle' });
+  // O lugar junto à parede esquerda fica livre da estante baixa removida.
+  Object.assign(ROOM_SEATS[7]!, { x: -5.8, z: -7.25, yaw: 0.25, y: 0, anim: 'fiddle' });
   // Do outro lado da lareira, alguém de pé a beber, virado para a sala.
   Object.assign(ROOM_SEATS[9]!, { x: FIRE_X + 2.1, z: fireZ + fireFront + 1.3, yaw: -0.5, y: 0, anim: 'drink' });
 
