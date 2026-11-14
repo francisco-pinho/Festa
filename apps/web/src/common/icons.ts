@@ -2,9 +2,9 @@
  * Ícones desenhados do jogo (em vez de emojis): cada ícone são camadas de caminhos SVG
  * (24×24) com cor e contorno, no estilo do resto do jogo.
  *
- * Os textos do jogo continuam a usar emojis como «atalho» (🪙, ⭐, ❤️…): ao mostrar, cada emoji
- * conhecido é trocado pelo ícone — no HTML (ecrã grande e telemóvel, automaticamente, ver
- * `installIconSwap`) e nos textos 3D (`drawRich`, usado pelo `textSprite`).
+ * Os textos do jogo usam tokens visuais para recursos e estados (moedas, estrelas, vidas…):
+ * ao mostrar, cada token conhecido é trocado pelo ícone — no HTML (ecrã grande e telemóvel,
+ * automaticamente, ver `installIconSwap`) e nos textos 3D (`drawRich`, usado pelo `textSprite`).
  */
 
 type Layer = { d: string; fill?: string; stroke?: string; w?: number };
@@ -424,11 +424,17 @@ const EMOJI: Record<string, string> = {
 };
 
 const KEYS = Object.keys(EMOJI).sort((a, b) => b.length - a.length);
+/** Emojis que eram apenas decoração e não acrescentam informação ao texto. */
+const DECORATIVE_EMOJI = new Set(['🎉', '👋', '👀', '😕', '📜', '🧪', '🌍', '🚪', '🏋️', '✨', '💫', '😎', '🙂']);
 /** Encontra emojis conhecidos (com o seletor de variação opcional a seguir). */
 export const EMOJI_RE = new RegExp(`(${KEYS.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\uFE0F?`, 'gu');
 
 export function iconFor(emoji: string): string | undefined {
   return EMOJI[emoji.replace(/️/g, '')];
+}
+
+export function removeDecorativeEmojis(text: string): string {
+  return text.replace(EMOJI_RE, (match, emoji: string) => (DECORATIVE_EMOJI.has(emoji) ? '' : match));
 }
 
 /** O ícone em SVG (string), para HTML. */
@@ -485,6 +491,11 @@ export function splitRich(text: string): { text?: string; icon?: string }[] {
   const out: { text?: string; icon?: string }[] = [];
   let last = 0;
   for (const m of text.matchAll(EMOJI_RE)) {
+    if (DECORATIVE_EMOJI.has(m[1]!)) {
+      if (m.index! > last) out.push({ text: text.slice(last, m.index) });
+      last = m.index! + m[0].length;
+      continue;
+    }
     const icon = iconFor(m[1]!);
     if (!icon) continue;
     if (m.index! > last) out.push({ text: text.slice(last, m.index) });
@@ -507,6 +518,23 @@ export function hasIcons(text: string): boolean {
  */
 export function installIconSwap(root: HTMLElement): void {
   const SKIP = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'CANVAS', 'svg', 'SVG', 'text', 'OPTION', 'TITLE']);
+  const fixText = (t: Text) => {
+    const raw = t.nodeValue ?? '';
+    const parts = splitRich(raw);
+    EMOJI_RE.lastIndex = 0;
+    if (!parts.some((p) => p.icon) && !EMOJI_RE.test(raw)) return;
+    const frag = document.createDocumentFragment();
+    for (const p of parts) {
+      if (p.text) frag.append(p.text);
+      else if (p.icon) {
+        const span = document.createElement('span');
+        span.className = 'ic-wrap';
+        span.innerHTML = iconSvg(p.icon);
+        frag.append(span);
+      }
+    }
+    t.replaceWith(frag);
+  };
   const fix = (node: Node) => {
     const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, {
       acceptNode: (n) => {
@@ -519,28 +547,17 @@ export function installIconSwap(root: HTMLElement): void {
     });
     const found: Text[] = [];
     while (walker.nextNode()) found.push(walker.currentNode as Text);
-    for (const t of found) {
-      const parts = splitRich(t.nodeValue ?? '');
-      if (!parts.some((p) => p.icon)) continue;
-      const frag = document.createDocumentFragment();
-      for (const p of parts) {
-        if (p.text) frag.append(p.text);
-        else if (p.icon) {
-          const span = document.createElement('span');
-          span.className = 'ic-wrap';
-          span.innerHTML = iconSvg(p.icon);
-          frag.append(span);
-        }
-      }
-      t.replaceWith(frag);
-    }
+    for (const t of found) fixText(t);
   };
   fix(root);
   new MutationObserver((muts) => {
     for (const m of muts) {
       if (m.type === 'characterData') {
-        if (m.target.parentNode) fix(m.target.parentNode);
-      } else for (const n of m.addedNodes) if (n.nodeType === Node.ELEMENT_NODE || n.nodeType === Node.TEXT_NODE) fix(n.nodeType === Node.TEXT_NODE ? (n.parentNode ?? n) : n);
+        fixText(m.target as Text);
+      } else for (const n of m.addedNodes) {
+        if (n.nodeType === Node.ELEMENT_NODE) fix(n);
+        else if (n.nodeType === Node.TEXT_NODE) fixText(n as Text);
+      }
     }
   }).observe(root, { childList: true, subtree: true, characterData: true });
   if (!document.getElementById('ic-style')) {

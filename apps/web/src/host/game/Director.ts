@@ -143,7 +143,7 @@ export class Director {
     const ui = document.createElement('div');
     ui.className = 'lobby-ui';
     ui.innerHTML = `
-      <div class="lobby-logo">FESTA <span>🎉</span></div>
+      <div class="lobby-logo">FESTA</div>
       <div class="lobby-join">
         <canvas id="qr" width="220" height="220"></canvas>
         <div class="lobby-join-text">
@@ -151,12 +151,12 @@ export class Director {
           <div class="code" id="code">····</div>
           <div class="url" id="url"></div>
           <div class="tip" id="join-tip"></div>
-          <button class="go-online" id="go-online" hidden>🌍 Jogar online</button>
+          <button class="go-online" id="go-online" hidden>Jogar online</button>
         </div>
       </div>
       <div class="lobby-cards" id="cards"></div>
       <div class="lobby-help" id="help"></div>
-      <button class="lobby-quit" id="lobby-quit" hidden>🚪 Sair do jogo</button>`;
+      <button class="lobby-quit" id="lobby-quit" hidden>Sair do jogo</button>`;
     document.getElementById('ui')!.appendChild(ui);
 
     // Sair logo no ecrã inicial (só na app de computador): carrega duas vezes para confirmar.
@@ -168,16 +168,16 @@ export class Director {
         let armed = 0;
         quitBtn.addEventListener('click', () => {
           if (Date.now() - armed < 4000) {
-            quitBtn.textContent = '👋 Até à próxima!';
+            quitBtn.textContent = 'Até à próxima!';
             void app.quit();
             return;
           }
           armed = Date.now();
-          quitBtn.textContent = '🚪 Carrega outra vez para sair';
+          quitBtn.textContent = 'Carrega outra vez para sair';
           quitBtn.classList.add('armed');
           setTimeout(() => {
             if (Date.now() - armed >= 4000) {
-              quitBtn.textContent = '🚪 Sair do jogo';
+              quitBtn.textContent = 'Sair do jogo';
               quitBtn.classList.remove('armed');
             }
           }, 4100);
@@ -195,10 +195,10 @@ export class Director {
       canvas.dataset.url = url;
       ui.querySelector('#code')!.textContent = code;
       ui.querySelector('#url')!.textContent = `${base.replace(/^https?:\/\//, '')}/play`;
-      ui.querySelector('#join-label')!.textContent = online ? '🌍 Online · entra em casa ou fora' : 'Entra com o telemóvel';
+      ui.querySelector('#join-label')!.textContent = online ? 'Online · entra em casa ou fora' : 'Entra com o telemóvel';
       ui.querySelector('#join-tip')!.innerHTML = online
-        ? `📺 Quem está fora vê o ecrã em <b>${esc(base.replace(/^https?:\/\//, ''))}/ver</b> (partilha o ecrã com a tecla <b>V</b>).`
-        : '📱 Android: se não abrir, dá ao Chrome a permissão <b>Dispositivos próximos</b>. Aviso de ligação não privada? <b>Avançadas → Continuar</b>.';
+        ? `Quem está fora vê o ecrã em <b>${esc(base.replace(/^https?:\/\//, ''))}/ver</b> (partilha o ecrã com a tecla <b>V</b>).`
+        : 'Android: se não abrir, dá ao Chrome a permissão <b>Dispositivos próximos</b>. Aviso de ligação não privada? <b>Avançadas → Continuar</b>.';
       await QRCode.toCanvas(canvas, url, { width: 220, margin: 1, errorCorrectionLevel: 'M' });
     };
 
@@ -440,14 +440,14 @@ export class Director {
     const goOnline = async () => {
       if (!desktop || onlineBtn.disabled) return;
       onlineBtn.disabled = true;
-      onlineBtn.textContent = '🌍 A abrir o túnel…';
+      onlineBtn.textContent = 'A abrir o túnel…';
       const res = await desktop.goOnline();
       if (res.url) {
         onlineBtn.hidden = true;
         void renderRoom();
       } else {
         onlineBtn.disabled = false;
-        onlineBtn.textContent = '🌍 Tentar outra vez';
+        onlineBtn.textContent = 'Tentar outra vez';
         ui.querySelector('#join-tip')!.textContent = `⚠ ${res.error ?? 'Não deu para abrir o túnel.'}`;
       }
     };
@@ -537,12 +537,12 @@ export class Director {
         color: leader ? getCharacter(this.picks.get(leader.id)?.char ?? CHARACTERS[0]!.id).color : undefined,
         cancel: 'room',
         options: [
-          { id: 'party', label: '🎲 Festa', sub: 'Tabuleiro, estrelas, itens e minijogos' },
-          { id: 'sports', label: '🏆 Desportos', sub: 'Bowling, ténis, golfe, boxe e basebol' },
-          { id: 'settings', label: '⚙️ Definições' },
-          ...(this.portable ? [{ id: 'test', label: '🧪 Testar minijogos', sub: 'Escolhe um minijogo e joga-o já' }] : []),
-          { id: 'credits', label: '📜 Créditos' },
-          { id: 'quit', label: '🚪 Sair do jogo' },
+          { id: 'party', label: 'Festa', sub: 'Tabuleiro, estrelas, itens e minijogos' },
+          { id: 'sports', label: 'Desportos', sub: 'Bowling, ténis, golfe, boxe e basebol' },
+          { id: 'settings', label: 'Definições' },
+          ...(this.portable ? [{ id: 'test', label: 'Testar minijogos', sub: 'Escolhe um minijogo e joga-o já' }] : []),
+          { id: 'credits', label: 'Créditos' },
+          { id: 'quit', label: 'Sair do jogo' },
         ],
       };
       const pickMode = await this.menus.ask(mainMenu);
@@ -570,13 +570,13 @@ export class Director {
           title: 'Sair do jogo?',
           options: [
             { id: 'no', label: '↩ Não, continuar' },
-            { id: 'yes', label: '🚪 Sim, sair' },
+            { id: 'yes', label: 'Sim, sair' },
           ],
         });
         if (sure === 'yes') {
           const app = (window as unknown as { festaDesktop?: { quit(): Promise<void> } }).festaDesktop;
           if (app) await app.quit();
-          else this.hud.panel('<h1>Até à próxima! 👋</h1><p>Já podes fechar este separador.</p>');
+          else this.hud.panel('<h1>Até à próxima!</h1><p>Já podes fechar este separador.</p>');
           await new Promise(() => undefined); // fica aqui até a janela fechar
         }
       }
@@ -607,13 +607,13 @@ export class Director {
       player: leader,
       keyboard: true,
       big: true,
-      title: '🎲 Festa',
+      title: 'Festa',
       name: leader?.name,
       cancel: 'back',
       options: [
-        { id: 'board', label: '🗺️ Mapa', values: boards.map((b) => `${BOARD_ICON[b.theme] ?? '🗺️'} ${b.name}`), value: board, sub: describe() },
-        { id: 'rounds', label: '🔄 Rondas', values: RULES.roundOptions.map(String), value: rounds },
-        { id: 'bots', label: '🤖 Bots', values: BOT_LEVELS.map((l) => l.label), value: bots, sub: 'Os bots completam a mesa até um número par (mínimo 4)' },
+        { id: 'board', label: 'Mapa', values: boards.map((b) => `${BOARD_ICON[b.theme] ?? ''} ${b.name}`.trim()), value: board, sub: describe() },
+        { id: 'rounds', label: 'Rondas', values: RULES.roundOptions.map(String), value: rounds },
+        { id: 'bots', label: 'Bots', values: BOT_LEVELS.map((l) => l.label), value: bots, sub: 'Os bots completam a mesa até um número par (mínimo 4)' },
         { id: 'start', label: '▶ Começar a festa!' },
       ],
       onChange: (id, v) => {
@@ -641,7 +641,7 @@ export class Director {
       player: leader,
       keyboard: true,
       big: true,
-      title: '🏆 Desportos',
+      title: 'Desportos',
       name: leader?.name,
       cancel: 'back',
       columns: 2,
@@ -695,7 +695,7 @@ export class Director {
       const pick = await this.menus.ask({
         player: this.leader,
         keyboard: true,
-        title: '🧪 Testar minijogos',
+        title: 'Testar minijogos',
         columns: 4,
         initial: last,
         options: [
@@ -830,13 +830,13 @@ export class Director {
       const seat = byId.get(st.id)!;
       this.seatsCtl.setLayout(seat, {
         kind: 'info',
-        title: st.rank === 1 ? `🏆 Ganhaste! ${def.emoji}` : `Ficaste em ${st.rank}.º lugar`,
+        title: st.rank === 1 ? `Ganhaste! ${def.emoji}` : `Ficaste em ${st.rank}.º lugar`,
         sub: st.score,
         table: {
           title: `${def.emoji} ${def.name}`,
           rows: standings.map((o) => {
             const os = byId.get(o.id)!;
-            return { name: os.name, color: getCharacter(os.characterId).color, value: o.score.slice(0, 32), me: o.id === st.id || undefined, mark: o.rank === 1 ? '🏆' : undefined };
+            return { name: os.name, color: getCharacter(os.characterId).color, value: o.score.slice(0, 32), me: o.id === st.id || undefined };
           }),
         },
         color: getCharacter(seat.characterId).color,
@@ -851,7 +851,7 @@ export class Director {
       name: leader?.name,
       options: [
         { id: 'again', label: `${def.emoji} Jogar outra vez` },
-        { id: 'other', label: '🏆 Outro desporto' },
+        { id: 'other', label: 'Outro desporto' },
         { id: 'lobby', label: '↩ Menu principal' },
       ],
     })) as 'again' | 'other' | 'lobby';

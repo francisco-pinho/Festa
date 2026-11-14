@@ -98,7 +98,7 @@ class LookAwayRun extends RowMinigame {
   scores(): MinigameScore[] {
     return this.row.map((r) => ({
       id: r.seat.id,
-      value: r === this.solo ? `👀 vez ${Math.min(this.turn, TURNS)}/${TURNS}` : r.alive ? '😎 a salvo' : '😵 apanhado',
+      value: r === this.solo ? `Vez ${Math.min(this.turn, TURNS)}/${TURNS}` : r.alive ? 'A salvo' : 'Apanhado',
     }));
   }
 

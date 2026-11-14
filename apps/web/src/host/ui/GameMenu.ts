@@ -98,11 +98,11 @@ export class GameMenu {
     this.selected = 0;
     if (this.mode === 'game') {
       this.engine.paused = true;
-      this.hub.suspendLayouts({ kind: 'pad', title: '⏸ Pausa', sub: 'Menu no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher', b: 'Voltar', plus: 'Continuar' } });
+      this.hub.suspendLayouts({ kind: 'pad', title: 'Pausa', sub: 'Menu no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher', b: 'Voltar', plus: 'Continuar' } });
     } else if (this.mode === 'lobby') {
       // No lobby o telemóvel mostra o carrossel (sem cruz): enquanto o menu está aberto, volta a cruz.
       this.lobbySuspended = true;
-      this.hub.suspendLayouts({ kind: 'pad', title: '⚙️ Definições', sub: 'Menu no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher', b: 'Fechar', plus: 'Fechar' } });
+      this.hub.suspendLayouts({ kind: 'pad', title: 'Definições', sub: 'Menu no ecrã grande', stick: 'dpad', buttons: { a: 'Escolher', b: 'Fechar', plus: 'Fechar' } });
     }
     this.el.hidden = false;
     this.render();
@@ -129,14 +129,14 @@ export class GameMenu {
     const s = settings.value;
     if (this.screen === 'quit') {
       return [
-        { label: '🚪 Sim, fechar o jogo', run: () => void desktopApp?.quit() },
-        { label: '↩ Não', run: () => this.goto(this.mode === 'lobby' ? 'settings' : 'main') },
+        { label: 'Sim, fechar o jogo', run: () => void desktopApp?.quit() },
+        { label: 'Não', run: () => this.goto(this.mode === 'lobby' ? 'settings' : 'main') },
       ];
     }
     if (this.screen === 'confirm') {
       return [
-        { label: '✅ Sim, sair para o lobby', run: () => location.reload() },
-        { label: '↩ Não, continuar a jogar', run: () => this.goto('main') },
+        { label: 'Sim, sair para o lobby', run: () => location.reload() },
+        { label: 'Não, continuar a jogar', run: () => this.goto('main') },
       ];
     }
     if (this.screen === 'settings') {
@@ -144,34 +144,34 @@ export class GameMenu {
       return [
         // A dificuldade dos bots só se escolhe antes de começar (a meio do jogo fica bloqueada).
         this.mode === 'lobby'
-          ? { label: `🤖 Dificuldade dos bots: ${settings.botLevelLabel}`, run: () => settings.cycleBotLevel() }
-          : { label: `🔒 Dificuldade dos bots: ${settings.botLevelLabel} (só antes de começar)`, run: () => undefined },
+          ? { label: `Dificuldade dos bots: ${settings.botLevelLabel}`, run: () => settings.cycleBotLevel() }
+          : { label: `Dificuldade dos bots: ${settings.botLevelLabel} (só antes de começar)`, run: () => undefined },
         {
-          label: `⏩ Velocidade das animações: ${speed.label}`,
+          label: `Velocidade das animações: ${speed.label}`,
           run: () => {
             const i = ANIM_SPEEDS.indexOf(speed);
             settings.set('animSpeed', ANIM_SPEEDS[(i + 1) % ANIM_SPEEDS.length]!.value);
           },
         },
-        { label: `💡 Dicas no ecrã: ${s.hints ? 'Sim' : 'Não'}`, run: () => settings.set('hints', !s.hints) },
-        { label: `🔊 Efeitos: ${volLabel(s.sfxVolume)}`, run: () => (settings.set('sfxVolume', nextVol(s.sfxVolume)), sound.play('coin')) },
-        { label: `🎵 Música: ${volLabel(s.musicVolume)}`, run: () => settings.set('musicVolume', nextVol(s.musicVolume)) },
-        { label: `🎙️ Narrador: ${s.narrator ? 'Sim' : 'Não'}`, run: () => settings.set('narrator', !s.narrator) },
+        { label: `Dicas no ecrã: ${s.hints ? 'Sim' : 'Não'}`, run: () => settings.set('hints', !s.hints) },
+        { label: `Efeitos: ${volLabel(s.sfxVolume)}`, run: () => (settings.set('sfxVolume', nextVol(s.sfxVolume)), sound.play('coin')) },
+        { label: `Música: ${volLabel(s.musicVolume)}`, run: () => settings.set('musicVolume', nextVol(s.musicVolume)) },
+        { label: `Narrador: ${s.narrator ? 'Sim' : 'Não'}`, run: () => settings.set('narrator', !s.narrator) },
         {
-          label: `🖼️ Gráficos: ${GRAPHICS_LEVELS.find((g) => g.id === s.graphics)?.label ?? 'Alto'}`,
+          label: `Gráficos: ${GRAPHICS_LEVELS.find((g) => g.id === s.graphics)?.label ?? 'Alto'}`,
           run: () => {
             const i = GRAPHICS_LEVELS.findIndex((g) => g.id === s.graphics);
             settings.set('graphics', GRAPHICS_LEVELS[(i + 1) % GRAPHICS_LEVELS.length]!.id);
           },
         },
-        ...(desktopApp && this.mode === 'lobby' ? [{ label: '🚪 Fechar o jogo', run: () => this.goto('quit') }] : []),
+        ...(desktopApp && this.mode === 'lobby' ? [{ label: 'Fechar o jogo', run: () => this.goto('quit') }] : []),
       ];
     }
     return [
-      { label: '▶ Continuar', run: () => this.close() },
-      { label: '⚙️ Definições', run: () => this.goto('settings') },
-      { label: '🚪 Sair para o lobby', run: () => this.goto('confirm') },
-      ...(desktopApp ? [{ label: '❌ Fechar o jogo', run: () => this.goto('quit') }] : []),
+      { label: 'Continuar', run: () => this.close() },
+      { label: 'Definições', run: () => this.goto('settings') },
+      { label: 'Sair para o lobby', run: () => this.goto('confirm') },
+      ...(desktopApp ? [{ label: 'Fechar o jogo', run: () => this.goto('quit') }] : []),
     ];
   }
 
@@ -182,7 +182,7 @@ export class GameMenu {
   }
 
   private render(): void {
-    const title = this.screen === 'settings' ? '⚙️ Definições' : this.screen === 'confirm' ? 'Sair do jogo?' : this.screen === 'quit' ? 'Fechar o jogo?' : '⏸ Pausa';
+    const title = this.screen === 'settings' ? 'Definições' : this.screen === 'confirm' ? 'Sair do jogo?' : this.screen === 'quit' ? 'Fechar o jogo?' : 'Pausa';
     const sub =
       this.screen === 'confirm'
         ? 'O jogo atual acaba. Os jogadores continuam na sala.'

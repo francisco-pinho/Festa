@@ -434,7 +434,7 @@ export class PartyFlow {
         this.stage.setFlags(this.state.flags);
         this.stage.overview();
         this.buzzAll([50, 60, 50]);
-        await this.hud.banner('🚪 As portas do castelo mudaram!', { sub: ev.open ? 'Abriu a escadaria Este · fechou a Oeste' : 'Abriu a escadaria Oeste · fechou a Este', hold: 2.2, color: '#b98cff' });
+        await this.hud.banner('As portas do castelo mudaram!', { sub: ev.open ? 'Abriu a escadaria Este · fechou a Oeste' : 'Abriu a escadaria Oeste · fechou a Este', hold: 2.2, color: '#b98cff' });
       } else if (ev.kind === 'wheel') {
         this.stage.spinWheel();
         for (const m of ev.moved) this.buzz(m.id, [120, 60, 120]);
@@ -1023,7 +1023,7 @@ export class PartyFlow {
       label: `${ITEMS[item].emoji} ${ITEMS[item].name} · ${price}🪙`,
       disabled: full || p.coins < price,
     }));
-    const all = [...options, { id: 'buy:none', label: '🚪 Sair da loja', disabled: false }];
+    const all = [...options, { id: 'buy:none', label: 'Sair da loja', disabled: false }];
     const cols = Math.min(all.length, 5);
     const icon = shop.kind === 'luxo' ? '💎' : '🛒';
     this.hud.panel(`
@@ -1037,7 +1037,7 @@ export class PartyFlow {
           return `<div class="shop-item ${ok ? '' : 'no'}" data-id="buy:${item}"><span class="emoji">${def.emoji}</span><span class="nm">${esc(def.name)}</span>
             <span class="ds">${esc(def.description)}</span><span class="pr">${sale ? `<span class="old">${base}</span>` : ''}${price} 🪙</span></div>`;
         })
-        .join('')}<div class="shop-item exit" data-id="buy:none"><span class="emoji">🚪</span><span class="nm">Sair da loja</span><span class="ds">Não comprar nada</span></div></div>
+        .join('')}<div class="shop-item exit" data-id="buy:none"><span class="nm">Sair da loja</span><span class="ds">Não comprar nada</span></div></div>
       <p class="shop-keys">✚ escolher · Ⓐ comprar</p>`);
     const highlight = (id: string) => {
       for (const el of this.hud.panelElement().querySelectorAll<HTMLElement>('.shop-item')) el.classList.toggle('sel', el.dataset.id === id);
@@ -1316,7 +1316,7 @@ export class PartyFlow {
     const state = this.state;
     this.scoreboard();
     const teams = decideMinigameTeams(state, this.rng);
-    this.waitAll('Minijogo! Olha para o ecrã 👀');
+    this.waitAll('Minijogo! Olha para o ecrã.');
     this.stage.overview();
     await this.hud.banner('Minijogo!', { sub: MODE_LABEL[teams.mode], hold: 1.6, color: '#ffd23f' });
     const winners = await this.runMinigame(state.players, teams, null, false, true);
@@ -1637,7 +1637,7 @@ export class PartyFlow {
 
   async finale(state: PartyState): Promise<void> {
     this.d.menu.mode = 'off';
-    this.waitAll('Fim da festa! Olha para o ecrã 👀');
+    this.waitAll('Fim da festa! Olha para o ecrã.');
     this.hud.setScoreboard(null);
     await this.hud.banner('Fim da festa!', { sub: 'Hora das estrelas bónus…', hold: 2.4, color: '#ffd23f' });
 
@@ -1798,7 +1798,7 @@ export class PartyFlow {
       if (e.code === 'Enter' || e.code === 'Space') skip = true;
     };
     window.addEventListener('keydown', onKey);
-    this.hud.setRound('🏋️ TREINO · − para começar a sério');
+    this.hud.setRound('TREINO · − para começar a sério');
     void this.hud.big('Treino!', 0.9);
     run.start();
     const LIMIT = 12;
@@ -1806,7 +1806,7 @@ export class PartyFlow {
     while (!skip && !run.finished && t < LIMIT) {
       await this.wait(0.2);
       t += 0.2;
-      this.hud.setRound(`🏋️ TREINO · ${Math.ceil(LIMIT - t)} s · − para começar a sério`);
+      this.hud.setRound(`TREINO · ${Math.ceil(LIMIT - t)} s · − para começar a sério`);
     }
     off();
     window.removeEventListener('keydown', onKey);

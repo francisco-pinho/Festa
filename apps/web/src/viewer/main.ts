@@ -29,7 +29,7 @@ app.innerHTML = `
   <video id="video" playsinline autoplay muted></video>
   <div id="status" class="hidden"></div>
   <form class="card" id="form">
-    <h1>📺 Ver o ecrã da Festa</h1>
+    <h1>Ver o ecrã da Festa</h1>
     <p>Escreve o código da sala (está no ecrã grande).</p>
     <input id="code" maxlength="${ROOM_CODE_LENGTH}" autocomplete="off" autocapitalize="characters" />
     <div><button type="submit">Ver</button></div>
@@ -58,7 +58,7 @@ const viewer = new ScreenViewer(video, (status, detail) => {
     return;
   }
   msg.classList.remove('hidden');
-  msg.innerHTML = status === 'error' ? `<h1>😕</h1><p>${detail ?? 'Erro'}</p><button id="retry">Tentar outra vez</button>` : `<h1>📺</h1><p>${STATUS_TEXT[status]}</p>`;
+  msg.innerHTML = status === 'error' ? `<h1>Erro</h1><p>${detail ?? 'Erro'}</p><button id="retry">Tentar outra vez</button>` : `<h1>Televisão</h1><p>${STATUS_TEXT[status]}</p>`;
   msg.querySelector('#retry')?.addEventListener('click', () => {
     viewer.stop();
     msg.classList.add('hidden');

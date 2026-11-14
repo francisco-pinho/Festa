@@ -12,6 +12,7 @@ import * as THREE from 'three';
 import { sound } from '../audio/Sound';
 import { FONT } from '../three/materials';
 import type { MenuRequest } from '../ui/ScreenMenu';
+import { removeDecorativeEmojis } from '../../common/icons';
 
 export interface TvMenuView {
   req: MenuRequest;
@@ -286,12 +287,12 @@ export class CrtScreen {
       c.font = `bold ${H * 0.045}px ${FONT}`;
       c.fillStyle = '#ffffff';
       const name = `${r.name} · `;
-      c.fillText(name, x, hy);
+      c.fillText(removeDecorativeEmojis(name), x, hy);
       x += c.measureText(name).width;
     }
     c.font = `bold ${H * 0.065}px ${FONT}`;
     c.fillStyle = '#ffd23f';
-    c.fillText(r.title, x, hy);
+    c.fillText(removeDecorativeEmojis(r.title), x, hy);
     // Opções em grelha.
     const cols = Math.max(1, r.columns ?? 1);
     const rows = Math.ceil(r.options.length / cols);
@@ -316,8 +317,8 @@ export class CrtScreen {
         c.fill();
       }
       const pad = rowH * 0.3;
-      let label = o.label;
-      if (o.values) label += `   ◀ ${o.values[o.value ?? 0] ?? ''} ▶`;
+      let label = removeDecorativeEmojis(o.label);
+      if (o.values) label += `   ◀ ${removeDecorativeEmojis(o.values[o.value ?? 0] ?? '')} ▶`;
       const labelSize = Math.min(rowH * (o.sub ? 0.38 : 0.46), H * 0.052);
       c.font = `bold ${labelSize}px ${FONT}`;
       c.fillStyle = sel ? '#1d1433' : '#ffffff';
@@ -326,7 +327,7 @@ export class CrtScreen {
       if (o.sub) {
         c.font = `${Math.min(rowH * 0.24, H * 0.03)}px ${FONT}`;
         c.fillStyle = sel ? 'rgba(29,20,51,0.85)' : 'rgba(255,255,255,0.65)';
-        fitText(c, o.sub, cx + pad, cy + rowH * 0.72, colW - pad * 2);
+        fitText(c, removeDecorativeEmojis(o.sub), cx + pad, cy + rowH * 0.72, colW - pad * 2);
       }
       c.globalAlpha = 1;
     });

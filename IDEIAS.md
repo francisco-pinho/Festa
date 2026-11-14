@@ -237,7 +237,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Remover todos os emojis da aplicação
+### [x] Remover todos os emojis da aplicação
 
 - **Tipo:** outro, menu, visual
 - **Prioridade (alta / média / baixa):** alta

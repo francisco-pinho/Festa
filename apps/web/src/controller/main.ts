@@ -282,7 +282,7 @@ function renderJoin(error = ''): void {
   $('#bar').hidden = true;
   setView(`
     <form id="join" class="card" autocomplete="off">
-      <h1>FESTA 🎉</h1>
+      <h1>FESTA</h1>
       <label>Código da sala
         <input id="code" maxlength="${ROOM_CODE_LENGTH}" autocapitalize="characters" spellcheck="false"
                inputmode="text" placeholder="ABCD" required />
@@ -321,7 +321,7 @@ function renderClosed(message: string): void {
   $('#bar').hidden = true;
   setView(`
     <div class="card center">
-      <h1>👋</h1>
+      <h1>Festa encerrada</h1>
       <p>${escapeHtml(message)}</p>
       <button class="primary" id="again">Entrar noutra sala</button>
     </div>
@@ -342,7 +342,7 @@ function renderBar(): void {
 
 function renderLayout(): void {
   if (!me) return;
-  const l = layout ?? { kind: 'wait', message: 'Estás dentro! Olha para o ecrã 👀' };
+  const l = layout ?? { kind: 'wait', message: 'Estás dentro! Olha para o ecrã.' };
   // O comando fica com a cor da personagem (fundo e destaques).
   const color = 'color' in l ? l.color : undefined;
   if (color) {

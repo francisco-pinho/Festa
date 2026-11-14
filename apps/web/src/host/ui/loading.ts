@@ -10,7 +10,7 @@ function ensure(): HTMLElement {
   el = document.createElement('div');
   el.className = 'boot';
   el.innerHTML = `
-    <div class="boot-logo">FESTA <span>🎉</span></div>
+    <div class="boot-logo">FESTA</div>
     <div class="boot-bar"><i></i></div>
     <div class="boot-text"></div>`;
   document.body.appendChild(el);
