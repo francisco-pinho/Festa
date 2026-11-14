@@ -738,8 +738,13 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
   // Candeeiro entre o sofá principal e o cadeirão esquerdo, atrás do tapete.
   place(g, prop('kaykit-furniture/lamp_standing', { height: 2.6 }), -2.65, 0, TABLE_Z - 2.0, 0);
 
-  // Guitarra encostada à parede e cadeira de gamer ao canto (KayKit Mixed Bag).
-  againstWall(g, prop('kaykit-mixed1/guitar_A', { height: 1.5 }), -5.6, 0);
+  // Guitarra pequena deitada sobre a frente do tampo da lareira.
+  const mantelGuitar = place(g, prop('kaykit-mixed1/guitar_A', { height: 3.4 }), FIRE_X + 1.5, 4.3, fireZ + 1.0, 0.15);
+  if (mantelGuitar) {
+    mantelGuitar.rotation.y = -0.05;
+    mantelGuitar.rotation.z = Math.PI / 2 + 0.15;
+    mantelGuitar.rotation.x = 0.05;
+  }
   place(g, prop('kaykit-mixed2/gamer_chair_A', { height: 1.9 }), -9.5, 0, -6.5, 0.6);
   // O lugar junto à parede esquerda fica livre da estante baixa removida.
   Object.assign(ROOM_SEATS[7]!, { x: -5.8, z: -7.25, yaw: 0.25, y: 0, anim: 'fiddle' });
