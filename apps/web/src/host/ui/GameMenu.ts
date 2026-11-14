@@ -165,7 +165,6 @@ export class GameMenu {
           },
         },
         ...(desktopApp && this.mode === 'lobby' ? [{ label: '🚪 Fechar o jogo', run: () => this.goto('quit') }] : []),
-        { label: this.mode === 'lobby' ? '✔ Fechar' : '↩ Voltar', run: () => (this.mode === 'lobby' ? this.close() : this.goto('main')) },
       ];
     }
     return [

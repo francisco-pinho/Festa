@@ -543,7 +543,6 @@ export class Director {
           ...(this.portable ? [{ id: 'test', label: '🧪 Testar minijogos', sub: 'Escolhe um minijogo e joga-o já' }] : []),
           { id: 'credits', label: '📜 Créditos' },
           { id: 'quit', label: '🚪 Sair do jogo' },
-          { id: 'room', label: '↩ Voltar à sala' },
         ],
       };
       const pickMode = await this.menus.ask(mainMenu);
@@ -558,7 +557,7 @@ export class Director {
       } else if (pickMode === 'credits') {
         this.hud.panel(creditsHtml());
         this.hud.panelElement().classList.add('compact');
-        await this.menus.ask({ player: leader, keyboard: true, corner: true, title: 'Créditos', options: [{ id: 'back', label: '↩ Voltar' }], cancel: 'back' });
+        await this.menus.ask({ player: leader, keyboard: true, corner: true, title: 'Créditos', options: [], cancel: 'back' });
         this.hud.panelElement().classList.remove('compact');
         this.hud.panel(null);
       } else if (pickMode === 'settings') {
@@ -616,7 +615,6 @@ export class Director {
         { id: 'rounds', label: '🔄 Rondas', values: RULES.roundOptions.map(String), value: rounds },
         { id: 'bots', label: '🤖 Bots', values: BOT_LEVELS.map((l) => l.label), value: bots, sub: 'Os bots completam a mesa até um número par (mínimo 4)' },
         { id: 'start', label: '▶ Começar a festa!' },
-        { id: 'back', label: '↩ Voltar' },
       ],
       onChange: (id, v) => {
         if (id === 'board') {
@@ -647,7 +645,7 @@ export class Director {
       name: leader?.name,
       cancel: 'back',
       columns: 2,
-      options: [...SPORTS.map((s) => ({ id: s.id, label: `${s.emoji} ${s.name}`, sub: s.description })), { id: 'back', label: '↩ Voltar' }],
+      options: SPORTS.map((s) => ({ id: s.id, label: `${s.emoji} ${s.name}`, sub: s.description })),
     });
     return SPORTS.find((s) => s.id === id) ?? null;
   }
@@ -702,7 +700,6 @@ export class Director {
         initial: last,
         options: [
           ...MINIGAMES.map((m) => ({ id: m.id, label: m.name, sub: m.duel ? 'Duelo' : m.modes.map((x) => MODE_NAME[x]).join(' · ') })),
-          { id: 'back', label: '↩ Voltar ao início' },
         ],
         cancel: 'back',
       });
@@ -715,7 +712,7 @@ export class Director {
           player: this.leader,
           keyboard: true,
           title: `${def.name}: que modo?`,
-          options: [...def.modes.map((x) => ({ id: x, label: MODE_NAME[x] })), { id: 'back', label: '↩ Voltar' }],
+          options: def.modes.map((x) => ({ id: x, label: MODE_NAME[x] })),
           cancel: 'back',
         });
         if (m === 'back') continue;
