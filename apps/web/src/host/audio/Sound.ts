@@ -3,7 +3,7 @@
  * (moedas, dados, socos, bola, pinos, público…) e músicas simples em loop por modo.
  *
  * Os browsers só deixam tocar som depois de um clique ou tecla no ecrã principal:
- * `unlock()` é chamado no primeiro gesto e há um botão «🔊 Ativar som» enquanto não houver.
+ * `unlock()` é chamado no arranque (a app de computador não exige gesto) e no primeiro gesto.
  */
 import { settings } from '../game/Settings';
 
@@ -96,14 +96,9 @@ class SoundEngine {
   private beat = 0;
   private seed = 1;
   private melody: number[] = [];
-  private readonly listeners = new Set<() => void>();
 
   get unlocked(): boolean {
     return this.ctx?.state === 'running';
-  }
-
-  onUnlockChange(fn: () => void): void {
-    this.listeners.add(fn);
   }
 
   /** Chamar a partir de um clique ou tecla. */
@@ -111,7 +106,6 @@ class SoundEngine {
     try {
       if (!this.ctx) this.init();
       void this.ctx!.resume().then(() => {
-        this.listeners.forEach((f) => f());
         if (this.wantTrack && !this.track) this.music(this.wantTrack);
       });
     } catch {

@@ -11,7 +11,7 @@
  */
 import { app, BrowserWindow, ipcMain, Menu, session, shell } from 'electron';
 import { join } from 'node:path';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, statSync } from 'node:fs';
 import { startServer, type FestaServerHandle } from '../../server/src/app';
 import { findCloudflared, openTunnel, type Tunnel } from '../../server/src/tunnel';
 
@@ -23,6 +23,9 @@ const bundledCloudflared = app.isPackaged
 let server: FestaServerHandle | null = null;
 let tunnel: Tunnel | null = null;
 let win: BrowserWindow | null = null;
+
+// O som toca logo ao abrir, com o volume guardado (sem esperar por um clique).
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 // Só uma Festa aberta de cada vez: abrir outra vez traz a janela para a frente.
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -70,7 +73,10 @@ function createWindow(port: number): BrowserWindow {
     const e = event as unknown as { level: number | string; message: string; sourceId?: string; lineNumber?: number };
     if (e.level !== 3 && e.level !== 'error') return;
     try {
-      appendFileSync(join(app.getPath('userData'), 'festa-erros.log'), `[${new Date().toISOString()}] ${e.message} (${e.sourceId ?? ''}:${e.lineNumber ?? ''})\n`);
+      const file = join(app.getPath('userData'), 'festa-erros.log');
+      // Um erro por frame enchia o disco: acima de 1 MB deixa de escrever.
+      if ((statSync(file, { throwIfNoEntry: false })?.size ?? 0) > 1_000_000) return;
+      appendFileSync(file, `[${new Date().toISOString()}] ${e.message} (${e.sourceId ?? ''}:${e.lineNumber ?? ''})\n`);
     } catch {
       /* sem disco: ignora */
     }

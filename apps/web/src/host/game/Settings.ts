@@ -19,16 +19,8 @@ export const GRAPHICS_LEVELS: { id: GraphicsLevel; label: string }[] = [
   { id: 'baixo', label: 'Baixo' },
 ];
 
-export const ANIM_SPEEDS = [
-  { value: 1, label: 'Normal' },
-  { value: 1.4, label: 'Rápida' },
-  { value: 1.8, label: 'Muito rápida' },
-];
-
 export interface SettingsData {
   botLevel: BotLevel;
-  /** Multiplicador da velocidade das animações e esperas. */
-  animSpeed: number;
   /** Mostrar dicas no fundo do ecrã. */
   hints: boolean;
   /** Volume dos efeitos e da música, 0–1. */
@@ -40,10 +32,8 @@ export interface SettingsData {
   graphics: GraphicsLevel;
 }
 
-export const VOLUMES = [0, 0.25, 0.5, 0.75, 1];
-
 const KEY = 'festa.settings';
-const DEFAULTS: SettingsData = { botLevel: 'normal', animSpeed: 1, hints: true, sfxVolume: 0.75, musicVolume: 0.5, narrator: true, graphics: 'alto' };
+const DEFAULTS: SettingsData = { botLevel: 'normal', hints: true, sfxVolume: 0.75, musicVolume: 0.5, narrator: true, graphics: 'alto' };
 
 class Settings {
   readonly events = new Emitter<{ changed: SettingsData }>();
@@ -70,12 +60,6 @@ class Settings {
       /* sem armazenamento */
     }
     this.events.emit('changed', this.data);
-  }
-
-  /** Passa para o nível de bots seguinte (útil no telemóvel do VIP). */
-  cycleBotLevel(): void {
-    const i = BOT_LEVELS.findIndex((l) => l.id === this.data.botLevel);
-    this.set('botLevel', BOT_LEVELS[(i + 1) % BOT_LEVELS.length]!.id);
   }
 }
 

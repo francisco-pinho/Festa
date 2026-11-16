@@ -24,15 +24,12 @@ menu.keyboardBusy = () => menus.keyboardOpen;
 narrator.init(hub);
 const director = new Director(engine, hud, hub, connection, menu, menus);
 
-// Som: os browsers só deixam tocar depois de um clique ou tecla no ecrã principal.
-const soundBtn = document.createElement('button');
-soundBtn.className = 'sound-unlock';
-soundBtn.textContent = '🔇 Clica aqui (ou carrega numa tecla) para ligar o som';
-document.getElementById('ui')!.appendChild(soundBtn);
+// Som com o último volume guardado, logo ao abrir (a app de computador não exige gesto).
+// Num browser normal fica à espera do primeiro clique ou tecla, sem botão.
+sound.unlock();
 const unlockSound = () => sound.unlock();
 window.addEventListener('pointerdown', unlockSound);
 window.addEventListener('keydown', unlockSound);
-sound.onUnlockChange(() => (soundBtn.hidden = sound.unlocked));
 
 // Vídeo do ecrã para quem joga fora de casa: tecla V partilha este separador (página /ver).
 const screenShare = new ScreenShare(connection);

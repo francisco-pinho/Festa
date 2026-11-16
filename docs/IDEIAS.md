@@ -42,62 +42,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Sugerir nomes alternativos para a aplicação
-
-- **Tipo:** outro
-- **Prioridade (alta / média / baixa):** média
-- **Onde no jogo (ecrã, minijogo, mapa…):** identidade da aplicação
-- **Como funciona:** Apresentar várias sugestões de nomes alternativos para a aplicação Festa.
-- **Controlos no telemóvel (botões, joystick, abanar…):** não aplicável
-- **Como se ganha / o que acontece no fim:** não aplicável
-- **Inspirado em (jogo, vídeo, link, imagem…):**
-- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** Escolher um nome que continue a funcionar para o modo Festa, desportos e jogo online.
-
----
-
-### [x] Remover «Voltar à sala» da televisão
-
-- **Tipo:** menu, visual
-- **Prioridade (alta / média / baixa):** média
-- **Onde no jogo (ecrã, minijogo, mapa…):** televisão ao iniciar um jogo
-- **Como funciona:** Retirar a opção «Voltar à sala» da interface da televisão; essa ação deve ser feita exclusivamente pelo botão B.
-- **Controlos no telemóvel (botões, joystick, abanar…):** botão B.
-- **Como se ganha / o que acontece no fim:** não há duas ações diferentes para a mesma função.
-- **Inspirado em (jogo, vídeo, link, imagem…):**
-- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** Rever o fluxo do `Director` e os painéis de `Hud`.
----
-
-### [ ] Reposicionar a luminária e as prateleiras
-
-- **Tipo:** visual, mapa
-- **Prioridade (alta / média / baixa):** média
-- **Onde no jogo (ecrã, minijogo, mapa…):** lobby
-- **Como funciona:** Colocar a luminária à esquerda do sofá principal, alinhada com ele e atrás do sofá individual da esquerda. A posição deve ser a interseção dos eixos dos dois sofás. Centrar a prateleira de cima no meio da parede e eliminar completamente a prateleira de baixo.
-- **Controlos no telemóvel (botões, joystick, abanar…):** não aplicável
-- **Como se ganha / o que acontece no fim:** a decoração fica alinhada e sem a prateleira inferior.
-- **Inspirado em (jogo, vídeo, link, imagem…):**
-- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** Ajustar os objetos do cenário sem alterar os lugares das personagens.
-
----
-
-### [ ] Corrigir o cenário e a decoração do lobby
-
-- **Tipo:** visual, mapa
-- **Prioridade (alta / média / baixa):** média
-- **Onde no jogo (ecrã, minijogo, mapa…):** lobby
-- **Como funciona:** Remover o espelho cinzento no centro da parede atrás do sofá. Repor as paredes do modelo transferido anteriormente, em vez das paredes do pack das personagens. Ao virar a câmara para a televisão, corrigir a parede traseira roxa para ter a mesma cor uniforme das restantes.
-- **Controlos no telemóvel (botões, joystick, abanar…):** não aplicável
-- **Como se ganha / o que acontece no fim:** o lobby fica visualmente coerente e sem elementos a mais.
-- **Inspirado em (jogo, vídeo, link, imagem…):**
-- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** Ver `ShowcaseStage`, `livingRoom` e os recursos do cenário.
-
----
-
-### [ ] Corrigir posições dos lugares no lobby
+### [?] Corrigir posições dos lugares no lobby
 
 - **Tipo:** visual, personagem
 - **Prioridade (alta / média / baixa):** alta
@@ -107,7 +52,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:** todas as personagens ficam visíveis e corretamente sentadas.
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** Confirmar coordenadas, rotação e altura dos lugares em `ShowcaseStage`/`livingRoom`.
+- **Notas do Claude:** Feito: lugares 1–3 alinhados no sofá (o 1 é a referência), o 3 mais baixo e à frente, o 4 e o 5 mais baixos nos cadeirões, o 8 e o 10 visíveis. Dúvida: o lugar 9 está agora no canto direito, virado para a sala, e já não à frente da lareira. Queres que volte à lareira, virado para a câmara? Falta confirmares tudo no jogo.
 
 ---
 
@@ -125,21 +70,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Iniciar o jogo com o volume guardado
-
-- **Tipo:** som, menu
-- **Prioridade (alta / média / baixa):** alta
-- **Onde no jogo (ecrã, minijogo, mapa…):** arranque e lobby
-- **Como funciona:** Retirar o botão de ativar o som por tecla ou rato. Ao abrir, o jogo deve iniciar automaticamente com o último volume usado.
-- **Controlos no telemóvel (botões, joystick, abanar…):** música e efeitos continuam a ser ajustáveis nas definições.
-- **Como se ganha / o que acontece no fim:** o volume fica persistido entre sessões.
-- **Inspirado em (jogo, vídeo, link, imagem…):**
-- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** Relacionado com `SoundEngine`/`applyVolumes` e as definições gerais.
-
----
-
-### [ ] Reposicionar e simplificar o QR code
+### [~] Reposicionar e simplificar o QR code
 
 - **Tipo:** visual, menu, online
 - **Prioridade (alta / média / baixa):** alta
@@ -149,25 +80,11 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:** o QR fica legível, acessível e integrado no cenário.
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** Não usar o símbolo de informação como emoji; deve ser um ícone de interface sem emojis.
+- **Notas do Claude:** Feito: o QR passou para a direita do quadro, o link aparece por extenso e as dicas do Android só no balão do botão «i» (ícone desenhado, sem emoji). Falta: pôr o QR à frente da mesa ou num quadro da parede, e o «−» do VIP a mostrar/esconder.
 
 ---
 
-### [ ] Melhorar o menu de definições gerais
-
-- **Tipo:** menu, som
-- **Prioridade (alta / média / baixa):** alta
-- **Onde no jogo (ecrã, minijogo, mapa…):** definições gerais do VIP
-- **Como funciona:** Remover a opção de velocidade das animações e fixar a velocidade normal. Transformar música e efeitos em sliders de 0 a 100. Remover o botão de fechar, porque essa função pertence ao botão B. Remover a dificuldade dos bots deste menu, porque deve ser escolhida ao iniciar cada jogo na televisão.
-- **Controlos no telemóvel (botões, joystick, abanar…):** sliders e opções no telemóvel do VIP.
-- **Como se ganha / o que acontece no fim:** as definições gerais mostram apenas opções globais válidas para a sessão.
-- **Inspirado em (jogo, vídeo, link, imagem…):**
-- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** `Settings.ts` já concentra `SettingsData`; alinhar o modelo com os novos limites e permissões.
-
----
-
-### [ ] Definir os comandos do jogador no lobby
+### [?] Definir os comandos do jogador no lobby
 
 - **Tipo:** comando (telemóvel), menu
 - **Prioridade (alta / média / baixa):** alta
@@ -177,7 +94,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:** cada botão tem uma função única e respeita as permissões do VIP.
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** Rever os layouts enviados por `PlayerHub` e renderizados em `controller/main.ts`.
+- **Notas do Claude:** Feito: Ⓑ = definições gerais só para o VIP, Ⓨ = jogar só para o VIP, Ⓧ = mudar de lugar; saiu o «+ Definições». Dúvida: hoje o Ⓐ escolhe a personagem no carrossel e, depois de pronto, faz «Mudar personagem». Se o Ⓐ passar a «mudar o nome», como se muda de personagem depois de pronto? Falta ainda o «−» do VIP para o QR e a engrenagem (ver «Separar as definições individuais»).
 
 ---
 
@@ -192,20 +109,6 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
 - **Notas do Claude:** Distinguir estado local do comando de opções do host em `Settings`.
-
----
-
-### [ ] Restringir o jogo online e o menu geral ao VIP
-
-- **Tipo:** online, menu
-- **Prioridade (alta / média / baixa):** alta
-- **Onde no jogo (ecrã, minijogo, mapa…):** lobby e definições gerais
-- **Como funciona:** Mover «Jogar Online» para as definições gerais e torná-lo acessível apenas ao VIP. A opção «Fechar o jogo» também deve existir apenas nesse menu geral e apenas para o VIP. Retirar o botão «Fechar» das definições, pois fechar é a função do botão B.
-- **Controlos no telemóvel (botões, joystick, abanar…):** B abre as definições gerais para o VIP e também fecha ecrãs quando essa for a função definida.
-- **Como se ganha / o que acontece no fim:** jogadores normais não conseguem alterar a sessão nem fechar o jogo.
-- **Inspirado em (jogo, vídeo, link, imagem…):**
-- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** Manter as permissões consistentes entre o host, o layout do telemóvel e a interface apresentada.
 
 ---
 
@@ -234,20 +137,6 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
 - **Notas do Claude:** A lista deve usar os nomes atuais dos jogadores e atualizar a autoridade VIP da sala.
-
----
-
-### [x] Remover todos os emojis da aplicação
-
-- **Tipo:** outro, menu, visual
-- **Prioridade (alta / média / baixa):** alta
-- **Onde no jogo (ecrã, minijogo, mapa…):** aplicação inteira, incluindo televisão
-- **Como funciona:** Eliminar definitivamente todos os emojis de textos, botões, instruções, televisão, README/interface e restantes ecrãs. Não voltar a adicionar emojis sem perguntar primeiro se são realmente necessários.
-- **Controlos no telemóvel (botões, joystick, abanar…):** substituir emojis usados como ícones por ícones visuais ou texto acessível.
-- **Como se ganha / o que acontece no fim:** nenhum emoji aparece na aplicação.
-- **Inspirado em (jogo, vídeo, link, imagem…):**
-- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** Inclui especificamente os emojis atualmente usados na televisão e nos menus; confirmar também strings e documentação visível ao utilizador.
 
 ---
 

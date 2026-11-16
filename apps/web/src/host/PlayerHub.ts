@@ -202,11 +202,6 @@ export class PlayerHub {
     }
   }
 
-  /** Mostra um layout num telemóvel sem o guardar como "o atual" (menus temporários). */
-  sendTemporaryLayout(player: HubPlayer, layout: ControllerLayout): void {
-    if (player.source === 'phone') this.sendRaw(player, layout);
-  }
-
   private sendRaw(p: HubPlayer, layout: ControllerLayout): void {
     if (p.source !== 'phone') return;
     this.lastLayout.set(p.id, JSON.stringify(layout));

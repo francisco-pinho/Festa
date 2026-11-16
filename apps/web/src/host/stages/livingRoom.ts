@@ -1,9 +1,9 @@
 /**
- * Sala de estar do ecrã inicial: parquet, lambril com painéis e parede branca. Na parede de trás, o
+ * Sala de estar do ecrã inicial: parquet e paredes da KayKit Restaurant. Na parede de trás, o
  * sofá cinzento com três quadros em fila por cima, uma estante alta e a lareira de pedra
  * acesa (com faúlhas); à frente, a mesa de centro, duas cadeiras-ovo, um monte de almofadas e um
- * puff, plantas e a televisão de tubo onde passa o menu dos jogos. Os modelos vêm do Sketchfab
- * (ver docs/ASSETS.md); sem eles, a sala usa versões feitas à mão.
+ * puff, plantas e a televisão de tubo onde passa o menu dos jogos. Os modelos são da KayKit (e a TV
+ * do Sketchfab, ver docs/ASSETS.md); sem eles, a sala usa versões feitas à mão.
  *
  * Cabem 10 jogadores, cada um no seu sítio e a fazer alguma coisa: três no sofá, dois nas
  * cadeiras-ovo, dois no chão, um à estante, um a aquecer as mãos à lareira e um a beber.
@@ -12,22 +12,25 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import type { CharacterAnim } from '../three/CharacterModel';
 import { canvasTexture, mesh, toon, toonUnique } from '../three/materials';
-import { prop } from '../three/props';
+import { hasProp, prop } from '../three/props';
 import { CrtScreen } from './crtScreen';
 
 /** Lugares por ordem de chegada: posição, para onde olha e o que está a fazer. */
 export const ROOM_SEATS: { x: number; z: number; yaw: number; y?: number; anim: CharacterAnim }[] = [
+  // Sofá principal (3 lugares): o lugar 1 (centro) é a referência; 2 e 3 são os lados.
   { x: 0, z: -5.55, yaw: 0, y: 0.66, anim: 'sit' },
-  { x: -2.35, z: -5.55, yaw: 0.06, y: 0.66, anim: 'sit' },
-  { x: 2.35, z: -5.55, yaw: -0.06, y: 0.66, anim: 'sit' },
-  { x: -5.5, z: -3.05, yaw: 0.8, y: 0.62, anim: 'sit' },
-  { x: 5.5, z: -3.05, yaw: -0.8, y: 0.62, anim: 'sit' },
-  { x: -2.7, z: -1.15, yaw: 0.35, y: 0.32, anim: 'sit' },
-  { x: 2.7, z: -1.15, yaw: -0.35, y: 0.6, anim: 'sit' },
-  // De pé: à estante, à lareira e a beber (acertados quando a sala é montada).
-  { x: -6.7, z: -6.6, yaw: 2.62, anim: 'aim' },
-  { x: 6.8, z: -6.7, yaw: 2.36, anim: 'warm' },
-  { x: -7.3, z: -3.9, yaw: 0.9, anim: 'drink' },
+  { x: -1.25, z: -5.55, yaw: 0, y: 0.66, anim: 'sit' },
+  { x: 1.25, z: -5.55, yaw: 0, y: 0.66, anim: 'sit' },
+  // Cadeirões (um de cada lado), virados para a mesa de centro.
+  { x: -3.5, z: -3.05, yaw: 1.05, y: 0.62, anim: 'sit' },
+  { x: 3.5, z: -3.05, yaw: -1.05, y: 0.62, anim: 'sit' },
+  // Pufes no chão, à frente da mesa.
+  { x: -2.1, z: -1.15, yaw: 0.3, y: 0.32, anim: 'sit' },
+  { x: 2.1, z: -1.15, yaw: -0.3, y: 0.32, anim: 'sit' },
+  // De pé, a mexer nas mãos: um ao lado do cadeirão esquerdo e dois no canto direito.
+  { x: -3.9, z: -2.25, yaw: 0.25, y: 0, anim: 'fiddle' },
+  { x: 6.0, z: -5.5, yaw: -1.0, y: 0, anim: 'fiddle' },
+  { x: 6.0, z: -3.5, yaw: -1.0, y: 0, anim: 'fiddle' },
 ];
 
 /** Modelos usados na sala (carregar antes de a montar; sem eles usa as versões feitas à mão). */
@@ -45,7 +48,8 @@ export const ROOM_PROPS: readonly string[] = [
   'kaykit-furniture/book_set',
   'kaykit-mixed2/frame_A_large',
   'kaykit-mixed2/frame_B_large',
-  'kaykit-mixed2/ornate_mirror',
+  'kaykit-restaurant/wall',
+  'kaykit-restaurant/wall_window_closed',
   'kaykit-furniture/cabinet_medium_decorated',
   'kaykit-holiday/hot_chocolate_decorated',
   'kaykit-holiday/footstool_red',
@@ -290,6 +294,27 @@ function wainscot(): THREE.CanvasTexture {
   return t;
 }
 
+/** Paredes desenhadas (papel de parede + lambrim), para quando as da KayKit não carregam. */
+function buildDrawnWalls(g: THREE.Group): void {
+  const paper = toonUnique('#ffffff', { map: wallpaper() });
+  const wood = toonUnique('#ffffff', { map: wainscot() });
+  // Trás (z −9.2) e frente (z 9.2): a da frente só se vê ao olhar para a TV; sem ela via-se o fundo roxo.
+  for (const z of [-9.2, 9.2]) {
+    const high = mesh(new THREE.BoxGeometry(28, 7.4, 0.4), paper, { cast: false, receive: true });
+    high.position.set(0, 1.8 + 3.7, z);
+    const low = mesh(new THREE.BoxGeometry(28, 1.8, 0.45), wood, { cast: false, receive: true });
+    low.position.set(0, 0.9, z - Math.sign(z) * 0.02);
+    g.add(high, low);
+  }
+  for (const sx of [-1, 1]) {
+    const side = mesh(new THREE.BoxGeometry(0.4, 7.4, 20), paper, { cast: false, receive: true });
+    side.position.set(sx * 13.8, 5.5, -1);
+    const sideLow = mesh(new THREE.BoxGeometry(0.45, 1.8, 20), wood, { cast: false, receive: true });
+    sideLow.position.set(sx * 13.78, 0.9, -1);
+    g.add(side, sideLow);
+  }
+}
+
 /** Tecido (trama fina), para o sofá, cadeirões e almofadas. */
 function fabric(color: string): THREE.MeshToonMaterial {
   const base = new THREE.Color(color);
@@ -514,25 +539,28 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
   g.add(fill);
 
   // ── Chão e paredes ──
-  // Soalho, papel de parede e lambril desenhados à mão (a KayKit não traz texturas de chão/parede
-  // que se repitam: as cores dela vêm de uma paleta). Os tapetes da KayKit vão por cima.
+  // Soalho desenhado à mão (a KayKit não traz textura de chão que se repita); paredes KayKit Restaurant.
   const floor = mesh(new THREE.BoxGeometry(28, 0.3, 20), toonUnique('#ffffff', { map: planks() }), { cast: false, receive: true });
   floor.position.set(0, -0.15, -1);
-  const paper = toonUnique('#ffffff', { map: wallpaper() });
-  const wood = toonUnique('#ffffff', { map: wainscot() });
-  const woodSide = wood;
-  const back = mesh(new THREE.BoxGeometry(28, 7.4, 0.4), paper, { cast: false, receive: true });
-  back.position.set(0, 1.8 + 3.7, -9.2);
-  const backLow = mesh(new THREE.BoxGeometry(28, 1.8, 0.45), wood, { cast: false, receive: true });
-  backLow.position.set(0, 0.9, -9.18);
-  g.add(floor, back, backLow);
-  for (const sx of [-1, 1]) {
-    const side = mesh(new THREE.BoxGeometry(0.4, 7.4, 20), paper, { cast: false, receive: true });
-    side.position.set(sx * 13.8, 5.5, -1);
-    const sideLow = mesh(new THREE.BoxGeometry(0.45, 1.8, 20), woodSide, { cast: false, receive: true });
-    sideLow.position.set(sx * 13.78, 0.9, -1);
-    g.add(side, sideLow);
-  }
+  g.add(floor);
+  if (hasProp('kaykit-restaurant/wall')) {
+    // Paredes KayKit Restaurant: peça de 4×4 à escala 2.3 (9.2 m) → 3 em cada topo e 2 em cada lado.
+    const S = 2.3;
+    const half = 0.25 * S; // meia espessura: a face de dentro fica onde estavam as paredes desenhadas
+    const wall = (key: string, x: number, z: number, yaw: number) => {
+      const w = prop(`kaykit-restaurant/${key}`, { scale: S });
+      if (!w) return;
+      w.position.set(x, 0, z);
+      w.rotation.y = yaw;
+      g.add(w);
+    };
+    for (const x of [-9.2, 0, 9.2]) {
+      wall('wall', x, WALL_Z - half, 0);
+      wall('wall', x, 9.0 + half, Math.PI);
+    }
+    for (const sx of [-1, 1])
+      for (const [i, z] of [-4.58, 4.62].entries()) wall(i === 0 ? 'wall_window_closed' : 'wall', sx * (13.6 + half), z, -sx * (Math.PI / 2));
+  } else buildDrawnWalls(g);
 
   // ── Disposição ──
   // Tudo à escala das personagens (2.3 de altura, ≈ 1.5 unidades por metro real): sofá encostado à
@@ -552,6 +580,7 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
     graySofa.position.set(0, 0, WALL_Z + 0.15 - sb.min.z);
     g.add(graySofa);
     const front = graySofa.position.z + sb.max.z;
+    // Valores absolutos: a sala é montada de novo a cada lobby e o fitSeat mexe nestes lugares.
     [0, -1.25, 1.25].forEach((x, i) => Object.assign(ROOM_SEATS[i]!, { x, z: front - 0.45, yaw: 0 }));
     sofaSeats.push(graySofa, graySofa, graySofa);
   } else buildSofa(g);
@@ -561,7 +590,6 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
   // A base fica acima das cabeças de quem está sentado (≈ 2.7).
   const PIC_Y = 2.95;
   againstWall(g, framed('kaykit-mixed2/frame_A_large', 1.3, landscapePainting()), -1.75, PIC_Y);
-  againstWall(g, prop('kaykit-mixed2/ornate_mirror', { height: 1.5 }), 0, PIC_Y - 0.1);
   againstWall(g, framed('kaykit-mixed2/frame_B_large', 1.3, flowersPainting()), 1.75, PIC_Y);
   // Prateleira com livros e coisas por cima dos quadros.
   againstWall(g, prop('kaykit-furniture/shelf_B_large_decorated', { width: 2.4 }), 0, PIC_Y + 1.75);
@@ -654,7 +682,6 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
   /** Boca do lume (centro, tamanho e face da frente) e tampo, no referencial da lareira. */
   const mouth = { y: 1.1, w: 2.4, h: 2, z: 0.3 };
   let fireZ = -8.4;
-  let fireFront = 0.6;
   if (stone) {
     fire.add(stone);
     const box = new THREE.Box3().setFromObject(stone);
@@ -664,7 +691,6 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
     // No modelo: a boca vai de 18% a 54% da altura e ocupa 34% da largura; a face fica 22% atrás da frente.
     Object.assign(mouth, { y: 0.36 * H, w: 0.34 * W, h: 0.36 * H, z: box.max.z - 0.22 * D });
     fireZ = WALL_Z - box.min.z;
-    fireFront = box.max.z;
   } else {
     const brick = toonUnique('#ffffff', { map: bricks() });
     const body = mesh(new THREE.BoxGeometry(4.2, 4.6, 1.2), brick, { receive: true });
@@ -678,7 +704,6 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
     const arch = mesh(new THREE.TorusGeometry(1.2, 0.18, 6, 16, Math.PI), brick);
     arch.position.set(0, 2.05, 0.62);
     fire.add(body, chimney, mantel, hearth, arch);
-    fireFront = 1.7;
   }
   const hole = mesh(new THREE.BoxGeometry(mouth.w, mouth.h, stone ? 0.06 : 0.7), toon('#1a1210'), { cast: false });
   hole.position.set(0, mouth.y, stone ? mouth.z + 0.03 : mouth.z);
@@ -707,14 +732,6 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
   fire.add(fireLight);
   fire.position.set(FIRE_X, 0, fireZ);
   g.add(fire);
-  // Quem aquece as mãos fica de pé à frente da lareira, um pouco de lado, virado para o lume.
-  {
-    const s = ROOM_SEATS[8]!;
-    s.x = FIRE_X - 0.9;
-    s.z = fireZ + fireFront + 1.0;
-    s.yaw = Math.atan2(FIRE_X - s.x, fireZ - s.z);
-    s.y = 0;
-  }
   // Faúlhas a subir da boca do lume.
   const mm = new THREE.Matrix4();
   const sparkY = floorY + 0.3;
@@ -735,8 +752,10 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
 
   // ── Cómoda baixa à direita do sofá (KayKit «cabinet_medium_decorated») ──
   againstWall(g, prop('kaykit-furniture/cabinet_medium_decorated', { width: 2.0 }), 3.95, 0);
-  // Candeeiro entre o sofá principal e o cadeirão esquerdo, atrás do tapete.
-  place(g, prop('kaykit-furniture/lamp_standing', { height: 2.6 }), -2.65, 0, TABLE_Z - 2.0, 0);
+  // Candeeiro à esquerda do sofá, atrás do cadeirão esquerdo: no cruzamento do eixo do sofá
+  // (a sua profundidade) com o eixo do cadeirão (a sua largura).
+  const sofaAxisZ = graySofa ? new THREE.Box3().setFromObject(graySofa).getCenter(new THREE.Vector3()).z : sofaFront - 0.6;
+  place(g, prop('kaykit-furniture/lamp_standing', { height: 2.6 }), ROOM_SEATS[3]!.x, 0, sofaAxisZ, 0);
 
   // Guitarra pequena deitada sobre a frente do tampo da lareira.
   const mantelGuitar = place(g, prop('kaykit-mixed1/guitar_A', { height: 3.4 }), FIRE_X + 1.5, 4.3, fireZ + 1.0, 0.15);
@@ -746,19 +765,17 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
     mantelGuitar.rotation.x = 0.05;
   }
   place(g, prop('kaykit-mixed2/gamer_chair_A', { height: 1.9 }), -9.5, 0, -6.5, 0.6);
-  // O lugar junto à parede esquerda fica livre da estante baixa removida.
-  Object.assign(ROOM_SEATS[7]!, { x: -5.8, z: -7.25, yaw: 0.25, y: 0, anim: 'fiddle' });
-  // Do outro lado da lareira, alguém de pé a beber, virado para a sala.
-  Object.assign(ROOM_SEATS[9]!, { x: FIRE_X + 2.1, z: fireZ + fireFront + 1.3, yaw: -0.5, y: 0, anim: 'drink' });
-
   // ── Plantas nos cantos (catos em vaso da KayKit; sem eles, feitas à mão) ──
   for (const [px, pz, seed] of [[-6.0, -8.0, 3], [10.0, -8.0, 7], [-5.6, -3.0, 11]] as const)
     place(g, prop(seed === 7 ? 'kaykit-furniture/cactus_medium_B' : 'kaykit-furniture/cactus_medium_A', { height: 1.2 }), px, 0, pz, seed) ?? g.add(pottedPlant(px, pz, seed));
 
   // ── Lugares sentados: rabo no assento e costas no encosto, sem entrar nos modelos ──
   g.updateMatrixWorld(true);
-  sofaSeats.forEach((m, i) => fitSeat(ROOM_SEATS[i]!, m));
-  chairSeats.forEach((m, i) => m && fitSeat(ROOM_SEATS[3 + i]!, m));
+  // Lugar 3 (direita): 0.5 mais baixo e mais à frente, sentado na almofada azul.
+  sofaSeats.forEach((m, i) => fitSeat(ROOM_SEATS[i]!, m, i === 2 ? 0.5 : 0));
+  if (graySofa) ROOM_SEATS[2]!.z += 0.5;
+  // Cadeirões: 0.2 mais baixo.
+  chairSeats.forEach((m, i) => m && fitSeat(ROOM_SEATS[3 + i]!, m, 0.2));
   fitSeat(seat5, pile, 0, 1);
   fitSeat(seat6, bean, 0.06, 1);
 

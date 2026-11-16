@@ -5,6 +5,8 @@ WORKDIR /app
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages ./packages
 COPY apps ./apps
+# O servidor não precisa do Electron (vem com o workspace apps/desktop).
+ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 RUN npm ci && npm run build
 ENV NODE_ENV=production PORT=8080
 EXPOSE 8080

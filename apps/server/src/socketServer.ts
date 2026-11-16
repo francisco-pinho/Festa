@@ -199,8 +199,8 @@ export function registerSocketHandlers(io: FestaServer, opts: SocketServerOption
         viewers.delete(socket.id);
         const host = manager.getRoom(viewerRoom)?.hostSocketId;
         if (host) io.to(host).emit('viewer:left', socket.id);
-        return;
       }
+      // Sempre: um espectador pode também ter entrado como jogador ou host.
       manager.disconnect(socket.id);
     });
   });

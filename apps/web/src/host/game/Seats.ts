@@ -133,10 +133,6 @@ export class SeatControl {
     return !hp || !hp.connected;
   }
 
-  isKeyboard(seat: Seat): boolean {
-    return this.hubPlayer(seat)?.source === 'keyboard';
-  }
-
   /** Comando a ler durante minijogos. */
   pad(seat: Seat): PadInput {
     if (this.isAuto(seat)) return seat.botPad;
@@ -151,10 +147,6 @@ export class SeatControl {
   setLayout(seat: Seat, layout: HostLayout): void {
     const hp = this.hubPlayer(seat);
     if (hp) this.hub.setLayout(this.toPhone(seat, layout), hp);
-  }
-
-  setLayoutAll(seats: Seat[], layout: HostLayout | ((seat: Seat) => HostLayout)): void {
-    for (const s of seats) this.setLayout(s, typeof layout === 'function' ? layout(s) : layout);
   }
 
   /** Traduz um layout de alto nível para o comando do telemóvel. */

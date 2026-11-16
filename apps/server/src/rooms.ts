@@ -152,7 +152,10 @@ export class RoomManager {
   // ── Host ────────────────────────────────────────────────
 
   createRoom(socketId: string): { ok: true; room: Room } | Fail {
-    this.detach(socketId);
+    // Um host = uma sala: a anterior fecha já, senão um ciclo de host:create enchia o servidor.
+    const old = this.lookup(socketId);
+    if (old?.binding.role === 'host' && old.room.hostSocketId === socketId) this.closeRoom(old.room, 'HOST_LEFT');
+    else this.detach(socketId);
     if (this.rooms.size >= this.opts.maxRooms) return { ok: false, error: 'SERVER_FULL' };
     const room = new Room(this.generateCode(), randomBytes(24).toString('base64url'), socketId);
     this.rooms.set(room.code, room);

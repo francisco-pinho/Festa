@@ -593,6 +593,31 @@
   border-color: var(--gold);
   background: rgba(255, 210, 63, 0.16);
 }
+/* Sliders de volume (0–100): nome, barra e valor na mesma linha. */
+.menu-item:has(.menu-slider) {
+  display: flex;
+  align-items: center;
+  gap: 1.4vw;
+}
+.menu-slider-label {
+  min-width: 7em;
+}
+.menu-slider {
+  flex: 1;
+  height: 1.2vh;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+.menu-slider i {
+  display: block;
+  height: 100%;
+  background: var(--gold);
+}
+.menu-slider-val {
+  min-width: 2.5em;
+  text-align: right;
+}
 .menu-keys {
   margin: 2vh 0 0;
   color: #6f5fa8;
@@ -693,24 +718,6 @@
 .fight-hud .mid .time {
   font-size: clamp(24px, 3vw, 36px);
   font-weight: 800;
-}
-
-/* Botão para ligar o som (os browsers exigem um gesto) */
-.sound-unlock {
-  position: absolute;
-  left: 14px;
-  top: 14px;
-  pointer-events: auto;
-  border: 2px solid #ffd23f;
-  border-radius: 999px;
-  padding: 8px 18px;
-  background: #1d1433cc;
-  color: #fff;
-  font: inherit;
-  font-weight: 700;
-  font-size: 15px;
-  cursor: pointer;
-  z-index: 30;
 }
 
 /* ── Menus no ecrã grande (navegados com o comando) ─────── */
@@ -928,6 +935,53 @@
   height: 17vh !important;
   border-radius: 1vh;
   background: #fff;
+  box-shadow: 0 0.4vh 1.2vh #0008;
+}
+.lobby-join .qr-info {
+  position: absolute;
+  bottom: 0.6vh;
+  right: 0.6vh;
+  width: 3.4vh;
+  height: 3.4vh;
+  border: none;
+  border-radius: 50%;
+  background: #1d1433cc;
+  color: #b9a9e8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.lobby-join .qr-info:hover,
+.lobby-join .qr-info:focus {
+  background: #2a1f4a;
+  color: #fff;
+  outline: none;
+}
+.lobby-join .qr-tooltip {
+  position: absolute;
+  bottom: 4.6vh;
+  right: 0.6vh;
+  max-width: 32vw;
+  padding: 1vh 1.4vh;
+  border-radius: 1.4vh;
+  background: #1d1433f2;
+  border: 0.3vh solid #ffffff33;
+  font-size: 1.3vh;
+  color: #fff;
+  text-align: left;
+  line-height: 1.5;
+  z-index: 5;
+  box-shadow: 0 0.6vh 2vh #000a;
+}
+.lobby-join .qr-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -0.8vh;
+  right: 1.2vh;
+  border: 0.8vh solid transparent;
+  border-top-color: #1d1433f2;
 }
 .lobby-join .label {
   font-size: 1.8vh;
@@ -942,10 +996,9 @@
   font-size: 1.7vh;
   color: #b9a9e8;
 }
+/* O texto da dica só aparece no balão do botão «i» (.qr-tooltip). */
 .lobby-join .tip {
-  margin-top: 0.6vh;
-  font-size: 1.3vh;
-  color: #b9a9e8;
+  display: none;
 }
 .lobby-cards {
   position: absolute;
@@ -1093,22 +1146,6 @@
 }
 .share-badge.live { border-color: #ff3b5c; }
 
-/* App de computador: abrir o túnel a partir do lobby */
-.lobby-join .go-online {
-  margin-top: 0.8vh;
-  padding: 0.7vh 1.2vw;
-  border: 0;
-  border-radius: 1vh;
-  background: #3fd0ff;
-  color: #1b1033;
-  font: inherit;
-  font-size: 1.8vh;
-  font-weight: 800;
-  cursor: pointer;
-  pointer-events: auto;
-}
-.lobby-join .go-online:disabled { opacity: 0.7; cursor: wait; }
-
 /* Golfe: mini-mapa do buraco com a previsão da tacada */
 .golf-minimap {
   position: absolute;
@@ -1136,27 +1173,6 @@
   min-width: 0;
   max-width: 30vw;
 }
-
-/* Botão «Sair do jogo» no ecrã inicial (canto superior direito) */
-.lobby-quit {
-  position: absolute;
-  right: 1.5vw;
-  top: calc(2.5vh + env(safe-area-inset-top, 0px));
-  z-index: 5;
-  border: 0;
-  border-radius: 14px;
-  padding: 1vh 1.2vw;
-  background: var(--panel);
-  color: #fff;
-  font: inherit;
-  font-weight: bold;
-  font-size: clamp(14px, 1.9vh, 22px);
-  cursor: pointer;
-  pointer-events: auto;
-  box-shadow: 0 0.4vh 0 rgba(0, 0, 0, 0.3);
-}
-.lobby-quit:hover { filter: brightness(1.2); }
-.lobby-quit.armed { background: #ff3b5c; }
 
 /* Loja: o cartão escolhido (o painel é o próprio menu) */
 .shop-item {

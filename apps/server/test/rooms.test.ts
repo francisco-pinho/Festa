@@ -42,6 +42,15 @@ describe('RoomManager', () => {
     expect(manager.createRoom('h4')).toEqual({ ok: false, error: 'SERVER_FULL' });
   });
 
+  it('o mesmo host a criar outra sala fecha a anterior (não enche o servidor)', () => {
+    const { manager, hooks } = setup();
+    const first = createRoom(manager, 'h1');
+    for (let i = 0; i < 10; i++) createRoom(manager, 'h1');
+    expect(manager.roomCount).toBe(1);
+    expect(manager.getRoom(first.code)).toBeUndefined();
+    expect(hooks.onRoomClosed).toHaveBeenCalledWith(first, 'HOST_LEFT');
+  });
+
   it('jogadores entram com cores diferentes e o primeiro é VIP', () => {
     const { manager } = setup();
     const room = createRoom(manager);

@@ -115,6 +115,41 @@ export class Director {
 
   // ── Menu principal ──────────────────────────────────────
 
+  /** Quadro de entrada do lobby: QR, código e dicas no balão do «i». Devolve o que o redesenha. */
+  private setupJoinPanel(ui: HTMLElement): () => Promise<void> {
+    const renderRoom = async () => {
+      const code = this.conn.roomCode;
+      if (!code) return;
+      const [url, base, online] = await Promise.all([getJoinUrl(code), getJoinBaseUrl(), isOnline()]);
+      const canvas = ui.querySelector<HTMLCanvasElement>('#qr');
+      if (!canvas) return;
+      if (canvas.dataset.url === url) return;
+      canvas.dataset.url = url;
+      ui.querySelector('#code')!.textContent = code;
+      ui.querySelector('#url')!.textContent = `${base.replace(/^https?:\/\//, '')}/play`;
+      ui.querySelector('#join-label')!.textContent = online ? 'Online · entra em casa ou fora' : 'Entra com o telemóvel';
+      ui.querySelector('#join-tip')!.innerHTML = online
+        ? `Quem está fora vê o ecrã em <b>${esc(base.replace(/^https?:\/\//, ''))}/ver</b> (partilha o ecrã com a tecla <b>V</b>).`
+        : 'Android: se não abrir, dá ao Chrome a permissão <b>Dispositivos próximos</b>. Aviso de ligação não privada? <b>Avançadas → Continuar</b>.';
+      await QRCode.toCanvas(canvas, url, { width: 220, margin: 1, errorCorrectionLevel: 'M' });
+    };
+
+    const tipEl = ui.querySelector<HTMLDivElement>('#join-tip')!;
+    const tooltip = ui.querySelector<HTMLDivElement>('#qr-tooltip')!;
+    const showTip = () => {
+      tooltip.innerHTML = tipEl.innerHTML;
+      tooltip.hidden = !tooltip.innerHTML;
+    };
+    const hideTip = () => (tooltip.hidden = true);
+    const infoBtn = ui.querySelector<HTMLButtonElement>('#qr-info')!;
+    infoBtn.addEventListener('mouseenter', showTip);
+    infoBtn.addEventListener('focus', showTip);
+    infoBtn.addEventListener('mouseleave', hideTip);
+    infoBtn.addEventListener('blur', hideTip);
+
+    return renderRoom;
+  }
+
   private async lobby(): Promise<LobbyChoice> {
     // Ecrã inicial: a sala de estar (quem entra vai-se sentando no sofá, cadeirões…).
     // A mobília da sala (sofá, estantes, lareira, mesa…) carrega antes de a montar.
@@ -145,62 +180,23 @@ export class Director {
     ui.innerHTML = `
       <div class="lobby-logo">FESTA</div>
       <div class="lobby-join">
-        <canvas id="qr" width="220" height="220"></canvas>
         <div class="lobby-join-text">
           <div class="label" id="join-label">Entra com o telemóvel</div>
           <div class="code" id="code">····</div>
           <div class="url" id="url"></div>
           <div class="tip" id="join-tip"></div>
-          <button class="go-online" id="go-online" hidden>Jogar online</button>
         </div>
+        <canvas id="qr" width="220" height="220"></canvas>
+        <button class="qr-info" id="qr-info" title="Dicas de ligação" aria-label="Dicas de ligação">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 17v-4"/><path d="M12 9h.01"/></svg>
+        </button>
+        <div class="qr-tooltip" id="qr-tooltip" hidden></div>
       </div>
       <div class="lobby-cards" id="cards"></div>
-      <div class="lobby-help" id="help"></div>
-      <button class="lobby-quit" id="lobby-quit" hidden>Sair do jogo</button>`;
+      <div class="lobby-help" id="help"></div>`;
     document.getElementById('ui')!.appendChild(ui);
 
-    // Sair logo no ecrã inicial (só na app de computador): carrega duas vezes para confirmar.
-    {
-      const app = (window as unknown as { festaDesktop?: { quit(): Promise<void> } }).festaDesktop;
-      const quitBtn = ui.querySelector<HTMLButtonElement>('#lobby-quit')!;
-      if (app) {
-        quitBtn.hidden = false;
-        let armed = 0;
-        quitBtn.addEventListener('click', () => {
-          if (Date.now() - armed < 4000) {
-            quitBtn.textContent = 'Até à próxima!';
-            void app.quit();
-            return;
-          }
-          armed = Date.now();
-          quitBtn.textContent = 'Carrega outra vez para sair';
-          quitBtn.classList.add('armed');
-          setTimeout(() => {
-            if (Date.now() - armed >= 4000) {
-              quitBtn.textContent = 'Sair do jogo';
-              quitBtn.classList.remove('armed');
-            }
-          }, 4100);
-        });
-      }
-    }
-
-    const renderRoom = async () => {
-      const code = this.conn.roomCode;
-      if (!code) return;
-      const [url, base, online] = await Promise.all([getJoinUrl(code), getJoinBaseUrl(), isOnline()]);
-      const canvas = ui.querySelector<HTMLCanvasElement>('#qr');
-      if (!canvas) return;
-      if (canvas.dataset.url === url) return;
-      canvas.dataset.url = url;
-      ui.querySelector('#code')!.textContent = code;
-      ui.querySelector('#url')!.textContent = `${base.replace(/^https?:\/\//, '')}/play`;
-      ui.querySelector('#join-label')!.textContent = online ? 'Online · entra em casa ou fora' : 'Entra com o telemóvel';
-      ui.querySelector('#join-tip')!.innerHTML = online
-        ? `Quem está fora vê o ecrã em <b>${esc(base.replace(/^https?:\/\//, ''))}/ver</b> (partilha o ecrã com a tecla <b>V</b>).`
-        : 'Android: se não abrir, dá ao Chrome a permissão <b>Dispositivos próximos</b>. Aviso de ligação não privada? <b>Avançadas → Continuar</b>.';
-      await QRCode.toCanvas(canvas, url, { width: 220, margin: 1, errorCorrectionLevel: 'M' });
-    };
+    const renderRoom = this.setupJoinPanel(ui);
 
     const players = () => this.hub.players.slice(0, MAX_PLAYERS);
     const takenBy = (charId: string, except: string) => [...this.picks].some(([id, p]) => id !== except && p.ready && p.char === charId && players().some((x) => x.id === id));
@@ -322,7 +318,7 @@ export class Director {
         const vip = p === this.leader;
         if (!p.connected) facesSent.delete(p.id);
         // Escolha da personagem no telemóvel: carrossel com as caras e o que cada botão faz
-        // (Ⓐ escolher, Ⓑ menu, Ⓧ mudar de lugar, Ⓨ começar a jogar — só o VIP).
+        // (Ⓐ escolher, Ⓧ mudar de lugar; só o VIP: Ⓑ definições gerais, Ⓨ começar a jogar).
         // Só o VIP, já na televisão, volta ao comando normal, para navegar no menu dos jogos.
         // Depois de escolher: comando completo (cruz e todos os botões), com Ⓐ para mudar de personagem
         // (volta ao carrossel).
@@ -342,10 +338,9 @@ export class Director {
               stick: 'dpad',
               buttons: {
                 a: atTv ? undefined : 'Mudar personagem',
-                b: 'Menu',
+                b: vip && !atTv ? 'Definições' : undefined,
                 x: 'Mudar de lugar',
                 y: vip && !atTv ? 'Jogar' : undefined,
-                plus: 'Definições',
               },
             },
             p,
@@ -381,7 +376,7 @@ export class Director {
               ready: pick.ready,
               buttons: {
                 a: atTv ? undefined : 'Escolher',
-                b: 'Menu',
+                b: vip && !atTv ? 'Definições' : undefined,
                 x: 'Mudar de lugar',
                 y: vip && !atTv ? 'Jogar' : undefined,
               },
@@ -398,7 +393,7 @@ export class Director {
                 title: `Pronto com ${c.name}! ✔`,
                 sub: 'Escolhe o jogo na televisão',
                 stick: 'dpad',
-                buttons: { a: 'Escolher', b: 'Voltar', plus: 'Definições' },
+                buttons: { a: 'Escolher', b: 'Voltar' },
               }
             : {
                 kind: 'pad',
@@ -406,7 +401,7 @@ export class Director {
                 title: 'Escolhe a tua personagem',
                 sub: `◀ ${c.name} ▶`,
                 stick: 'dpad',
-                buttons: { a: 'Pronto!', plus: 'Definições' },
+                buttons: { a: 'Pronto!' },
               },
           p,
         );
@@ -434,28 +429,6 @@ export class Director {
       render();
     };
 
-    // Na app de computador: botão «Jogar online» (abre o túnel da Cloudflare).
-    const desktop = (window as unknown as { festaDesktop?: { goOnline(): Promise<{ url?: string; error?: string }> } }).festaDesktop;
-    const onlineBtn = ui.querySelector<HTMLButtonElement>('#go-online')!;
-    const goOnline = async () => {
-      if (!desktop || onlineBtn.disabled) return;
-      onlineBtn.disabled = true;
-      onlineBtn.textContent = 'A abrir o túnel…';
-      const res = await desktop.goOnline();
-      if (res.url) {
-        onlineBtn.hidden = true;
-        void renderRoom();
-      } else {
-        onlineBtn.disabled = false;
-        onlineBtn.textContent = 'Tentar outra vez';
-        ui.querySelector('#join-tip')!.textContent = `⚠ ${res.error ?? 'Não deu para abrir o túnel.'}`;
-      }
-    };
-    if (desktop) {
-      void isOnline().then((on) => (onlineBtn.hidden = on));
-      onlineBtn.addEventListener('click', () => void goOnline());
-    }
-
     // O link público pode chegar depois (túnel a abrir): verifica de vez em quando.
     const infoTimer = window.setInterval(() => void renderRoom(), 4000);
     const offs: (() => void)[] = [
@@ -481,7 +454,8 @@ export class Director {
         if (!pick) return;
         if (button === 'x') moveSeat(player);
         else if (button === 'y' && player === this.leader) requestStart(player);
-        else if (button === 'b' && !(atTv && player === this.leader)) this.menu.openFor(player);
+        // Definições gerais: só o VIP, e só na sala (na TV o Ⓑ volta atrás nos menus).
+        else if (button === 'b' && player === this.leader && !atTv) this.menu.openFor(player);
         else if (button === 'a' && pick.ready && !atTv) {
           // Ⓐ «Mudar personagem»: volta ao carrossel com todas as personagens.
           pick.ready = false;
@@ -542,7 +516,6 @@ export class Director {
           { id: 'settings', label: 'Definições' },
           ...(this.portable ? [{ id: 'test', label: 'Testar minijogos', sub: 'Escolhe um minijogo e joga-o já' }] : []),
           { id: 'credits', label: 'Créditos' },
-          { id: 'quit', label: 'Sair do jogo' },
         ],
       };
       const pickMode = await this.menus.ask(mainMenu);
@@ -563,22 +536,6 @@ export class Director {
       } else if (pickMode === 'settings') {
         this.menu.show('settings');
         while (this.menu.isOpen) await this.engine.wait(0.2);
-      } else if (pickMode === 'quit') {
-        const sure = await this.menus.ask({
-          player: leader,
-          keyboard: true,
-          title: 'Sair do jogo?',
-          options: [
-            { id: 'no', label: '↩ Não, continuar' },
-            { id: 'yes', label: 'Sim, sair' },
-          ],
-        });
-        if (sure === 'yes') {
-          const app = (window as unknown as { festaDesktop?: { quit(): Promise<void> } }).festaDesktop;
-          if (app) await app.quit();
-          else this.hud.panel('<h1>Até à próxima!</h1><p>Já podes fechar este separador.</p>');
-          await new Promise(() => undefined); // fica aqui até a janela fechar
-        }
       }
       render();
       }

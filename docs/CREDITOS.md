@@ -30,4 +30,4 @@ Descarregadas de https://incompetech.com (MP3 originais). Os créditos também a
 
 ## Modelos 3D
 
-Ver `docs/ASSETS.md`: KayKit (Kay Lousberg), Kenney e Quaternius — todos CC0.
+Ver `docs/ASSETS.md`: KayKit (Kay Lousberg) e Kenney — todos CC0.

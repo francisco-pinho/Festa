@@ -39,10 +39,6 @@ export class ScreenShare {
     return !!this.stream;
   }
 
-  get viewerCount(): number {
-    return this.viewers.size;
-  }
-
   /** Liga/desliga a partilha (tem de vir de um clique ou tecla: o browser pede autorização). */
   async toggle(): Promise<void> {
     if (this.stream) return this.stop();

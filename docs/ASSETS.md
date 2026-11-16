@@ -40,7 +40,7 @@ inteiros (~90 MB), não só os modelos usados, para se poderem usar mais sem vol
   e algumas usam os nossos acessórios (orelhas, coroa, folha…) em vez do chapéu do modelo.
 - Mapeamento personagem → modelo base: `apps/web/src/host/three/characterAssets.ts` (`LOOKS`).
 - Animações: nomes do pack de animações em `apps/web/src/host/three/CharacterModel.ts` (`ANIMS`).
-- Sala de estar: mobília KayKit; a lareira, o chão e as paredes são feitos em código.
+- Sala de estar: mobília e paredes KayKit (Restaurant); a lareira e o chão são feitos em código.
 - Cenários: carregam-se por tema em `apps/web/src/host/three/props.ts`
   (`THEME_PROPS`), assentam no chão e ganham a altura pedida; se algum faltar, o cenário usa a versão feita em código.
 
