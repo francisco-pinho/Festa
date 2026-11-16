@@ -3,7 +3,7 @@
 <!-- DEMO: GIF/vídeo do ecrã da TV com o tabuleiro + mão a abanar o telemóvel para lançar os dados -->
 
 > **In English —** a 3D party game for the PC where **players' phones are the controllers**: scan a QR code,
-> nothing to install. A board game with 30+ minigames, plus a **Sports mode** that turns the phone into a motion
+> nothing to install. A board game with 31 minigames ([full list](docs/COMO-JOGAR.md#minijogos)), plus a **Sports mode** that turns the phone into a motion
 > controller (bowling, tennis, golf, boxing, baseball) using the accelerometer and gyroscope.
 > **Stack:** TypeScript monorepo · Three.js · Socket.IO · Node/Express · zod · Rapier physics · Electron · Vite.
 > **Technical highlights:** host-authoritative state with the server as a validating relay; seamless reconnection
@@ -55,27 +55,10 @@ npm run dev
 
 > **Windows:** da primeira vez, o Windows pergunta se o Node.js pode aceitar ligações na rede. Aceita para **redes privadas**, senão os telemóveis não chegam ao PC.
 
-### O telemóvel não abre a página?
-
-| Sintoma | Solução |
-|---|---|
-| Android: `ERR_TOO_MANY_RETRIES` | O Android 17 exige uma permissão para o Chrome aceder à rede local: **Definições → Apps → Chrome → Permissões → Dispositivos próximos** (ou "Rede local") → Permitir. Alternativa: usar o Firefox. |
-| "A ligação não é privada" | Normal com `npm run dev:https` (certificado feito por nós): **Avançadas → Continuar**. |
-| Não abre de todo | Telemóvel e PC têm de estar na **mesma rede Wi-Fi** (não a de convidados) e sem VPN; desliga os dados móveis. |
-
 ## Como se joga
 
-1. **Lobby** — entram de 1 a 10 jogadores. Os **bots** completam a mesa: mínimo 4 e sempre um número **par**.
-2. **Personagens** — cada um escolhe a sua no telemóvel (10 personagens originais).
-3. **Ordem de jogo** — todos lançam um dado; o maior joga primeiro.
-4. **Rondas** — na sua vez, cada jogador lança **dois dados** (botão ou abanar o telemóvel) e anda a soma.
-   **Dados iguais** dão direito a um **terceiro dado**. Nos cruzamentos escolhe o caminho no telemóvel.
-5. **Casas** — 🔵 +3 moedas · 🔴 −3 · 🍀 sorte · ❗ azar · ❓ tornado (troca de lugar). Nas 3 últimas rondas, azuis e vermelhas valem o dobro.
-6. **Estrela** — ao passar por ela com 20 moedas, podes comprá-la; depois muda de sítio.
-7. **Minijogo no fim de cada ronda** — o tipo depende das cores onde todos pararam:
-   todos iguais → **todos contra todos**; só um diferente → **1 contra todos**; resto → **equipas** iguais.
-   Os vencedores ganham 10 moedas.
-8. **Final** — estrelas bónus (minijogos, fortuna, aventura) e pódio. Ganha quem tiver mais estrelas (desempate: moedas).
+Tabuleiro com dados, casas, estrela e um minijogo no fim de cada ronda (31 minijogos). Regras completas,
+lista de todos os minijogos e resolução de problemas com o telemóvel em [docs/COMO-JOGAR.md](docs/COMO-JOGAR.md).
 
 ## Modo Desportos 🏆
 
@@ -148,7 +131,8 @@ Detalhes, TURN da Cloudflare e compensação de atraso: [docs/ONLINE.md](docs/ON
 - `http://localhost:5173/?sport=bowling&players=2`: joga um desporto diretamente (bots completam).
   Desportos: `bowling`, `tennis`, `golf`, `boxing`, `baseball`.
 - `http://localhost:5173/?minigame=sumo&mode=teams&players=8`: corre um minijogo diretamente com bots
-  (`minigame`: `coin-shower`, `sumo`, `tag`; `mode`: `ffa`, `teams`, `oneVsAll`).
+  (`minigame`: o id de qualquer minijogo, por exemplo `coin-shower`, `sumo` ou `tag`; lista dos ids em
+  [docs/COMO-JOGAR.md](docs/COMO-JOGAR.md#minijogos); `mode`: `ffa`, `teams`, `oneVsAll`).
 - Na consola do browser, `window.festa` dá acesso ao motor, HUD e ligação.
 
 ## Estrutura
