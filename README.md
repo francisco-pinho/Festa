@@ -1,8 +1,40 @@
 # Festa 🎉
 
+<!-- DEMO: GIF/vídeo do ecrã da TV com o tabuleiro + mão a abanar o telemóvel para lançar os dados -->
+
+> **In English —** a 3D party game for the PC where **players' phones are the controllers**: scan a QR code,
+> nothing to install. A board game with 30+ minigames, plus a **Sports mode** that turns the phone into a motion
+> controller (bowling, tennis, golf, boxing, baseball) using the accelerometer and gyroscope.
+> **Stack:** TypeScript monorepo · Three.js · Socket.IO · Node/Express · zod · Rapier physics · Electron · Vite.
+> **Technical highlights:** host-authoritative state with the server as a validating relay; seamless reconnection
+> via session tokens (bots take over while a phone is away); online play through a Cloudflare tunnel with WebRTC
+> screen sharing and **latency compensation** for real-time sports; game rules as pure, tested functions;
+> sports auto-discovered at build time.
+> **Download:** portable Windows build on the [Releases](../../releases) page.
+
 Jogo de festa em **3D** para o **PC**, com os **telemóveis como comandos**: cada jogador escolhe uma
 personagem, avança num tabuleiro lançando dados e, no fim de cada ronda, há um minijogo.
 Os telemóveis não instalam nada: leem o QR code (ou abrem `http://<pc>/play`) e escrevem o código da sala.
+
+## Por dentro (resumo técnico)
+
+- **Arquitetura:** o ecrã principal (browser/Electron) é a **autoridade** do jogo; o servidor (Socket.IO) trata de
+  salas, identidade, reconexão e validação, e encaminha as mensagens. Os telemóveis são comandos "burros" que
+  mostram o layout que o ecrã pede.
+- **Protocolo:** schemas `zod` como fonte única de verdade: validam tudo no servidor e os tipos TypeScript
+  derivam deles (`packages/shared`).
+- **Robustez:** um telemóvel que perde a rede volta ao mesmo lugar com o `sessionToken`; enquanto está fora, um bot
+  decide por ele, por isso a festa nunca fica presa. Rate limit e limite de tamanho por mensagem.
+- **Online:** túnel Cloudflare, partilha de ecrã por WebRTC e compensação de atraso nos desportos de reação
+  (ténis, basebol): [docs/ONLINE.md](docs/ONLINE.md).
+- **Extensível:** cada desporto é uma pasta descoberta automaticamente (`import.meta.glob`); cada minijogo é um ficheiro.
+- **Testes:** regras puras e determinísticas (aleatório com semente) em `packages/game`, e testes do servidor
+  (`npm test`). Detalhes em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+
+## Descarregar
+
+A forma mais rápida de experimentar: descarrega a versão **portátil** em [Releases](../../releases) e abre-a
+(Windows, não precisa de instalar). Os telemóveis entram pelo QR code que aparece no ecrã.
 
 ## Arranque rápido
 
@@ -70,19 +102,6 @@ npm run dev:https
 mostra um aviso de segurança — escolhe "Avançar/Continuar". No iPhone aparece ainda um botão para
 autorizar o movimento. Sem HTTPS, tudo funciona com gestos de arrastar no ecrã.
 
-### Ramos (git)
-
-Cada jogo vive no seu ramo, para poder ser revisto e juntado em separado:
-
-| Ramo | Conteúdo |
-|---|---|
-| `jogo-festa` | Modo Festa (tabuleiro, minijogos) |
-| `jogo-sports` | Base do modo Desportos (escolha de modo, gestos, HTTPS) — a partir de `jogo-festa` |
-| `jogo-bowling`, `jogo-tenis`, `jogo-golfe`, `jogo-boxe`, `jogo-basebol` | Cada desporto, a partir de `jogo-sports` |
-
-Os desportos são descobertos automaticamente (`apps/web/src/host/sports/<id>/sport.ts`), por isso
-os ramos juntam-se sem conflitos.
-
 ## App de computador (Festa.exe)
 
 ```bash
@@ -127,7 +146,7 @@ Detalhes, TURN da Cloudflare e compensação de atraso: [docs/ONLINE.md](docs/ON
 
 - Tecla **T** no lobby: festa de **1 ronda** (para testar o final depressa).
 - `http://localhost:5173/?sport=bowling&players=2`: joga um desporto diretamente (bots completam).
-  Desportos: `bowling`, `tennis`, `golf`, `boxing`, `baseball` (cada um no seu ramo).
+  Desportos: `bowling`, `tennis`, `golf`, `boxing`, `baseball`.
 - `http://localhost:5173/?minigame=sumo&mode=teams&players=8`: corre um minijogo diretamente com bots
   (`minigame`: `coin-shower`, `sumo`, `tag`; `mode`: `ffa`, `teams`, `oneVsAll`).
 - Na consola do browser, `window.festa` dá acesso ao motor, HUD e ligação.
