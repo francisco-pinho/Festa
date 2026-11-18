@@ -42,20 +42,6 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [x] Corrigir posições dos lugares no lobby
-
-- **Tipo:** visual, personagem
-- **Prioridade (alta / média / baixa):** alta
-- **Onde no jogo (ecrã, minijogo, mapa…):** lugares das personagens no lobby
-- **Como funciona:** Usar o lugar 1 (centro do sofá, onde a personagem começa) como referência e corrigir a ordem e a posição. Ajustar o lugar 3 para a personagem ficar sentada no sofá e não a flutuar na almofada; ajustar os lugares 4 e 5 dos sofás individuais para ficarem bem sentadas; trocar o lugar 8 por uma posição que não fique escondida atrás da cadeira; no lugar 9, manter a posição em frente à lareira mas virar a personagem para a frente; substituir o lugar 10, que está fora do ecrã, por uma posição visível.
-- **Controlos no telemóvel (botões, joystick, abanar…):** não aplicável
-- **Como se ganha / o que acontece no fim:** todas as personagens ficam visíveis e corretamente sentadas.
-- **Inspirado em (jogo, vídeo, link, imagem…):**
-- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** Feito: lugares 1–3 alinhados no sofá (o 1 é a referência), o 3 mais baixo e à frente, o 4 e o 5 mais baixos nos cadeirões, o 8 e o 10 visíveis. O lugar 9 voltou para a frente da lareira, de pé e virado para a câmara. Falta confirmares tudo no jogo.
-
----
-
 ### [x] Melhorar o comportamento idle das personagens
 
 - **Tipo:** personagem, visual

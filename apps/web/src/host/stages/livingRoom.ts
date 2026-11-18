@@ -751,7 +751,8 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
   glow.position.set(0, mouth.y - 0.1, flameZ + 0.45);
   fire.add(glow);
   const fireLight = new THREE.PointLight('#ff9a3c', 16, 13);
-  fireLight.position.set(0, mouth.y + 0.1, flameZ + 1.15);
+  // Dentro da boca do lume: à frente ficava colada à cara de quem está no lugar 9 (z -6.6) e queimava-a.
+  fireLight.position.set(0, mouth.y + 0.1, flameZ + 0.1);
   fire.add(fireLight);
   fire.position.set(FIRE_X, 0, fireZ);
   g.add(fire);
