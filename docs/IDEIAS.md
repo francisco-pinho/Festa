@@ -70,7 +70,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [~] Reposicionar e simplificar o QR code
+### [x] Reposicionar e simplificar o QR code
 
 - **Tipo:** visual, menu, online
 - **Prioridade (alta / média / baixa):** alta
@@ -80,7 +80,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:** o QR fica legível, acessível e integrado no cenário.
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** Feito: o QR passou para a direita do quadro, o link aparece por extenso e as dicas do Android só no balão do botão «i» (ícone desenhado, sem emoji). Feito agora: o «−» do VIP mostra/esconde o quadro do QR (aparece no telemóvel como «− Esconder QR» / «− Mostrar QR»). Falta: pôr o QR à frente da mesa ou num quadro da parede.
+- **Notas do Claude:** Feito: o QR passou para a direita do quadro, o link aparece por extenso e as dicas do Android só no balão do botão «i» (ícone desenhado, sem emoji). Feito agora: o «−» do VIP mostra/esconde o quadro do QR (aparece no telemóvel como «− Esconder QR» / «− Mostrar QR»). Feito agora: o QR saiu do painel e passou para um quadro grande de madeira, de pé no chão à frente da mesa de centro e virado para a câmara (o chocolate quente e os livros foram para as pontas da mesa). O painel do canto fica só com o código, o link e o «i». O «−» esconde os dois. Corrigido o quadro que aparecia todo preto. Falta confirmares no jogo se o telemóvel lê bem o QR à distância.
 
 ---
 

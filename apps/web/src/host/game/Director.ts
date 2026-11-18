@@ -115,14 +115,16 @@ export class Director {
 
   // ── Menu principal ──────────────────────────────────────
 
-  /** Quadro de entrada do lobby: QR, código e dicas no balão do «i». Devolve o que o redesenha. */
-  private setupJoinPanel(ui: HTMLElement): () => Promise<void> {
+  /**
+   * Entrada do lobby: código, link e dicas no balão do «i» (painel do canto); o QR é desenhado
+   * numa tela à parte e entregue a `onQr` (vai para o quadro em cima da mesa). Devolve o que o redesenha.
+   */
+  private setupJoinPanel(ui: HTMLElement, onQr: (canvas: HTMLCanvasElement) => void): () => Promise<void> {
+    const canvas = document.createElement('canvas');
     const renderRoom = async () => {
       const code = this.conn.roomCode;
       if (!code) return;
       const [url, base, online] = await Promise.all([getJoinUrl(code), getJoinBaseUrl(), isOnline()]);
-      const canvas = ui.querySelector<HTMLCanvasElement>('#qr');
-      if (!canvas) return;
       if (canvas.dataset.url === url) return;
       canvas.dataset.url = url;
       ui.querySelector('#code')!.textContent = code;
@@ -131,7 +133,8 @@ export class Director {
       ui.querySelector('#join-tip')!.innerHTML = online
         ? `Quem está fora vê o ecrã em <b>${esc(base.replace(/^https?:\/\//, ''))}/ver</b> (partilha o ecrã com a tecla <b>V</b>).`
         : 'Android: se não abrir, dá ao Chrome a permissão <b>Dispositivos próximos</b>. Aviso de ligação não privada? <b>Avançadas → Continuar</b>.';
-      await QRCode.toCanvas(canvas, url, { width: 220, margin: 1, errorCorrectionLevel: 'M' });
+      await QRCode.toCanvas(canvas, url, { width: 256, margin: 2, errorCorrectionLevel: 'M' });
+      onQr(canvas);
     };
 
     const tipEl = ui.querySelector<HTMLDivElement>('#join-tip')!;
@@ -186,7 +189,6 @@ export class Director {
           <div class="url" id="url"></div>
           <div class="tip" id="join-tip"></div>
         </div>
-        <canvas id="qr" width="220" height="220"></canvas>
         <button class="qr-info" id="qr-info" title="Dicas de ligação" aria-label="Dicas de ligação">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 17v-4"/><path d="M12 9h.01"/></svg>
         </button>
@@ -196,7 +198,11 @@ export class Director {
       <div class="lobby-help" id="help"></div>`;
     document.getElementById('ui')!.appendChild(ui);
 
-    const renderRoom = this.setupJoinPanel(ui);
+    const renderRoom = this.setupJoinPanel(ui, (canvas) => {
+      if (!stage.qr) return;
+      stage.qr.setImage(canvas);
+      stage.qr.group.visible = qrShown;
+    });
 
     const players = () => this.hub.players.slice(0, MAX_PLAYERS);
     const takenBy = (charId: string, except: string) => [...this.picks].some(([id, p]) => id !== except && p.ready && p.char === charId && players().some((x) => x.id === id));
@@ -465,6 +471,7 @@ export class Director {
         else if (button === 'minus' && player === this.leader && !atTv) {
           qrShown = !qrShown;
           ui.querySelector<HTMLElement>('.lobby-join')!.hidden = !qrShown;
+          if (stage.qr) stage.qr.group.visible = qrShown;
           sound.play('click');
           render();
         }

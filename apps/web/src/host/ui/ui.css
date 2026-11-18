@@ -924,18 +924,11 @@
   display: flex;
   gap: 1.4vh;
   align-items: center;
-  padding: 1.2vh;
+  padding: 1.2vh 5vh 1.2vh 1.6vh; /* à direita, espaço para o «i» */
   border-radius: 2vh;
   background: #1d1433dd;
   border: 0.3vh solid #ffffff33;
   max-width: 36vw;
-}
-.lobby-join canvas {
-  width: 17vh !important;
-  height: 17vh !important;
-  border-radius: 1vh;
-  background: #fff;
-  box-shadow: 0 0.4vh 1.2vh #0008;
 }
 .lobby-join .qr-info {
   position: absolute;

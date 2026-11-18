@@ -193,6 +193,8 @@ export interface LivingRoom {
   group: THREE.Group;
   /** Ecrã da televisão (desligado até se ir para o menu dos jogos). */
   tv: CrtScreen;
+  /** Quadro do QR de entrada em cima da mesa (escondido até receber a imagem). */
+  qr: { group: THREE.Object3D; setImage(src: HTMLCanvasElement): void };
   update(time: number): void;
 }
 
@@ -612,8 +614,27 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
       }
   }
   const tableTop = table ? new THREE.Box3().setFromObject(table).max.y : 0.69;
-  place(g, prop('kaykit-holiday/hot_chocolate_decorated', { height: 0.3 }), -0.7, tableTop, TABLE_Z + 0.1, 0.4);
-  place(g, prop('kaykit-furniture/book_set', { height: 0.35 }), 0.8, tableTop, TABLE_Z - 0.1, -0.3);
+  // Nas pontas, para o quadro do QR (ao meio) não os tapar.
+  place(g, prop('kaykit-holiday/hot_chocolate_decorated', { height: 0.3 }), -1.1, tableTop, TABLE_Z + 0.1, 0.4);
+  place(g, prop('kaykit-furniture/book_set', { height: 0.35 }), 1.15, tableTop, TABLE_Z - 0.1, -0.3);
+
+  // ── Quadro do QR de entrada: moldura grande de pé no chão, à frente da mesa, virada para a câmara ──
+  // O topo fica à altura do tampo + 1.3; não tapa o sofá (só o tampo da mesa ao meio).
+  const qr = new THREE.Group();
+  const QR_SIZE = 1.9;
+  const qrFrame = mesh(rbox(QR_SIZE, QR_SIZE, 0.1, 0.06), toon('#8a5a34'));
+  qrFrame.position.y = QR_SIZE / 2;
+  // Sem luz nem sombras: o QR fica branco e preto puros, para a câmara do telemóvel o ler.
+  const qrMat = new THREE.MeshBasicMaterial({ color: '#ffffff', toneMapped: false });
+  const qrFace = new THREE.Mesh(new THREE.PlaneGeometry(QR_SIZE - 0.2, QR_SIZE - 0.2), qrMat);
+  qrFace.position.set(0, QR_SIZE / 2, 0.055);
+  const strut = mesh(new THREE.BoxGeometry(0.08, QR_SIZE * 0.85, 0.05), toon('#6b4426'));
+  strut.position.set(0, QR_SIZE * 0.4, -0.22);
+  strut.rotation.x = -0.35;
+  qr.add(qrFrame, qrFace, strut);
+  qr.rotation.x = -0.18; // um pouco inclinado para trás
+  qr.visible = false; // até chegar o QR
+  place(g, qr, 0, 0, TABLE_Z + 1.2);
 
   // ── Cadeirões (KayKit «armchair_pillows»), um de cada lado ──
   // Virados para a mesa e um pouco para a sala; largos q.b. para uma personagem (≈ 1.7).
@@ -865,6 +886,19 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
   return {
     group: g,
     tv,
+    qr: {
+      group: qr,
+      setImage(src: HTMLCanvasElement) {
+        // Textura nova a cada QR: a placa gráfica não aceita mudar o tamanho de uma já enviada (ficava preta).
+        qrMat.map?.dispose();
+        const tex = new THREE.CanvasTexture(src);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.magFilter = THREE.NearestFilter; // quadrados do QR nítidos
+        tex.generateMipmaps = false;
+        qrMat.map = tex;
+        qrMat.needsUpdate = true;
+      },
+    },
     update(time: number) {
       const dt = last < 0 ? 0 : Math.min(0.1, time - last);
       last = time;

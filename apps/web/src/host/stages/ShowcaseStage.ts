@@ -70,6 +70,10 @@ export class ShowcaseStage implements Stage {
     return this.room?.tv ?? null;
   }
 
+  get qr(): LivingRoom['qr'] | null {
+    return this.room?.qr ?? null;
+  }
+
   constructor(opts: { room?: boolean } = {}) {
     if (opts.room) {
       this.room = buildLivingRoom(this.scene);
