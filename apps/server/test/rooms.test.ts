@@ -62,12 +62,11 @@ describe('RoomManager', () => {
     expect(ana!.color).not.toBe(rui!.color);
   });
 
-  it('nomes repetidos ganham sufixo', () => {
+  it('recusa um nome já usado na sala', () => {
     const { manager } = setup();
     const room = createRoom(manager);
     manager.joinPlayer(room.code, 'Ana', undefined, 'p1');
-    const res = manager.joinPlayer(room.code, 'ana', undefined, 'p2');
-    expect(res.ok && res.player.name).toBe('ana 2');
+    expect(manager.joinPlayer(room.code, 'ana', undefined, 'p2')).toEqual({ ok: false, error: 'NAME_TAKEN' });
   });
 
   it('rejeita sala cheia, trancada, inexistente ou nome inválido', () => {
@@ -167,17 +166,20 @@ describe('RoomManager', () => {
     expect(manager.setVip('p1', b.player.id)).toBeNull(); // desligado
   });
 
-  it('rename: limpa o nome e mantém-no único na sala', () => {
+  it('rename: limpa o nome e recusa um já usado na sala', () => {
     const { manager, hooks } = setup();
     const room = createRoom(manager);
     const a = manager.joinPlayer(room.code, 'Ana', undefined, 'p1');
     manager.joinPlayer(room.code, 'Rui', undefined, 'p2');
     if (!a.ok) throw new Error('join');
     hooks.onPlayersChanged.mockClear();
-    expect(manager.rename('p1', '  Rui ')).toBe(room);
-    expect(a.player.name).toBe('Rui 2');
+    expect(manager.rename('p1', '  rui ')).toEqual({ ok: false, error: 'NAME_TAKEN' });
+    expect(a.player.name).toBe('Ana');
+    expect(manager.rename('p1', '  Rita ')).toBe(room);
+    expect(a.player.name).toBe('Rita');
     expect(hooks.onPlayersChanged).toHaveBeenCalledOnce();
-    expect(manager.rename('p1', '   ')).toBeNull();
+    expect(manager.rename('p1', 'Rita')).toBeNull(); // igual ao atual: nada muda
+    expect(manager.rename('p1', '   ')).toEqual({ ok: false, error: 'INVALID_NAME' });
     expect(manager.rename('host', 'X')).toBeNull(); // só jogadores
   });
 

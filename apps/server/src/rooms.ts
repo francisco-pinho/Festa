@@ -81,15 +81,10 @@ export class Room {
     return PLAYER_COLORS.find((c) => !used.has(c)) ?? PLAYER_COLORS[0];
   }
 
-  uniqueName(name: string, except?: PlayerId): string {
-    const taken = new Set([...this.players.values()].filter((p) => p.id !== except).map((p) => p.name.toLowerCase()));
-    if (!taken.has(name.toLowerCase())) return name;
-    for (let n = 2; ; n++) {
-      const suffix = ` ${n}`;
-      const base = Array.from(name).slice(0, NAME_MAX_LENGTH - suffix.length).join('');
-      const candidate = `${base}${suffix}`;
-      if (!taken.has(candidate.toLowerCase())) return candidate;
-    }
+  /** Outro jogador da sala já tem este nome (sem contar maiúsculas)? */
+  nameTaken(name: string, except?: PlayerId): boolean {
+    const lower = name.toLowerCase();
+    return [...this.players.values()].some((p) => p.id !== except && p.name.toLowerCase() === lower);
   }
 }
 
@@ -227,16 +222,17 @@ export class RoomManager {
     return room;
   }
 
-  /** O jogador muda o nome. Devolve a sala se mudou. */
-  rename(socketId: string, rawName: string): Room | null {
+  /** O jogador muda o nome. Devolve a sala se mudou, ou o erro se o nome não serve. */
+  rename(socketId: string, rawName: string): Room | Fail | null {
     const found = this.lookup(socketId);
     if (found?.binding.role !== 'player') return null;
     const player = found.room.players.get(found.binding.playerId);
+    if (!player) return null;
     const name = sanitizeName(rawName);
-    if (!player || !name) return null;
-    const unique = found.room.uniqueName(name, player.id);
-    if (unique === player.name) return null;
-    player.name = unique;
+    if (!name) return { ok: false, error: 'INVALID_NAME' };
+    if (found.room.nameTaken(name, player.id)) return { ok: false, error: 'NAME_TAKEN' };
+    if (name === player.name) return null;
+    player.name = name;
     this.hooks.onPlayersChanged(found.room);
     return found.room;
   }
@@ -272,11 +268,12 @@ export class RoomManager {
     if (room.players.size >= MAX_PLAYERS) return { ok: false, error: 'ROOM_FULL' };
     const name = sanitizeName(rawName);
     if (!name) return { ok: false, error: 'INVALID_NAME' };
+    if (room.nameTaken(name)) return { ok: false, error: 'NAME_TAKEN' };
 
     this.detach(socketId);
     const player: PlayerRecord = {
       id: randomUUID(),
-      name: room.uniqueName(name),
+      name,
       color: room.nextColor(),
       sessionToken: randomBytes(24).toString('base64url'),
       socketId,

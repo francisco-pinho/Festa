@@ -155,9 +155,11 @@ export function registerSocketHandlers(io: FestaServer, opts: SocketServerOption
       manager.setVip(socket.id, playerId);
     });
 
-    socket.on('player:rename', (name) => {
-      if (typeof name !== 'string' || name.length > 64) return;
-      manager.rename(socket.id, name);
+    socket.on('player:rename', (name, ack) => {
+      if (typeof ack !== 'function') return;
+      if (typeof name !== 'string' || name.length > 64) return ack({ ok: false, error: 'INVALID_NAME' });
+      const res = manager.rename(socket.id, name);
+      ack(res && 'ok' in res ? res : { ok: true });
     });
 
     socket.on('player:input', (input) => {

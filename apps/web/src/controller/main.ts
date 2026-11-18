@@ -43,6 +43,7 @@ const ERRORS: Record<ErrorCode, string> = {
   ROOM_FULL: 'A sala está cheia.',
   ROOM_LOCKED: 'O jogo já começou. Espera pelo próximo!',
   INVALID_NAME: 'Escolhe um nome.',
+  NAME_TAKEN: 'Nome já usado.',
   HOST_TOKEN_INVALID: 'Pedido inválido.',
   SERVER_FULL: 'O servidor está cheio. Tenta mais tarde.',
 };
@@ -420,6 +421,7 @@ function openNameSheet(): void {
     <form class="card sheet-card" id="rn" autocomplete="off">
       <h2>Mudar o nome</h2>
       <input id="rn-name" maxlength="16" placeholder="Nome" required />
+      <p class="error" id="rn-error" hidden></p>
       <div class="vip-confirm">
         <button type="submit" class="vip-yes">Guardar</button>
         <button type="button" class="vip-no" id="rn-cancel">Cancelar</button>
@@ -436,10 +438,20 @@ function openNameSheet(): void {
   sheet.querySelector('#rn')!.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = input.value.trim();
-    if (!name) return;
-    localStorage.setItem(NAME_KEY, name);
-    if (socket.connected) socket.emit('player:rename', name);
-    close();
+    if (!name || !socket.connected) return;
+    const error = sheet.querySelector<HTMLElement>('#rn-error')!;
+    socket
+      .timeout(ACK_TIMEOUT_MS)
+      .emitWithAck('player:rename', name)
+      .then((res: AckResult<'player:rename'>) => {
+        if (!res.ok) throw ERRORS[res.error];
+        localStorage.setItem(NAME_KEY, name);
+        close();
+      })
+      .catch((msg: unknown) => {
+        error.textContent = typeof msg === 'string' ? msg : 'Sem resposta do servidor. Tenta outra vez.';
+        error.hidden = false;
+      });
   });
   sheet.querySelector('#rn-cancel')!.addEventListener('click', close);
 }

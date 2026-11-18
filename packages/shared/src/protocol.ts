@@ -49,6 +49,7 @@ export type ErrorCode =
   | 'ROOM_FULL'
   | 'ROOM_LOCKED'
   | 'INVALID_NAME'
+  | 'NAME_TAKEN'
   | 'HOST_TOKEN_INVALID'
   | 'SERVER_FULL';
 
@@ -77,8 +78,8 @@ export interface ClientToServerEvents {
   'player:input': (input: ControllerInput) => void;
   /** Só o VIP: passa a coroa a outro jogador ligado. */
   'player:setVip': (playerId: PlayerId) => void;
-  /** Muda o nome deste jogador (limpo e único na sala, como ao entrar). */
-  'player:rename': (name: string) => void;
+  /** Muda o nome deste jogador (limpo; recusado se já houver outro igual na sala). */
+  'player:rename': (name: string, ack: Ack) => void;
 
   // ── Espectador (vídeo do ecrã, página /ver) ─────────────
   'viewer:join': (req: ViewerJoinRequest, ack: Ack<{ viewerId: string }>) => void;
