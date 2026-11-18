@@ -20,6 +20,8 @@ interface Slot {
   /** Última animação pedida (para não a recomeçar a cada atualização) e quando volta ao descanso. */
   asked?: CharacterAnim;
   backAt?: number;
+  /** Na sala: próximo olhar para o lado (quando começa, para onde e quanto dura). */
+  glance?: { at: number; yaw: number; len: number };
 }
 
 interface Confetti {
@@ -113,6 +115,7 @@ export class ShowcaseStage implements Stage {
         // lareira, petiscos).
         slot.model.root.position.set(seat.x, seat.y ?? 0.02, seat.z);
         slot.model.faceYaw(seat.yaw, true);
+        slot.model.steadyHead = true;
         if (slot.rest !== seat.anim) {
           slot.rest = seat.anim;
           slot.model.restAnim = seat.anim;
@@ -259,6 +262,19 @@ export class ShowcaseStage implements Stage {
 
   private clock = 0;
 
+  /** Na sala, de vez em quando, a personagem vira a cabeça devagar para um lado e volta (sem sair do lugar). */
+  private idleGlance(slot: Slot, time: number): void {
+    const pick = () => (Math.random() < 0.5 ? -1 : 1) * (0.25 + Math.random() * 0.25);
+    const g = (slot.glance ??= { at: time + 3 + Math.random() * 6, yaw: pick(), len: 2.4 });
+    const k = (time - g.at) / g.len;
+    if (k >= 1) {
+      Object.assign(g, { at: time + 5 + Math.random() * 7, yaw: pick(), len: 2 + Math.random() * 1.5 });
+      slot.model.pose.headY = 0;
+      return;
+    }
+    slot.model.pose.headY = k > 0 && slot.asked !== 'cheer' ? g.yaw * Math.sin(Math.PI * k) ** 2 : 0;
+  }
+
   update(dt: number, time: number): void {
     this.clock = time;
     this.room?.update(time);
@@ -273,6 +289,7 @@ export class ShowcaseStage implements Stage {
       this.clouds.update(dt);
     }
     for (const slot of this.slots.values()) {
+      if (this.room && slot.rest) this.idleGlance(slot, time);
       slot.model.update(dt);
       const s = slot.model.root.scale.x;
       if (s < 1) slot.model.root.scale.setScalar(Math.min(1, s + (1 - s) * damp(8, dt) + 0.01));

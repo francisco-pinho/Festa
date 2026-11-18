@@ -58,6 +58,8 @@ const CLOSE_REASONS: Record<CloseReason, string> = {
 const socket = connectSocket();
 let session = loadSession();
 let me: PlayerInfo | null = null;
+/** Todos os jogadores da sala (para «Mudar VIP»). */
+let roster: PlayerInfo[] = [];
 let layout: ControllerLayout | null = null;
 let hostConnected = true;
 let joining = false;
@@ -76,8 +78,8 @@ app.innerHTML = `
     <span id="dot"></span><span id="me"></span><span id="room"></span>
     <button id="stats" class="bar-btn" aria-label="Classificação" hidden>📊</button>
     <button id="tv" class="bar-btn" aria-label="Ver o ecrã">📺</button>
-    <button id="sensor" class="bar-btn" aria-label="Sensores">📵</button>
     <button id="menu" class="bar-btn" aria-label="Menu" hidden>☰</button>
+    <button id="gear" class="bar-btn" aria-label="As minhas definições">⚙️</button>
   </header>
   <main id="view"></main>
   <div id="overlay" hidden></div>
@@ -87,7 +89,7 @@ app.innerHTML = `
 `;
 const $ = <T extends HTMLElement>(sel: string) => app.querySelector<T>(sel)!;
 const view = $('#view');
-$('#sensor').addEventListener('click', openSensorSheet);
+$('#gear').addEventListener('click', openMySettings);
 
 // ── Menu 📊: moedas, estrelas, itens e classificação (abre-se a qualquer altura) ──
 let gameStatus: Extract<HostToControllerMessage, { t: 'status' }>['status'] = null;
@@ -164,6 +166,7 @@ socket.on('connect', () => {
 });
 socket.on('disconnect', updateOverlay);
 socket.on('room:players', (players) => {
+  roster = players;
   if (!me) return;
   me = players.find((p) => p.id === me!.id) ?? me;
   renderBar();
@@ -190,6 +193,9 @@ socket.on('controller:message', (msg) => {
       break;
     case 'toast':
       showToast(msg.text);
+      break;
+    case 'askName':
+      openNameSheet();
       break;
     case 'ping':
       send({ t: 'pong', id: msg.id });
@@ -336,7 +342,6 @@ function renderBar(): void {
   $('#me').textContent = `${me.isVip ? '⭐ ' : ''}${me.name}`;
   $('#room').textContent = session.roomCode;
   $('#menu').hidden = !me.isVip;
-  renderSensorBadge();
   document.documentElement.style.setProperty('--player', me.color);
 }
 
@@ -407,16 +412,40 @@ function showToast(text: string): void {
   toastTimer = setTimeout(() => (toast.hidden = true), 2_500);
 }
 
-// ── Sensores (painel 📳) ──────────────────────────────────
-function renderSensorBadge(): void {
-  const badge = $('#sensor');
-  badge.textContent = sensors.active ? '📳' : '📵';
-  badge.classList.toggle('on', sensors.active);
-  badge.title = sensors.active ? 'Sensores ativos' : 'Sensores desligados';
+// ── Mudar o nome («+» no lobby) ───────────────────────────
+function openNameSheet(): void {
+  const sheet = $('#sheet');
+  sheet.hidden = false;
+  sheet.innerHTML = `
+    <form class="card sheet-card" id="rn" autocomplete="off">
+      <h2>Mudar o nome</h2>
+      <input id="rn-name" maxlength="16" placeholder="Nome" required />
+      <div class="vip-confirm">
+        <button type="submit" class="vip-yes">Guardar</button>
+        <button type="button" class="vip-no" id="rn-cancel">Cancelar</button>
+      </div>
+    </form>`;
+  const input = sheet.querySelector<HTMLInputElement>('#rn-name')!;
+  input.value = me?.name ?? '';
+  input.focus();
+  input.select();
+  const close = () => {
+    sheet.hidden = true;
+    sheet.innerHTML = '';
+  };
+  sheet.querySelector('#rn')!.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = input.value.trim();
+    if (!name) return;
+    localStorage.setItem(NAME_KEY, name);
+    if (socket.connected) socket.emit('player:rename', name);
+    close();
+  });
+  sheet.querySelector('#rn-cancel')!.addEventListener('click', close);
 }
-sensors.onChange(renderSensorBadge);
 
-function openSensorSheet(): void {
+// ── As minhas definições (⚙️): só neste telemóvel, nunca no ecrã grande ──
+function openMySettings(): void {
   const sheet = $('#sheet');
   const status = () =>
     !sensors.supported
@@ -429,13 +458,15 @@ function openSensorSheet(): void {
   const render = () => {
     sheet.innerHTML = `
       <div class="card sheet-card">
-        <h2>📳 Sensores de movimento</h2>
+        <h2>⚙️ As minhas definições</h2>
         <p class="sheet-status">${status()}</p>
         ${sensors.supported && !sensors.active ? '<button class="primary" id="s-enable">Ativar sensores</button>' : ''}
         ${sensors.active ? '<button class="primary" id="s-cal">Calibrar abanão (3 s)</button>' : ''}
         <p class="sheet-meter" ${sensors.active ? '' : 'hidden'}><span id="s-bar"></span></p>
         <button id="s-vib">📳 Testar vibração</button>
         <p class="sheet-vib" id="s-vib-msg" hidden></p>
+        ${'requestFullscreen' in document.documentElement ? `<button id="s-full">${document.fullscreenElement ? 'Sair do ecrã inteiro' : 'Ecrã inteiro'}</button>` : ''}
+        ${me?.isVip ? '<button id="s-vip">⭐ Mudar VIP</button>' : ''}
         <button id="s-close">Fechar</button>
       </div>`;
     sheet.querySelector('#s-enable')?.addEventListener('click', async () => {
@@ -463,7 +494,47 @@ function openSensorSheet(): void {
       hapticPattern(80);
       render();
     });
+    sheet.querySelector('#s-full')?.addEventListener('click', async () => {
+      if (document.fullscreenElement) await document.exitFullscreen().catch(() => {});
+      else await document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+      render();
+    });
+    sheet.querySelector('#s-vip')?.addEventListener('click', () => renderVipList());
     sheet.querySelector('#s-close')?.addEventListener('click', closeSheet);
+  };
+  // «Mudar VIP»: lista dos outros jogadores ligados, com o nome que escolheram, e confirmação.
+  const renderVipList = () => {
+    const others = roster.filter((p) => p.connected && p.id !== me?.id);
+    sheet.innerHTML = `
+      <div class="card sheet-card">
+        <h2>⭐ Mudar VIP</h2>
+        ${others.length ? '' : '<p class="sheet-status">Não há mais ninguém ligado na sala.</p>'}
+        ${others.map((p) => `<button class="vip-pick" data-id="${escapeHtml(p.id)}"><span class="iv-dot" style="background:${p.color}"></span>${escapeHtml(p.name)}</button>`).join('')}
+        <button id="s-back">Voltar</button>
+      </div>`;
+    sheet.querySelectorAll<HTMLButtonElement>('.vip-pick').forEach((b) =>
+      b.addEventListener('click', () => {
+        const p = others.find((o) => o.id === b.dataset.id);
+        if (p) renderVipConfirm(p);
+      }),
+    );
+    sheet.querySelector('#s-back')!.addEventListener('click', render);
+  };
+  const renderVipConfirm = (p: PlayerInfo) => {
+    sheet.innerHTML = `
+      <div class="card sheet-card">
+        <h2>Mudar VIP para «${escapeHtml(p.name)}»?</h2>
+        <div class="vip-confirm">
+          <button class="vip-yes" id="v-yes">SIM</button>
+          <button class="vip-no" id="v-no">NÃO</button>
+        </div>
+      </div>`;
+    sheet.querySelector('#v-yes')!.addEventListener('click', () => {
+      if (socket.connected) socket.emit('player:setVip', p.id);
+      hapticPattern([30, 40, 60]);
+      closeSheet();
+    });
+    sheet.querySelector('#v-no')!.addEventListener('click', renderVipList);
   };
   // Medidor ao vivo do movimento
   const offMeter = sensors.onSample((s) => {
@@ -485,7 +556,7 @@ function maybeOfferSensors(): void {
   localStorage.setItem(SENSOR_ASKED_KEY, '1');
   // No Android começam sozinhos; só mostramos o painel se ao fim de 2 s ainda não houver dados.
   setTimeout(() => {
-    if (!sensors.active) openSensorSheet();
+    if (!sensors.active) openMySettings();
   }, 2000);
 }
 
@@ -534,8 +605,21 @@ function keepAwake(): void {
     })
     .catch(() => {});
 }
+// Muito tempo em segundo plano (ecrã bloqueado): a ligação pode ter morrido sem o browser saber,
+// e os toques perdiam-se. Ao voltar, religa logo (o servidor devolve o mesmo lugar e o ecrã atual).
+const STALE_MS = 20_000;
+let hiddenAt = 0;
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && me) keepAwake();
+  if (document.visibilityState === 'hidden') {
+    hiddenAt = Date.now();
+    return;
+  }
+  if (me) keepAwake();
+  if (session && hiddenAt && Date.now() - hiddenAt > STALE_MS && socket.connected) {
+    socket.disconnect();
+    socket.connect();
+  }
+  hiddenAt = 0;
 });
 
 function escapeHtml(s: string): string {

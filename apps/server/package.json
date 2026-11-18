@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "cross-env FESTA_DEV=1 tsx watch src/index.ts",
     "start": "cross-env NODE_ENV=production tsx src/index.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

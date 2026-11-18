@@ -150,6 +150,16 @@ export function registerSocketHandlers(io: FestaServer, opts: SocketServerOption
       }
     });
 
+    socket.on('player:setVip', (playerId) => {
+      if (!playerIdSchema.safeParse(playerId).success) return;
+      manager.setVip(socket.id, playerId);
+    });
+
+    socket.on('player:rename', (name) => {
+      if (typeof name !== 'string' || name.length > 64) return;
+      manager.rename(socket.id, name);
+    });
+
     socket.on('player:input', (input) => {
       if (!allowInput()) return;
       const found = manager.lookup(socket.id);

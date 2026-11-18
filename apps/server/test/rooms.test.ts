@@ -152,6 +152,35 @@ describe('RoomManager', () => {
     expect(manager.getRoom(room.code)).toBeUndefined();
   });
 
+  it('setVip: só o VIP passa a coroa, e só a quem está ligado', () => {
+    const { manager } = setup();
+    const room = createRoom(manager);
+    const a = manager.joinPlayer(room.code, 'Ana', undefined, 'p1');
+    const b = manager.joinPlayer(room.code, 'Rui', undefined, 'p2');
+    if (!a.ok || !b.ok) throw new Error('join');
+    const vipName = () => room.snapshot().find((p) => p.isVip)?.name;
+    expect(manager.setVip('p2', a.player.id)).toBeNull(); // o Rui não é VIP
+    expect(manager.setVip('p1', b.player.id)).toBe(room);
+    expect(vipName()).toBe('Rui');
+    manager.disconnect('p2');
+    expect(vipName()).toBe('Ana'); // o escolhido saiu: volta ao ligado há mais tempo
+    expect(manager.setVip('p1', b.player.id)).toBeNull(); // desligado
+  });
+
+  it('rename: limpa o nome e mantém-no único na sala', () => {
+    const { manager, hooks } = setup();
+    const room = createRoom(manager);
+    const a = manager.joinPlayer(room.code, 'Ana', undefined, 'p1');
+    manager.joinPlayer(room.code, 'Rui', undefined, 'p2');
+    if (!a.ok) throw new Error('join');
+    hooks.onPlayersChanged.mockClear();
+    expect(manager.rename('p1', '  Rui ')).toBe(room);
+    expect(a.player.name).toBe('Rui 2');
+    expect(hooks.onPlayersChanged).toHaveBeenCalledOnce();
+    expect(manager.rename('p1', '   ')).toBeNull();
+    expect(manager.rename('host', 'X')).toBeNull(); // só jogadores
+  });
+
   it('kick remove o jogador e devolve o socket', () => {
     const { manager } = setup();
     const room = createRoom(manager);

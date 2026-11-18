@@ -158,6 +158,9 @@ export class CharacterModel {
   private flashTime = 0;
   /** Pose extra contínua (rad), somada por cima da animação a cada imagem (ex.: narrador a falar). */
   readonly pose = { headX: 0, headY: 0, headZ: 0, chestY: 0, chestZ: 0 };
+  /** Cabeça suavizada (sem esticões da animação); usada na sala de estar. */
+  steadyHead = false;
+  private smoothHead: THREE.Quaternion | null = null;
   /** Recuo da cabeça ao levar um soco (rad), decai sozinho. */
   private headKick = new THREE.Vector2();
   /** Contorno de luz (rim) na cor do jogador, partilhado por todos os materiais deste boneco. */
@@ -404,6 +407,13 @@ export class CharacterModel {
     if (this.restHead) this.bones.head!.quaternion.copy(this.restHead);
     if (this.restChest) this.bones.chest!.quaternion.copy(this.restChest);
     this.mixer.update(dt);
+    // Cabeça sem esticões: segue a animação devagar (o salto no fim de cada volta das animações
+    // sentadas fazia a cabeça abanar de x em x segundos).
+    if (this.steadyHead && this.bones.head) {
+      this.smoothHead ??= this.bones.head.quaternion.clone();
+      this.smoothHead.slerp(this.bones.head.quaternion, damp(2.5, dt));
+      this.bones.head.quaternion.copy(this.smoothHead);
+    }
 
     // Poses extra por cima da animação (suaves)
     if (this.anim === 'sad') {

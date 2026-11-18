@@ -16,6 +16,8 @@ const server = await startServer({
    */
   https: process.env.HTTPS === '1',
   publicUrl: process.env.PUBLIC_URL?.trim() || null,
+  // `npm run dev`: as páginas vêm do Vite (código ao vivo), não da build antiga em apps/web/dist.
+  devWebPort: process.env.FESTA_DEV === '1' ? 5173 : undefined,
 });
 
 /** Túnel aberto pelo `npm run online` (fecha-se com o servidor). */

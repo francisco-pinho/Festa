@@ -48,6 +48,7 @@ export function renderPick(view: HTMLElement, l: PickLayout, send: (input: Contr
           <button class="pk-arrow right" aria-label="Seguinte">▶</button>
         </div>
         <div class="pk-actions">
+          <button class="pk-btn minus" hidden></button>
           <button class="pk-btn y" hidden></button>
           <button class="pk-btn x" hidden></button>
           <button class="pk-btn b" hidden></button>
@@ -71,6 +72,7 @@ export function renderPick(view: HTMLElement, l: PickLayout, send: (input: Contr
     root.querySelector('.pk-btn.x')!.addEventListener('click', () => press('x'));
     root.querySelector('.pk-btn.y')!.addEventListener('click', () => press('y'));
     root.querySelector('.pk-btn.plus')!.addEventListener('click', () => press('plus'));
+    root.querySelector('.pk-btn.minus')!.addEventListener('click', () => press('minus'));
     // Deslizar o dedo no carrossel também muda de personagem.
     const win = root.querySelector<HTMLElement>('.pk-window')!;
     let x0: number | null = null;
@@ -116,7 +118,8 @@ export function renderPick(view: HTMLElement, l: PickLayout, send: (input: Contr
   btn('.pk-btn.y', l.buttons.y ? `Ⓨ ${l.buttons.y}` : undefined);
   btn('.pk-btn.a', l.buttons.a ? `Ⓐ ${l.buttons.a}` : undefined);
   btn('.pk-btn.b', l.buttons.b ? `Ⓑ ${l.buttons.b}` : undefined);
-  btn('.pk-btn.plus', l.buttons.plus ? `⚙️ ${l.buttons.plus}` : undefined);
+  btn('.pk-btn.plus', l.buttons.plus ? `+ ${l.buttons.plus}` : undefined);
+  btn('.pk-btn.minus', l.buttons.minus ? `− ${l.buttons.minus}` : undefined);
   box.querySelectorAll<HTMLButtonElement>('.pk-arrow').forEach((a) => (a.disabled = l.ready));
   return () => undefined;
 }

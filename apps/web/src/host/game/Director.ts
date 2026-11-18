@@ -238,6 +238,8 @@ export class Director {
     // As caras das personagens vão para cada telemóvel uma vez (o telemóvel guarda-as).
     const facesSent = new Set<string>();
 
+    /** O VIP pode esconder o QR com «−» (quando já estão todos lá dentro). */
+    let qrShown = true;
     let mainMenu: MenuRequest | null = null;
     /** O VIP carregou em Ⓨ (com todos prontos): a câmara vai à televisão e aparece lá o menu dos jogos. */
     let startRequested = false;
@@ -318,7 +320,7 @@ export class Director {
         const vip = p === this.leader;
         if (!p.connected) facesSent.delete(p.id);
         // Escolha da personagem no telemóvel: carrossel com as caras e o que cada botão faz
-        // (Ⓐ escolher, Ⓧ mudar de lugar; só o VIP: Ⓑ definições gerais, Ⓨ começar a jogar).
+        // (Ⓐ escolher, Ⓧ mudar de lugar, «+» mudar o nome; só o VIP: Ⓑ definições gerais, Ⓨ começar a jogar, «−» QR).
         // Só o VIP, já na televisão, volta ao comando normal, para navegar no menu dos jogos.
         // Depois de escolher: comando completo (cruz e todos os botões), com Ⓐ para mudar de personagem
         // (volta ao carrossel).
@@ -341,6 +343,8 @@ export class Director {
                 b: vip && !atTv ? 'Definições' : undefined,
                 x: 'Mudar de lugar',
                 y: vip && !atTv ? 'Jogar' : undefined,
+                minus: vip && !atTv ? (qrShown ? 'Esconder QR' : 'Mostrar QR') : undefined,
+                plus: atTv ? undefined : 'Mudar nome',
               },
             },
             p,
@@ -379,6 +383,8 @@ export class Director {
                 b: vip && !atTv ? 'Definições' : undefined,
                 x: 'Mudar de lugar',
                 y: vip && !atTv ? 'Jogar' : undefined,
+                minus: vip && !atTv ? (qrShown ? 'Esconder QR' : 'Mostrar QR') : undefined,
+                plus: atTv ? undefined : 'Mudar nome',
               },
             },
             p,
@@ -453,6 +459,15 @@ export class Director {
         const pick = this.picks.get(player.id);
         if (!pick) return;
         if (button === 'x') moveSeat(player);
+        // «+»: mudar o nome (a caixa abre no telemóvel de quem carregou).
+        else if (button === 'plus' && !atTv) this.hub.askName(player);
+        // «−» do VIP: mostra/esconde o quadro do QR.
+        else if (button === 'minus' && player === this.leader && !atTv) {
+          qrShown = !qrShown;
+          ui.querySelector<HTMLElement>('.lobby-join')!.hidden = !qrShown;
+          sound.play('click');
+          render();
+        }
         else if (button === 'y' && player === this.leader) requestStart(player);
         // Definições gerais: só o VIP, e só na sala (na TV o Ⓑ volta atrás nos menus).
         else if (button === 'b' && player === this.leader && !atTv) this.menu.openFor(player);

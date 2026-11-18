@@ -75,6 +75,10 @@ export interface ClientToServerEvents {
     ack: Ack<{ roomCode: string; player: PlayerInfo; sessionToken: string }>,
   ) => void;
   'player:input': (input: ControllerInput) => void;
+  /** Só o VIP: passa a coroa a outro jogador ligado. */
+  'player:setVip': (playerId: PlayerId) => void;
+  /** Muda o nome deste jogador (limpo e único na sala, como ao entrar). */
+  'player:rename': (name: string) => void;
 
   // ── Espectador (vídeo do ecrã, página /ver) ─────────────
   'viewer:join': (req: ViewerJoinRequest, ack: Ack<{ viewerId: string }>) => void;

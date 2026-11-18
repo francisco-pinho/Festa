@@ -59,6 +59,8 @@ export function renderPad(view: HTMLElement, l: PadLayout, send: Send, stickSend
   const bind = (el: HTMLElement, button: ButtonId) => {
     let down = false;
     const set = (v: boolean) => {
+      // Já estava carregado (o «largar» perdeu-se, ex.: ecrã bloqueado): larga primeiro e volta a carregar.
+      if (v && down) set(false);
       if (v === down) return;
       down = v;
       el.classList.toggle('down', v);
@@ -73,9 +75,19 @@ export function renderPad(view: HTMLElement, l: PadLayout, send: Send, stickSend
     el.addEventListener('pointerup', () => set(false));
     el.addEventListener('pointercancel', () => set(false));
     cleanups.push(() => set(false));
+    releasers.push(() => set(false));
   };
+  const releasers: (() => void)[] = [];
   view.querySelectorAll<HTMLElement>('.pb').forEach((el) => bind(el, el.dataset.b as ButtonId));
   view.querySelectorAll<HTMLElement>('.db').forEach((el) => bind(el, el.dataset.d as ButtonId));
+  // Ecrã bloqueado ou app em segundo plano a meio de um toque: larga tudo (o «pointerup» já não vem).
+  const releaseAll = () => {
+    if (document.visibilityState !== 'hidden') return;
+    releasers.forEach((f) => f());
+    stickSend(0, 0);
+  };
+  document.addEventListener('visibilitychange', releaseAll);
+  cleanups.push(() => document.removeEventListener('visibilitychange', releaseAll));
 
   const zone = view.querySelector<HTMLElement>('.stick-zone');
   // Joystick: um toque leve quando chega à borda (como o batente de um comando).

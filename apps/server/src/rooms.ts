@@ -40,6 +40,8 @@ export class Room {
   hostSocketId: string | null;
   hostTimer: Timer | null = null;
   locked = false;
+  /** VIP escolhido pelo VIP anterior («Mudar VIP»); null = o ligado há mais tempo. */
+  vipId: PlayerId | null = null;
   /** Map preserva a ordem de entrada. */
   readonly players = new Map<PlayerId, PlayerRecord>();
 
@@ -57,8 +59,9 @@ export class Room {
 
   snapshot(): PlayerInfo[] {
     const list = [...this.players.values()];
-    // VIP = o jogador ligado há mais tempo na sala.
-    const vip = list.find((p) => p.socketId !== null) ?? null;
+    // VIP = o escolhido (se estiver ligado) ou o jogador ligado há mais tempo na sala.
+    const chosen = this.vipId ? this.players.get(this.vipId) : undefined;
+    const vip = chosen?.socketId ? chosen : (list.find((p) => p.socketId !== null) ?? null);
     return list.map((p) => ({
       id: p.id,
       name: p.name,
@@ -78,8 +81,8 @@ export class Room {
     return PLAYER_COLORS.find((c) => !used.has(c)) ?? PLAYER_COLORS[0];
   }
 
-  uniqueName(name: string): string {
-    const taken = new Set([...this.players.values()].map((p) => p.name.toLowerCase()));
+  uniqueName(name: string, except?: PlayerId): string {
+    const taken = new Set([...this.players.values()].filter((p) => p.id !== except).map((p) => p.name.toLowerCase()));
     if (!taken.has(name.toLowerCase())) return name;
     for (let n = 2; ; n++) {
       const suffix = ` ${n}`;
@@ -209,6 +212,33 @@ export class RoomManager {
     const socketId = player.socketId;
     this.removePlayer(found.room, player);
     return { room: found.room, socketId };
+  }
+
+  /** O VIP passa a coroa a outro jogador ligado. Devolve a sala se mudou. */
+  setVip(socketId: string, playerId: PlayerId): Room | null {
+    const found = this.lookup(socketId);
+    if (found?.binding.role !== 'player') return null;
+    const { room, binding } = found;
+    const snap = room.snapshot();
+    if (!snap.find((p) => p.id === binding.playerId)?.isVip) return null;
+    if (playerId === binding.playerId || !snap.find((p) => p.id === playerId)?.connected) return null;
+    room.vipId = playerId;
+    this.hooks.onPlayersChanged(room);
+    return room;
+  }
+
+  /** O jogador muda o nome. Devolve a sala se mudou. */
+  rename(socketId: string, rawName: string): Room | null {
+    const found = this.lookup(socketId);
+    if (found?.binding.role !== 'player') return null;
+    const player = found.room.players.get(found.binding.playerId);
+    const name = sanitizeName(rawName);
+    if (!player || !name) return null;
+    const unique = found.room.uniqueName(name, player.id);
+    if (unique === player.name) return null;
+    player.name = unique;
+    this.hooks.onPlayersChanged(found.room);
+    return found.room;
   }
 
   // ── Jogadores ───────────────────────────────────────────

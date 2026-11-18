@@ -66,7 +66,9 @@ export class HubPlayer {
   }
 
   setButton(button: ButtonId, pressed: boolean): void {
-    if (pressed && !this.held[button]) this.presses.add(button);
+    // Carregar conta sempre (o telemóvel só manda «carregado» uma vez por toque): se o «largado»
+    // anterior se perdeu (ecrã bloqueado, rede), o botão não fica preso e o toque seguinte vale.
+    if (pressed) this.presses.add(button);
     this.held[button] = pressed;
   }
 
@@ -211,6 +213,11 @@ export class PlayerHub {
   /** Manda a cara (imagem pequena) de uma personagem para o telemóvel (carrossel de escolha). */
   sendFace(target: HubPlayer, id: string, img: string): void {
     this.sendTo(target, { t: 'face', id, img });
+  }
+
+  /** Abre no telemóvel a caixa para mudar o nome. */
+  askName(player: HubPlayer): void {
+    this.sendTo(player, { t: 'askName' });
   }
 
   vibrate(player: HubPlayer, pattern: number | number[]): void {

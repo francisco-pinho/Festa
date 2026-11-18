@@ -20,6 +20,8 @@ export interface StartOptions {
   /** Porta preferida. Com `tryNextPorts`, se estiver ocupada experimenta as seguintes. */
   port: number;
   tryNextPorts?: number;
+  /** Em `npm run dev`: porta do Vite para onde se reencaminham as páginas (em vez de servir a build). */
+  devWebPort?: number;
   /** Pasta com o cliente web compilado (apps/web/dist). */
   webDist: string;
   /** HTTPS com certificado autoassinado (sensores na rede local sem túnel). */
@@ -105,7 +107,12 @@ export async function startServer(opts: StartOptions): Promise<FestaServerHandle
   });
 
   // O mesmo servidor entrega o cliente web (ecrã + comando + vídeo).
-  if (existsSync(opts.webDist)) {
+  if (opts.devWebPort) {
+    // Desenvolvimento: quem abrir esta porta vai para o Vite (senão via uma build velha).
+    const devPort = opts.devWebPort;
+    const scheme = process.env.FESTA_HTTPS === '1' ? 'https' : 'http';
+    app.use((req, res) => res.redirect(`${scheme}://${req.hostname}:${devPort}${req.originalUrl}`));
+  } else if (existsSync(opts.webDist)) {
     app.use(express.static(opts.webDist, { index: 'index.html' }));
     app.get(CONTROLLER_PATH, (_req, res) => res.sendFile(resolve(opts.webDist, 'play.html')));
     app.get('/ver', (_req, res) => res.sendFile(resolve(opts.webDist, 'ver.html')));

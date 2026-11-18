@@ -162,7 +162,7 @@ export const controllerLayoutSchema = z.discriminatedUnion('kind', [
       .max(16),
     index: z.number().int().min(0).max(15),
     ready: z.boolean(),
-    buttons: z.object({ a: legend, b: legend, x: legend, y: legend, plus: legend }),
+    buttons: z.object({ a: legend, b: legend, x: legend, y: legend, plus: legend, minus: legend }),
   }),
   z.object({
     kind: z.literal('pad'),
@@ -203,6 +203,8 @@ export const hostToControllerSchema = z.discriminatedUnion('t', [
     ]),
   }),
   z.object({ t: z.literal('toast'), text: z.string().max(120) }),
+  /** Abre no telemóvel a caixa para mudar o nome (o nome novo vai por `player:rename`). */
+  z.object({ t: z.literal('askName') }),
   /** Cara de uma personagem (imagem pequena) para o carrossel de escolha; o telemóvel guarda-a. */
   z.object({ t: z.literal('face'), id: z.string().min(1).max(32), img: z.string().max(12_000).regex(/^data:image\/(jpeg|png|webp);base64,/) }),
   /** Medição de atraso: o telemóvel responde logo com `pong`. */
