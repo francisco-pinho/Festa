@@ -450,6 +450,13 @@ function flatShape(shape: THREE.Shape, mat: THREE.Material, y: number): THREE.Me
   g.rotateX(-Math.PI / 2);
   // ShapeGeometry fica em XY; depois de rodar, o «y» da forma passa a −z: espelha para ficar igual.
   g.scale(1, 1, -1);
+  // Espelhar inverte a ordem dos vértices (a face ficava virada para baixo e não se via de cima).
+  const idx = g.index!;
+  for (let i = 0; i < idx.count; i += 3) {
+    const b = idx.getX(i + 1);
+    idx.setX(i + 1, idx.getX(i + 2));
+    idx.setX(i + 2, b);
+  }
   const m = mesh(g, mat, { cast: false, receive: true });
   m.position.y = y;
   return m;
@@ -544,6 +551,14 @@ function island(k: Kit): void {
     // Fica na borda de trás da lagoa (não passa para lá da zona livre).
     cliff.position.set(0, 0, -r * 0.72);
     for (let i = 0; i < 5; i++) {
+      // Rochas altas da KayKit Forest; sem elas, pedras feitas à mão.
+      const kitRock = pickProp(PROPS.tallRocks, rng.next(), { height: 3 + (i % 2) * 1 + (i === 2 ? 1.3 : 0) });
+      if (kitRock) {
+        kitRock.position.set((i - 2) * 1.6, 0, -0.6 - rng.next() * 0.4);
+        kitRock.rotation.y = rng.next() * 6;
+        cliff.add(kitRock);
+        continue;
+      }
       const rockM = mesh(bumpy(new THREE.DodecahedronGeometry(1.5 + rng.next() * 0.6, 1), 0.2, 1.2, i), toon(i % 2 ? '#8b8d86' : '#9d9a8d'), { receive: true });
       rockM.position.set((i - 2) * 1.6, 1.2 + (i % 2) * 1 + (i === 2 ? 1.3 : 0), -0.6 - rng.next() * 0.4);
       rockM.scale.set(1, 1.3, 0.9);
@@ -630,6 +645,14 @@ function island(k: Kit): void {
     for (const h of huts) {
       k.clearDeco(h.x, h.z, 2.6);
       k.claim(h.x, h.z, 2.6);
+      // Casas da KayKit Medieval; sem elas, cabanas de bambu feitas à mão.
+      const house = pickProp(PROPS.islandHuts, rng.next(), { width: 3.6 });
+      if (house) {
+        house.position.set(h.x, 0, h.z);
+        house.rotation.y = faceNearestPath(k, h.x, h.z);
+        group.add(house);
+        continue;
+      }
       const hut = new THREE.Group();
       const wall = mesh(new THREE.CylinderGeometry(1.25, 1.35, 1.7, 14), toonUnique('#ffffff', { map: bamboo }), { receive: true });
       wall.position.y = 0.85;
@@ -685,6 +708,7 @@ function island(k: Kit): void {
     back.rotation.x = -0.9;
     chair.add(seat, back);
     chair.position.set(-0.8, -0.25, 0);
+    // Feito à mão: os «umbrella» da KayKit são guarda-chuvas de mão, não chapéus de sol.
     g.add(pole, canopy, towel, chair);
     g.position.set(x, -0.2, z);
     g.rotation.y = Math.atan2(x - cx, z - cz);
@@ -766,27 +790,95 @@ function island(k: Kit): void {
     }
   });
 
-  // Tochas tiki ao longo dos caminhos (de vez em quando, do lado de fora).
+  // Tochas tiki ao longo dos caminhos (de vez em quando, do lado de fora): cana de bambu com
+  // nós e atilhos de corda, cesto entrançado e chama a tremer com um brilho por baixo.
+  const caneMat = toonUnique('#ffffff', {
+    map: canvasTexture(64, (ctx, sz) => {
+      ctx.fillStyle = '#c99a55';
+      ctx.fillRect(0, 0, sz, sz);
+      ctx.fillStyle = 'rgba(255,235,190,0.35)';
+      ctx.fillRect(0, 0, sz * 0.35, sz);
+      ctx.fillStyle = '#6b4422';
+      for (let y = 0; y < sz; y += 21) ctx.fillRect(0, y, sz, 3);
+    }),
+  });
+  const weaveMat = toonUnique('#ffffff', {
+    map: canvasTexture(64, (ctx, sz) => {
+      ctx.fillStyle = '#7a5530';
+      ctx.fillRect(0, 0, sz, sz);
+      for (let y = 0; y < sz; y += 8)
+        for (let x = 0; x < sz; x += 8) {
+          ctx.fillStyle = (x + y) % 16 ? '#a87a45' : '#94683a';
+          ctx.fillRect(x + 1, y + 1, 6, 6);
+        }
+    }),
+  });
+  const cordMat = toon('#e2cc95');
+  const glowTex = canvasTexture(64, (ctx, sz) => {
+    const gr = ctx.createRadialGradient(sz / 2, sz / 2, 0, sz / 2, sz / 2, sz / 2);
+    gr.addColorStop(0, 'rgba(255,190,90,0.9)');
+    gr.addColorStop(1, 'rgba(255,140,40,0)');
+    ctx.fillStyle = gr;
+    ctx.fillRect(0, 0, sz, sz);
+  });
+  const glowMat = new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
   k.segs3.forEach(({ a: s, b: t }, i) => {
     if (i % 5 || notBridge(s, t)) return;
     const dx = t.x - s.x;
     const dz = t.z - s.z;
     const len = Math.hypot(dx, dz) || 1;
     const side = i % 10 ? 1 : -1;
-    const x = (s.x + t.x) / 2 - (dz / len) * 1.7 * side;
-    const z = (s.z + t.z) / 2 + (dx / len) * 1.7 * side;
+    const x = (s.x + t.x) / 2 - (dz / len) * 1.8 * side;
+    const z = (s.z + t.z) / 2 + (dx / len) * 1.8 * side;
     if (k.clearance(x, z) < 0.5) return;
     const torch = new THREE.Group();
-    const pole = mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.8, 6), toonUnique('#ffffff', { map: (() => { const t2 = canvasTexture(32, (ctx, sz) => { ctx.fillStyle = '#a07040'; ctx.fillRect(0, 0, sz, sz); ctx.fillStyle = '#5a3a1e'; for (let y = 0; y < sz; y += 8) ctx.fillRect(0, y, sz, 2); }); return t2; })() }));
-    pole.position.y = 0.9;
-    const cup = mesh(new THREE.CylinderGeometry(0.16, 0.1, 0.3, 8), toon('#5a3a1e'));
-    cup.position.y = 1.9;
-    const f = flame(k, 1);
-    f.position.y = 2.02;
-    torch.add(pole, cup, f);
+    const pole = mesh(new THREE.CylinderGeometry(0.075, 0.095, 2.1, 8), caneMat);
+    pole.position.y = 1.05;
+    for (const y of [0.55, 1.35, 1.85]) {
+      const band = mesh(new THREE.TorusGeometry(0.095, 0.025, 4, 12), cordMat, { cast: false });
+      band.rotation.x = Math.PI / 2;
+      band.position.y = y;
+      torch.add(band);
+    }
+    const cup = mesh(new THREE.CylinderGeometry(0.22, 0.12, 0.38, 10), weaveMat);
+    cup.position.y = 2.2;
+    const rim = mesh(new THREE.TorusGeometry(0.22, 0.04, 5, 14), cordMat, { cast: false });
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = 2.39;
+    const f = flame(k, 1.35);
+    f.position.y = 2.36;
+    const glow = new THREE.Sprite(glowMat);
+    glow.scale.setScalar(1.3);
+    glow.position.y = 2.6;
+    torch.add(pole, cup, rim, f, glow);
     torch.position.set(x, 0, z);
+    torch.rotation.set((rng.next() - 0.5) * 0.08, rng.next() * 6, (rng.next() - 0.5) * 0.08);
     group.add(torch);
   });
+
+  // Flores pequenas espalhadas pela relva (uma só malha instanciada, em várias cores).
+  {
+    const cols = ['#ffffff', '#ffd23f', '#ff8fc8', '#ff6b5a', '#b48cff'].map((c) => new THREE.Color(c));
+    const fl = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.15, 0), toonUnique('#ffffff', { emissive: '#ffffff', emissiveIntensity: 0.15 }), 900);
+    const m4 = new THREE.Matrix4();
+    let n = 0;
+    for (let i = 0; i < 6000 && n < fl.count; i++) {
+      const x = cx + (rng.next() * 2 - 1) * a;
+      const z = cz + (rng.next() * 2 - 1) * b;
+      if (!onGrass(3)(x, z) || k.clearance(x, z) < 0.5) continue;
+      // Em pequenos ramos de 3 a 5.
+      const many = 4 + Math.floor(rng.next() * 4);
+      const col = cols[Math.floor(rng.next() * cols.length)]!;
+      for (let j = 0; j < many && n < fl.count; j++) {
+        const s = 0.8 + rng.next() * 0.6;
+        fl.setMatrixAt(n, m4.makeScale(s, s * 0.7, s).setPosition(x + (rng.next() - 0.5) * 0.9, 0.42 + rng.next() * 0.15, z + (rng.next() - 0.5) * 0.7));
+        fl.setColorAt(n++, col);
+      }
+    }
+    fl.count = n;
+    fl.castShadow = false;
+    group.add(fl);
+  }
 
   // Selva mais cerrada: fetos e arbustos junto ao trilho, árvores grandes logo atrás.
   for (const { a: s, b: t } of k.segs3) {
@@ -801,9 +893,10 @@ function island(k: Kit): void {
       const x = s.x + dx * f - (dz / len) * dist * side;
       const z = s.z + dz * f + (dx / len) * dist * side;
       if (k.clearance(x, z) < 0.4) continue;
-      const big = dist > 3.6;
+      // Palmeira só com espaço para a copa (senão as folhas tapam as casas ao lado).
+      const big = dist > 3.6 && k.clearance(x, z) > 2.6;
       const o = big
-        ? pickProp([...PROPS.trees.slice(0, 5), ...PROPS.palms], rng.next(), { height: 4.5 + rng.next() * 2.5 })
+        ? pickProp(PROPS.palms, rng.next(), { height: 4.5 + rng.next() * 1.5 })
         : pickProp(PROPS.plants, rng.next(), { height: 0.8 + rng.next() * 0.9 });
       if (!o) continue;
       o.position.set(x, 0, z);

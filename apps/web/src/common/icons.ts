@@ -490,6 +490,9 @@ export function drawIcon(ctx: CanvasRenderingContext2D, name: string, x: number,
 export function splitRich(text: string): { text?: string; icon?: string }[] {
   const out: { text?: string; icon?: string }[] = [];
   let last = 0;
+  // O matchAll copia o lastIndex da regex global: um test() anterior fazia-o saltar os emojis do
+  // início, o texto ficava igual e o MutationObserver de installIconSwap entrava em ciclo infinito.
+  EMOJI_RE.lastIndex = 0;
   for (const m of text.matchAll(EMOJI_RE)) {
     if (DECORATIVE_EMOJI.has(m[1]!)) {
       if (m.index! > last) out.push({ text: text.slice(last, m.index) });

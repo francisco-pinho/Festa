@@ -59,7 +59,8 @@ export function createBoardTheme(board: Board, scene: THREE.Scene): BoardTheme {
     extras.setFlags(flags);
   };
   // Relva em 3D por cima dos relvados (depois do cenário, para não nascer debaixo dos adereços).
-  addGrassField(board, theme.group, theme.bounds);
+  // Na ilha a relva é mais cerrada (é quase toda relvado).
+  addGrassField(board, theme.group, theme.bounds, board.theme === 'island' ? 13000 : undefined);
   return theme;
 }
 
@@ -343,24 +344,74 @@ class IslandTheme implements BoardTheme {
       if (onBridge) return null;
       return { width: 1.1, height: 0.08, color: '#e8d3a2', y: 0.05 };
     });
-    // Ponte (afunda com a maré alta)
-    for (const s of board.spaces)
-      for (const n of s.next) {
-        const t = getSpace(board, n);
-        if (s.zone !== 'bridge' && t.zone !== 'bridge') continue;
+    // Ponte de tábuas (afunda com a maré alta): tábuas soltas sobre duas vigas, postes a meio de
+    // cada troço (fora das casas) e cordas a descair entre eles.
+    {
+      const bSegs: [Space, Space][] = [];
+      for (const s of board.spaces)
+        for (const n of s.next) {
+          const t = getSpace(board, n);
+          if (s.zone === 'bridge' || t.zone === 'bridge') bSegs.push([s, t]);
+        }
+      const slatGeo = new THREE.BoxGeometry(1.9, 0.12, 0.27);
+      const slats: THREE.Matrix4[] = [];
+      const brng = createRng(4242);
+      const posts = new Map<string, THREE.Vector3[]>(); // ponta de cima dos postes, por troço
+      const beamMat = toon('#6e4524');
+      const postMat = toon('#5e3a1e');
+      for (const [s, t] of bSegs) {
         const dx = t.x - s.x;
         const dz = t.z - s.z;
-        const len = Math.hypot(dx, dz);
-        const plank = mesh(new THREE.BoxGeometry(1.7, 0.25, len), toon('#a8743f'), { receive: true });
-        plank.position.set(s.x + dx / 2, 0.05, s.z + dz / 2);
-        plank.rotation.y = Math.atan2(dx, dz);
-        this.bridge.add(plank);
+        const len = Math.hypot(dx, dz) || 1;
+        const yaw = Math.atan2(dx, dz);
+        const n = Math.max(1, Math.round(len / 0.34));
+        for (let i = 0; i < n; i++) {
+          const f = (i + 0.5) / n;
+          const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw + (brng.next() - 0.5) * 0.08, 0));
+          slats.push(new THREE.Matrix4().compose(new THREE.Vector3(s.x + dx * f, 0.1 + brng.next() * 0.02, s.z + dz * f), q, new THREE.Vector3(0.92 + brng.next() * 0.16, 1, 1)));
+        }
+        const px = dz / len;
+        const pz = -dx / len;
         for (const side of [-1, 1]) {
-          const post = mesh(new THREE.CylinderGeometry(0.12, 0.12, 2.2), toon('#7a4f28'));
-          post.position.set(s.x + (dz / len) * 0.9 * side, -0.3, s.z + (-dx / len) * 0.9 * side);
-          this.bridge.add(post);
+          const beam = mesh(new THREE.BoxGeometry(0.16, 0.18, len), beamMat, { receive: true });
+          beam.position.set(s.x + dx / 2 + px * 0.78 * side, -0.02, s.z + dz / 2 + pz * 0.78 * side);
+          beam.rotation.y = yaw;
+          this.bridge.add(beam);
+          const post = mesh(new THREE.CylinderGeometry(0.1, 0.12, 2.6, 8), postMat);
+          const top = new THREE.Vector3(s.x + dx / 2 + px * 1.15 * side, 1.15, s.z + dz / 2 + pz * 1.15 * side);
+          post.position.set(top.x, top.y - 1.3, top.z);
+          const cap = mesh(new THREE.SphereGeometry(0.13, 8, 6), postMat);
+          cap.position.copy(top);
+          this.bridge.add(post, cap);
+          const key = `${s.id}>${t.id}`;
+          (posts.get(key) ?? posts.set(key, []).get(key)!).push(top);
         }
       }
+      const slatMesh = new THREE.InstancedMesh(slatGeo, toonUnique('#ffffff'), slats.length);
+      const shades = ['#b9824a', '#a8743f', '#c4905a', '#9c6a3a'];
+      slats.forEach((m, i) => {
+        slatMesh.setMatrixAt(i, m);
+        slatMesh.setColorAt(i, new THREE.Color(shades[i % shades.length]!));
+      });
+      slatMesh.castShadow = slatMesh.receiveShadow = true;
+      this.bridge.add(slatMesh);
+      // Cordas: do poste de um troço ao do troço seguinte, do mesmo lado.
+      const ropeMat = toon('#d8c08c');
+      for (const [s, t] of bSegs)
+        for (const n of t.next) {
+          const a = posts.get(`${s.id}>${t.id}`);
+          const b = posts.get(`${t.id}>${n}`);
+          if (!a || !b) continue;
+          for (let side = 0; side < 2; side++) {
+            const p0 = a[side]!;
+            const p1 = b[side]!;
+            const mid = p0.clone().lerp(p1, 0.5);
+            mid.y -= 0.35;
+            const rope = mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(p0.clone().setY(p0.y - 0.08), mid, p1.clone().setY(p1.y - 0.08)), 10, 0.035, 5), ropeMat, { cast: false });
+            this.bridge.add(rope);
+          }
+        }
+    }
     // Barreira da ponte (aparece na maré alta)
     const bridgeGate = board.gates.find((g) => g.name === 'Ponte');
     this.bridgeBarrier = mesh(new THREE.BoxGeometry(2.4, 1.2, 0.3), toonUnique('#ff3b5c'));
@@ -428,13 +479,14 @@ class IslandTheme implements BoardTheme {
       if (Math.abs((x - cx) / (a - 2)) ** 3 + Math.abs((z - cz) / (b - 2)) ** 3 >= 1) continue;
       if (!segs.every(([ax, az, bx, bz]) => distToSegment(x, z, ax, az, bx, bz) > 2.6)) continue;
       if (avoid.some((s) => Math.hypot(s.x - x, s.z - z) < 5)) continue;
+      // Palmeiras só longe do caminho (a copa abre ~2.5 para cada lado); perto, ficam arbustos.
+      const roomy = segs.every(([ax, az, bx, bz]) => distToSegment(x, z, ax, az, bx, bz) > 3.8);
       const r = rng.next();
       const obj =
-        r < 0.36
-          ? deco(PROPS.palms, rng, { height: 4.2 + rng.next() * 2.2 }, () => palmTree(rng, 0.8 + rng.next() * 0.6))
-          : r < 0.46
-            ? deco(PROPS.trees.slice(0, 5), rng, { height: 4.5 + rng.next() * 2 }, () => palmTree(rng, 0.9))
-            : r < 0.72
+        // Só palmeiras: as árvores de copa redonda da floresta não ficam bem numa ilha tropical.
+        r < 0.46 && roomy
+          ? deco(PROPS.palms, rng, { height: 4.2 + rng.next() * 2.4 }, () => palmTree(rng, 0.8 + rng.next() * 0.6))
+          : r < 0.72
               ? deco(PROPS.plants, rng, { height: 0.6 + rng.next() * 0.9 }, () => bush(rng))
               : r < 0.84
                 ? deco([...PROPS.beach.slice(1, 5), 'kaykit-dungeon/barrel_large', 'kaykit-dungeon/chest', 'kaykit-dungeon/box_large'], rng, { height: 0.8 + rng.next() * 0.4 }, () => bush(rng))

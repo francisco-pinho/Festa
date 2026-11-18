@@ -1,5 +1,5 @@
 /**
- * Sala de estar do ecrã inicial: parquet e paredes da KayKit Restaurant. Na parede de trás, o
+ * Sala de estar do ecrã inicial: parquet e paredes de papel com lambrim. Na parede de trás, o
  * sofá cinzento com três quadros em fila por cima, uma estante alta e a lareira de pedra
  * acesa (com faúlhas); à frente, a mesa de centro, duas cadeiras-ovo, um monte de almofadas e um
  * puff, plantas e a televisão de tubo onde passa o menu dos jogos. Os modelos são da KayKit (e a TV
@@ -27,9 +27,10 @@ export const ROOM_SEATS: { x: number; z: number; yaw: number; y?: number; anim: 
   // Pufes no chão, à frente da mesa.
   { x: -2.1, z: -1.15, yaw: 0.3, y: 0.32, anim: 'sit' },
   { x: 2.1, z: -1.15, yaw: -0.3, y: 0.32, anim: 'sit' },
-  // De pé, a mexer nas mãos: um ao lado do cadeirão esquerdo e dois no canto direito.
+  // De pé, a mexer nas mãos: um ao lado do cadeirão esquerdo, um à frente da lareira (virado para
+  // a câmara) e um no canto direito.
   { x: -3.9, z: -2.25, yaw: 0.25, y: 0, anim: 'fiddle' },
-  { x: 6.0, z: -5.5, yaw: -1.0, y: 0, anim: 'fiddle' },
+  { x: 6.8, z: -6.6, yaw: -0.47, y: 0, anim: 'fiddle' },
   { x: 6.0, z: -3.5, yaw: -1.0, y: 0, anim: 'fiddle' },
 ];
 
@@ -48,14 +49,10 @@ export const ROOM_PROPS: readonly string[] = [
   'kaykit-furniture/book_set',
   'kaykit-mixed2/frame_A_large',
   'kaykit-mixed2/frame_B_large',
-  'kaykit-restaurant/wall',
-  'kaykit-restaurant/wall_window_closed',
   'kaykit-furniture/cabinet_medium_decorated',
   'kaykit-holiday/hot_chocolate_decorated',
   'kaykit-holiday/footstool_red',
   'kaykit-holiday/footstool_green',
-  'kaykit-mixed1/guitar_A',
-  'kaykit-mixed2/gamer_chair_A',
 ];
 
 /** Parede de trás (face da frente do lambrim): onde se encostam estantes, quadros e a lareira. */
@@ -248,71 +245,93 @@ function planks(): THREE.CanvasTexture {
   return t;
 }
 
-/** Papel de parede às riscas com florinhas. */
+/** Papel de parede verde-salva: riscas largas em dois tons com um losango creme pequeno. */
 function wallpaper(): THREE.CanvasTexture {
-  const t = canvasTexture(128, (ctx, s) => {
-    ctx.fillStyle = '#f3e3c3';
+  return canvasTexture(128, (ctx, s) => {
+    ctx.fillStyle = '#8fc4a9';
     ctx.fillRect(0, 0, s, s);
-    ctx.fillStyle = '#ead3a4';
-    for (let x = 0; x < s; x += 32) ctx.fillRect(x, 0, 12, s);
-    for (let x = 16; x < s; x += 32)
-      for (let y = 16; y < s; y += 32) {
-        ctx.fillStyle = 'rgba(205,110,90,0.45)';
-        for (let k = 0; k < 5; k++) {
-          const a = (k / 5) * Math.PI * 2;
-          ctx.beginPath();
-          ctx.arc(x + 6 + Math.cos(a) * 3, y + Math.sin(a) * 3, 2.2, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.fillStyle = 'rgba(230,180,70,0.8)';
-        ctx.beginPath();
-        ctx.arc(x + 6, y, 1.6, 0, Math.PI * 2);
-        ctx.fill();
-      }
+    ctx.fillStyle = '#9dceb4';
+    ctx.fillRect(0, 0, s / 2, s);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(s / 2 - 2, 0, 2, s);
+    ctx.fillRect(s - 2, 0, 2, s);
+    ctx.fillStyle = 'rgba(255,246,225,0.55)';
+    for (const [x, y] of [[s / 4, s / 4], [(3 * s) / 4, (3 * s) / 4]] as const) {
+      ctx.beginPath();
+      ctx.moveTo(x, y - 7);
+      ctx.lineTo(x + 5, y);
+      ctx.lineTo(x, y + 7);
+      ctx.lineTo(x - 5, y);
+      ctx.fill();
+    }
   });
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(9, 2);
-  return t;
 }
 
-/** Lambrim: painéis de madeira com moldura. */
+/** Lambrim creme: um painel almofadado com sombra em baixo e luz em cima. */
 function wainscot(): THREE.CanvasTexture {
-  const t = canvasTexture(128, (ctx, s) => {
-    ctx.fillStyle = '#8a5a34';
+  return canvasTexture(128, (ctx, s) => {
+    ctx.fillStyle = '#f2e6cf';
     ctx.fillRect(0, 0, s, s);
-    ctx.fillStyle = '#9c6a40';
-    ctx.fillRect(10, 14, s - 20, s - 28);
-    ctx.strokeStyle = 'rgba(60,34,16,0.8)';
+    ctx.fillStyle = '#e8d9bc';
+    ctx.fillRect(14, 16, s - 28, s - 32);
+    ctx.strokeStyle = 'rgba(150,120,80,0.55)';
     ctx.lineWidth = 3;
-    ctx.strokeRect(10, 14, s - 20, s - 28);
-    ctx.strokeStyle = 'rgba(255,220,170,0.25)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(14, 18, s - 28, s - 36);
+    ctx.beginPath();
+    ctx.moveTo(14, s - 16);
+    ctx.lineTo(s - 14, s - 16);
+    ctx.lineTo(s - 14, 16);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.beginPath();
+    ctx.moveTo(14, s - 16);
+    ctx.lineTo(14, 16);
+    ctx.lineTo(s - 14, 16);
+    ctx.stroke();
   });
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.repeat.set(14, 1);
-  return t;
 }
 
-/** Paredes desenhadas (papel de parede + lambrim), para quando as da KayKit não carregam. */
+/** Material com `tex` repetida `rx`×`ry` (cada parede tem o seu, para os motivos não esticarem). */
+function tiled(tex: THREE.CanvasTexture, rx: number, ry: number): THREE.MeshToonMaterial {
+  const t = tex.clone();
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(rx, ry);
+  t.needsUpdate = true;
+  return toonUnique('#ffffff', { map: t });
+}
+
+/**
+ * Paredes: papel de parede em cima, lambrim de painéis em baixo, com rodapé, régua (por cima do
+ * lambrim) e sanca (no teto) a fechar as juntas. Peças inteiras, sem emendas à vista.
+ */
 function buildDrawnWalls(g: THREE.Group): void {
-  const paper = toonUnique('#ffffff', { map: wallpaper() });
-  const wood = toonUnique('#ffffff', { map: wainscot() });
-  // Trás (z −9.2) e frente (z 9.2): a da frente só se vê ao olhar para a TV; sem ela via-se o fundo roxo.
-  for (const z of [-9.2, 9.2]) {
-    const high = mesh(new THREE.BoxGeometry(28, 7.4, 0.4), paper, { cast: false, receive: true });
-    high.position.set(0, 1.8 + 3.7, z);
-    const low = mesh(new THREE.BoxGeometry(28, 1.8, 0.45), wood, { cast: false, receive: true });
-    low.position.set(0, 0.9, z - Math.sign(z) * 0.02);
-    g.add(high, low);
-  }
-  for (const sx of [-1, 1]) {
-    const side = mesh(new THREE.BoxGeometry(0.4, 7.4, 20), paper, { cast: false, receive: true });
-    side.position.set(sx * 13.8, 5.5, -1);
-    const sideLow = mesh(new THREE.BoxGeometry(0.45, 1.8, 20), wood, { cast: false, receive: true });
-    sideLow.position.set(sx * 13.78, 0.9, -1);
-    g.add(side, sideLow);
-  }
+  const H = 9.2; // altura da parede
+  const LOW = 2.3; // altura do lambrim
+  const paperTex = wallpaper();
+  const woodTex = wainscot();
+  const trim = toon('#fbf4e6');
+  const base = toon('#6e4a2c');
+  // Uma parede de comprimento `len`; `inward` aponta para dentro da sala (só muda a espessura das molduras).
+  const wall = (len: number, along: 'x' | 'z', pos: THREE.Vector3, inward: number) => {
+    const box = (w: number, h: number, d: number) =>
+      along === 'x' ? new THREE.BoxGeometry(w, h, d) : new THREE.BoxGeometry(d, h, w);
+    const at = (m: THREE.Mesh, y: number, out: number) => {
+      m.position.copy(pos);
+      m.position.y = y;
+      if (along === 'x') m.position.z += inward * out;
+      else m.position.x += inward * out;
+      g.add(m);
+    };
+    // Papel (0.4 de espessura) e lambrim 0.05 mais à frente: a face do lambrim é a WALL_Z.
+    at(mesh(box(len, H - LOW, 0.4), tiled(paperTex, len / 2.2, (H - LOW) / 2.2), { cast: false, receive: true }), LOW + (H - LOW) / 2, 0);
+    at(mesh(box(len, LOW, 0.45), tiled(woodTex, len / 1.6, 1), { cast: false, receive: true }), LOW / 2, 0.025);
+    at(mesh(box(len, 0.16, 0.52), trim, { cast: false, receive: true }), LOW + 0.04, 0.06); // régua
+    at(mesh(box(len, 0.36, 0.52), base, { cast: false, receive: true }), 0.18, 0.06); // rodapé
+    at(mesh(box(len, 0.3, 0.6), trim, { cast: false, receive: true }), H - 0.15, 0.1); // sanca
+  };
+  // Trás e frente: a da frente só se vê ao olhar para a TV; sem ela via-se o fundo roxo.
+  wall(28, 'x', new THREE.Vector3(0, 0, -9.2), 1);
+  wall(28, 'x', new THREE.Vector3(0, 0, 9.2), -1);
+  for (const sx of [-1, 1]) wall(20, 'z', new THREE.Vector3(sx * 13.8, 0, -1), -sx);
 }
 
 /** Tecido (trama fina), para o sofá, cadeirões e almofadas. */
@@ -539,28 +558,11 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
   g.add(fill);
 
   // ── Chão e paredes ──
-  // Soalho desenhado à mão (a KayKit não traz textura de chão que se repita); paredes KayKit Restaurant.
+  // Soalho e paredes desenhados à mão (peças inteiras: as paredes KayKit mostravam as emendas).
   const floor = mesh(new THREE.BoxGeometry(28, 0.3, 20), toonUnique('#ffffff', { map: planks() }), { cast: false, receive: true });
   floor.position.set(0, -0.15, -1);
   g.add(floor);
-  if (hasProp('kaykit-restaurant/wall')) {
-    // Paredes KayKit Restaurant: peça de 4×4 à escala 2.3 (9.2 m) → 3 em cada topo e 2 em cada lado.
-    const S = 2.3;
-    const half = 0.25 * S; // meia espessura: a face de dentro fica onde estavam as paredes desenhadas
-    const wall = (key: string, x: number, z: number, yaw: number) => {
-      const w = prop(`kaykit-restaurant/${key}`, { scale: S });
-      if (!w) return;
-      w.position.set(x, 0, z);
-      w.rotation.y = yaw;
-      g.add(w);
-    };
-    for (const x of [-9.2, 0, 9.2]) {
-      wall('wall', x, WALL_Z - half, 0);
-      wall('wall', x, 9.0 + half, Math.PI);
-    }
-    for (const sx of [-1, 1])
-      for (const [i, z] of [-4.58, 4.62].entries()) wall(i === 0 ? 'wall_window_closed' : 'wall', sx * (13.6 + half), z, -sx * (Math.PI / 2));
-  } else buildDrawnWalls(g);
+  buildDrawnWalls(g);
 
   // ── Disposição ──
   // Tudo à escala das personagens (2.3 de altura, ≈ 1.5 unidades por metro real): sofá encostado à
@@ -757,14 +759,6 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
   const sofaAxisZ = graySofa ? new THREE.Box3().setFromObject(graySofa).getCenter(new THREE.Vector3()).z : sofaFront - 0.6;
   place(g, prop('kaykit-furniture/lamp_standing', { height: 2.6 }), ROOM_SEATS[3]!.x, 0, sofaAxisZ, 0);
 
-  // Guitarra pequena deitada sobre a frente do tampo da lareira.
-  const mantelGuitar = place(g, prop('kaykit-mixed1/guitar_A', { height: 3.4 }), FIRE_X + 1.5, 4.3, fireZ + 1.0, 0.15);
-  if (mantelGuitar) {
-    mantelGuitar.rotation.y = -0.05;
-    mantelGuitar.rotation.z = Math.PI / 2 + 0.15;
-    mantelGuitar.rotation.x = 0.05;
-  }
-  place(g, prop('kaykit-mixed2/gamer_chair_A', { height: 1.9 }), -9.5, 0, -6.5, 0.6);
   // ── Plantas nos cantos (catos em vaso da KayKit; sem eles, feitas à mão) ──
   for (const [px, pz, seed] of [[-6.0, -8.0, 3], [10.0, -8.0, 7], [-5.6, -3.0, 11]] as const)
     place(g, prop(seed === 7 ? 'kaykit-furniture/cactus_medium_B' : 'kaykit-furniture/cactus_medium_A', { height: 1.2 }), px, 0, pz, seed) ?? g.add(pottedPlant(px, pz, seed));

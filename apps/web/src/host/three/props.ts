@@ -43,6 +43,45 @@ export function propMaterial(key: string, name?: string): THREE.MeshStandardMate
   return found;
 }
 
+/**
+ * Palmeiras da Kenney: a textura traz folhas cor de menta e tronco laranja, que ficam desbotados
+ * com a nossa luz. Passa as folhas a verde-folha e o tronco a castanho (numa cópia da textura).
+ */
+function tropicalPalette(mat: THREE.MeshStandardMaterial): void {
+  const src = mat.map?.image as CanvasImageSource & { width: number; height: number } | undefined;
+  if (!src?.width) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = src.width;
+  canvas.height = src.height;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(src, 0, 0);
+  const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const c = new THREE.Color();
+  const hsl = { h: 0, s: 0, l: 0 };
+  for (let i = 0; i < img.data.length; i += 4) {
+    c.setRGB(img.data[i]! / 255, img.data[i + 1]! / 255, img.data[i + 2]! / 255);
+    c.getHSL(hsl);
+    if (hsl.s < 0.15) continue;
+    if (hsl.h > 0.22 && hsl.h < 0.58) c.setHSL(0.29 + (hsl.h - 0.4) * 0.15, Math.min(1, hsl.s * 1.2 + 0.1), hsl.l * 0.78);
+    else if (hsl.h < 0.13 || hsl.h > 0.95) c.setHSL(0.07, hsl.s * 0.7, hsl.l * 0.72);
+    else continue;
+    img.data[i] = c.r * 255;
+    img.data[i + 1] = c.g * 255;
+    img.data[i + 2] = c.b * 255;
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  const old = mat.map!;
+  tex.flipY = old.flipY;
+  tex.colorSpace = old.colorSpace;
+  tex.magFilter = old.magFilter;
+  tex.minFilter = old.minFilter;
+  tex.wrapS = old.wrapS;
+  tex.wrapT = old.wrapT;
+  mat.map = tex;
+  mat.needsUpdate = true;
+}
+
 /** Carrega modelos (os que já estiverem carregados não voltam a carregar). Falhas não param o jogo. */
 export function loadProps(keys: readonly string[]): Promise<void> {
   return Promise.all(
@@ -59,6 +98,7 @@ export function loadProps(keys: readonly string[]): Promise<void> {
               if (m.isMesh) {
                 m.castShadow = true;
                 m.receiveShadow = true;
+                if (key.startsWith('kenney-pirate/palm')) tropicalPalette(m.material as THREE.MeshStandardMaterial);
               }
             });
             const box = new THREE.Box3().setFromObject(scene);
@@ -132,6 +172,8 @@ export const PROPS = {
     ...K('kaykit-mixed1', ['umbrella_blue', 'umbrella_pink', 'umbrella_yellow', 'umbrella_green']),
   ],
   ships: K('kenney-pirate', ['ship-pirate-medium', 'ship-wreck', 'ship-small']),
+  /** Casas da aldeia da ilha. */
+  islandHuts: K('kaykit-medieval', ['building_home_A_yellow', 'building_home_B_yellow', 'building_home_A_green', 'building_home_B_red']),
   pirateBits: [...K('kenney-pirate', ['structure-platform-dock', 'structure-platform-dock-small', 'flag-pirate-high', 'tower-watch', 'cannon']), ...F.sandRocks.slice(0, 3)],
   trees: F.trees,
   pines: F.pines,
@@ -231,7 +273,7 @@ export const MINIGAME_PROPS: readonly string[] = [
 
 /** Que modelos cada tema/desporto precisa. */
 export const THEME_PROPS: Record<string, readonly string[]> = {
-  island: [...PROPS.palms, ...PROPS.sandRocks, ...PROPS.beach, ...PROPS.ships, ...PROPS.pirateBits, ...PROPS.plants, ...PROPS.rocks, ...PROPS.pebbles, ...PROPS.trees, ...PROPS.fantasyProps],
+  island: [...PROPS.palms, ...PROPS.sandRocks, ...PROPS.beach, ...PROPS.islandHuts, ...PROPS.tallRocks, ...PROPS.ships, ...PROPS.pirateBits, ...PROPS.plants, ...PROPS.rocks, ...PROPS.pebbles, ...PROPS.trees, ...PROPS.fantasyProps],
   city: [...BOARD_COMMON, ...PROPS.buildings, ...PROPS.cars, ...PROPS.street, ...PROPS.trees.slice(0, 5), ...PROPS.plants.slice(0, 2), 'kaykit-city/watertower'],
   volcano: [...BOARD_COMMON, ...PROPS.tallRocks, ...PROPS.rocks, ...PROPS.mountains, ...PROPS.camp, ...PROPS.deadTrees, ...PROPS.pebbles, ...PROPS.fences, 'kaykit-medieval/building_mine_red'],
   castle: [...BOARD_COMMON, ...PROPS.graveyard, ...PROPS.deadTrees, ...PROPS.spooky, ...PROPS.medieval, ...PROPS.medievalNature, ...PROPS.fences, ...PROPS.village, ...PROPS.fantasyProps],
