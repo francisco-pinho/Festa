@@ -224,7 +224,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Treino numa janela durante a explicação do minijogo
+### [x] Treino numa janela durante a explicação do minijogo
 
 - **Tipo:** minijogo, comando (telemóvel), visual
 - **Prioridade (alta / média / baixa):**
@@ -234,7 +234,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:** com todos prontos, a janela fecha e o minijogo começa (contagem 3, 2, 1). Os bots ficam prontos sozinhos.
 - **Inspirado em (jogo, vídeo, link, imagem…):** Super Mario Party Jamboree (Switch). Antes de cada minijogo há um ecrã com a explicação e os comandos e, ao lado, uma janela com uma versão de treino que se joga por inteiro. O minijogo só começa quando todos carregam em «Pronto», por isso pode treinar-se o tempo que se quiser. Fonte: https://gamerant.com/super-mario-party-jamboree-beginner-tips-best-strategies/
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** Feito: na explicação do minijogo, o painel encosta à esquerda e à direita abre-se uma janela com o minijogo de treino a correr (desenhado pelo Engine na mesma tela, com moldura dourada e o letreiro TREINO). Os jogadores já controlam as personagens; o treino recomeça sozinho se acabar e nada conta. Cada um carrega em − quando está pronto e o painel mostra quem já está (verde). O minijogo começa quando todos estiverem prontos (mínimo 2 s); bots e quem perdeu a ligação contam como prontos; no PC, Enter põe todos prontos. O narrador cala-se quando todos estão prontos. Saiu o treino antigo em ecrã inteiro. Só com bots não há treino. Falta confirmares no jogo, sobretudo o tamanho e o sítio da janela.
 
 ---
 

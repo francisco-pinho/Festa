@@ -32,6 +32,11 @@ class NarratorEngine {
     return !!this.skip;
   }
 
+  /** Cala o narrador (ex.: todos já estão prontos para o minijogo). */
+  stop(): void {
+    this.skip?.();
+  }
+
   /**
    * Mostra as frases, uma a uma, cada uma o tempo de a ler. Resolve quando acabar ou quando alguém saltar.
    */

@@ -24,6 +24,8 @@ export class Engine {
   readonly renderer: THREE.WebGLRenderer;
   readonly tweens = new Tweens();
   private stage: Stage | null = null;
+  /** Janela pequena com outro palco por cima do principal (ex.: treino do minijogo). */
+  private inset: { stage: Stage; el: HTMLElement } | null = null;
   private time = 0;
   private last = performance.now();
   private lastFrameAt = performance.now();
@@ -87,6 +89,35 @@ export class Engine {
     this.time += dt;
     this.tweens.update(dt);
     this.stage?.update(dt, this.time);
+    this.inset?.stage.update(dt, this.time);
+  }
+
+  /**
+   * Mostra outro palco numa janela por cima do principal, no sítio do elemento `el` (que só desenha
+   * a moldura). `null` tira a janela e destrói esse palco.
+   */
+  setInset(stage: Stage | null, el?: HTMLElement): void {
+    if (this.inset && this.inset.stage !== stage) this.inset.stage.dispose?.();
+    this.inset = stage && el ? { stage, el } : null;
+    if (stage) this.prepareScene(stage.scene);
+  }
+
+  private renderInset(): void {
+    if (!this.inset) return;
+    const r = this.inset.el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return;
+    const { clientWidth: w, clientHeight: h } = this.renderer.domElement;
+    const cam = this.inset.stage.camera;
+    if (Math.abs(cam.aspect - r.width / r.height) > 1e-3) {
+      cam.aspect = r.width / r.height;
+      cam.updateProjectionMatrix();
+    }
+    this.renderer.setScissorTest(true);
+    this.renderer.setScissor(r.left, h - r.bottom, r.width, r.height);
+    this.renderer.setViewport(r.left, h - r.bottom, r.width, r.height);
+    this.renderer.render(this.inset.stage.scene, cam);
+    this.renderer.setScissorTest(false);
+    this.renderer.setViewport(0, 0, w, h);
   }
 
   /** Muda de palco. O anterior só é destruído se `disposePrevious`. */
@@ -230,6 +261,7 @@ export class Engine {
       }
       this.composer.render();
     } else this.renderer.render(this.stage.scene, this.stage.camera);
+    this.renderInset();
   }
 
   private resize(): void {
