@@ -67,6 +67,7 @@ export async function startServer(opts: StartOptions): Promise<FestaServerHandle
     playerLobbyGraceMs: 30_000,
     maxRooms: 500,
     inputRatePerSec: 120,
+    tester: !!opts.devWebPort,
   });
 
   app.get('/api/health', (_req, res) => {

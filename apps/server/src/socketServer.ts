@@ -10,12 +10,14 @@ import {
   playerIdSchema,
   playerJoinSchema,
   rtcSendSchema,
+  testerCmdSchema,
   viewerJoinSchema,
 } from '@festa/shared/schemas';
 import type {
   ClientToServerEvents,
   HostToControllerMessage,
   ServerToClientEvents,
+  TesterState,
 } from '@festa/shared';
 import { RoomManager, type Room, type RoomManagerOptions } from './rooms';
 
@@ -27,6 +29,8 @@ export interface SocketServerOptions extends RoomManagerOptions {
   inputRatePerSec: number;
   /** Máximo de espectadores do vídeo por sala. */
   maxViewersPerRoom?: number;
+  /** Canal do painel de tester (só em `npm run dev`). */
+  tester?: boolean;
 }
 
 export function registerSocketHandlers(io: FestaServer, opts: SocketServerOptions): RoomManager {
@@ -73,9 +77,48 @@ export function registerSocketHandlers(io: FestaServer, opts: SocketServerOption
     for (const id of viewersOf(code)) socket.emit('viewer:joined', id);
   };
 
+  /**
+   * Painel de tester: não depende do código da sala (que muda se o servidor reiniciar).
+   * Há um só ecrã /teste (o último a anunciar-se) e qualquer número de painéis.
+   */
+  let testerHost: string | null = null;
+  const testerPanels = new Set<string>();
+  let testerState: TesterState | null = null;
+
   io.on('connection', (socket: FestaSocket) => {
     const allowInput = createRateLimiter(opts.inputRatePerSec);
     const allowSignal = createRateLimiter(60);
+
+    if (opts.tester) {
+      const allowCmd = createRateLimiter(20);
+      socket.on('tester:host', () => {
+        testerHost = socket.id;
+        testerState = null;
+        for (const id of testerPanels) io.to(id).emit('tester:hostStatus', true);
+      });
+      socket.on('tester:join', () => {
+        testerPanels.add(socket.id);
+        socket.emit('tester:hostStatus', testerHost !== null);
+        if (testerState) socket.emit('tester:state', testerState);
+      });
+      socket.on('tester:cmd', (cmd) => {
+        if (!testerPanels.has(socket.id) || !testerHost || !allowCmd()) return;
+        const parsed = testerCmdSchema.safeParse(cmd);
+        if (parsed.success) io.to(testerHost).emit('tester:cmd', parsed.data);
+      });
+      socket.on('tester:state', (state) => {
+        if (socket.id !== testerHost) return;
+        testerState = state;
+        for (const id of testerPanels) io.to(id).emit('tester:state', state);
+      });
+      socket.on('disconnect', () => {
+        testerPanels.delete(socket.id);
+        if (socket.id !== testerHost) return;
+        testerHost = null;
+        testerState = null;
+        for (const id of testerPanels) io.to(id).emit('tester:hostStatus', false);
+      });
+    }
 
     // ── Host ──────────────────────────────────────────────
     socket.on('host:create', (ack) => {
