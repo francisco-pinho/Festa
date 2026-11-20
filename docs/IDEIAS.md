@@ -140,7 +140,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Botão para alternar ecrã inteiro
+### [x] Botão para alternar ecrã inteiro
 
 - **Tipo:** menu, outro
 - **Prioridade (alta / média / baixa):**
@@ -150,7 +150,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** Feito: botão discreto no canto inferior direito do PC, em todos os ecrãs, que alterna entre ecrã inteiro e a janela normal (também acompanha o F11/Esc). Falta confirmares no jogo.
 
 ---
 
@@ -196,7 +196,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Valor dos dados da ordem no placar
+### [x] Valor dos dados da ordem no placar
 
 - **Tipo:** tabuleiro, visual
 - **Prioridade (alta / média / baixa):**
@@ -206,7 +206,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** Feito: enquanto se decide a ordem, o placar mostra o dado (e a soma) de quem já lançou; depois volta aos itens. Falta confirmares no jogo.
 
 ---
 
@@ -322,7 +322,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Ecrã a explicar o item ao recebê-lo
+### [x] Ecrã a explicar o item ao recebê-lo
 
 - **Tipo:** tabuleiro, menu
 - **Prioridade (alta / média / baixa):**
@@ -332,7 +332,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:** depois de carregar em −, o jogo continua.
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** Feito: depois do item grátis e depois de comprar na loja aparece um ecrã com o nome, o que o item faz e como se usa. Quem o recebeu avança com −; os bots avançam sozinhos ao fim de 2,5 s. Falta confirmares no jogo.
 
 ---
 

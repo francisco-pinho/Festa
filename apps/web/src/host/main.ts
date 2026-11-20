@@ -44,6 +44,21 @@ screenShare.events.on('changed', ({ sharing, viewers }) => {
     ? `📺 A partilhar o ecrã · ${viewers} a ver`
     : `📺 ${viewers} à espera do vídeo · carrega V para partilhar`;
 });
+// Botão sempre visível: alterna entre ecrã inteiro e a janela com os separadores do browser.
+const fullscreenBtn = document.createElement('button');
+fullscreenBtn.className = 'fullscreen-btn';
+const syncFullscreen = () => {
+  fullscreenBtn.textContent = document.fullscreenElement ? '🗗 Sair do ecrã inteiro' : '⛶ Ecrã inteiro';
+};
+syncFullscreen();
+document.addEventListener('fullscreenchange', syncFullscreen);
+fullscreenBtn.addEventListener('click', () => {
+  if (document.fullscreenElement) void document.exitFullscreen();
+  else void document.documentElement.requestFullscreen().catch(() => {});
+  fullscreenBtn.blur(); // Espaço/Enter continuam a ser do jogo, não deste botão
+});
+document.getElementById('ui')!.appendChild(fullscreenBtn);
+
 window.addEventListener('keydown', (e) => {
   if (e.code !== 'KeyV' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.target instanceof Element && e.target.closest('input, textarea')) return;

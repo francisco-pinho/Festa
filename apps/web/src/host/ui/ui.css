@@ -1317,3 +1317,23 @@
   transition: width 0.25s ease;
 }
 .boot-text { font-size: 2.6vh; opacity: 0.8; }
+
+/* Botão de ecrã inteiro: sempre no canto inferior direito, discreto até se passar o rato. */
+.fullscreen-btn {
+  position: absolute;
+  right: 1vw;
+  bottom: 1vh;
+  z-index: 45;
+  pointer-events: auto;
+  padding: 0.5vh 0.8vw;
+  border: 0.2vh solid #ffffff44;
+  border-radius: 1vh;
+  background: #1d1433aa;
+  color: #fff;
+  font: 700 1.6vh 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
+  cursor: pointer;
+  opacity: 0.55;
+}
+.fullscreen-btn:hover {
+  opacity: 1;
+}
