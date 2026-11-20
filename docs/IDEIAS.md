@@ -252,7 +252,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Saque Rápido: banana, pistola de bandeira e misses
+### [x] Saque Rápido: banana, pistola de bandeira e misses
 
 - **Tipo:** minijogo
 - **Prioridade (alta / média / baixa):**
@@ -266,7 +266,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** Feito, sem modelo nos packs: 1) Banana nova feita no código, curva, gorda ao meio e fina nas pontas, com pé verde e ponta escura. 2) O árbitro tem o braço direito sempre esticado para cima com a pistola na mão (IK do braço, independente da animação). 3) Ao disparar, o árbitro já não faz animação: só a pistola dá um coice, sai fumo e a bandeira. 4) Causa das duas vidas: a carregadela de quem foi mais lento ficava guardada e, na vez seguinte, contava como falso arranque. Agora é ignorada; só perde vida quem carrega antes da bandeira. Falta confirmares no jogo, sobretudo a posição do braço levantado (pode precisar de acerto).
 
 ---
 
@@ -301,7 +301,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Voleibol de Praia: cenário, equipas, campo e serviço
+### [x] Voleibol de Praia: cenário, equipas, campo e serviço
 
 - **Tipo:** minijogo, visual
 - **Prioridade (alta / média / baixa):**
@@ -318,7 +318,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** Feito: 1) Praia a sério: areia larga até ao mar ao fundo (nunca lava, em nenhum mapa), areia molhada junto à água, palmeiras, chapéus de sol e toalhas. 2) Só jogavam 8 de 10 porque o painel de tester limitava a 8 (já corrigido); o minijogo já punha toda a gente em campo, 5 contra 5 com 10. 3) O campo cresce com o número de jogadores por equipa (com 2 por equipa é maior do que era), para ser preciso correr e haver pontos perdidos. A câmara afasta-se para caber tudo. 4) Linhas de campo: fundo, laterais, linha central e linhas de ataque. 5) O serviço é feito por um jogador da equipa que serve, à vez, atrás da linha de fundo: atira a bola ao ar e bate-lhe. 6) Animações: remate com salto e braço por cima; passe com os braços à frente e um saltinho. 7) Posições iniciais em grelha no meio campo (fila junto à rede e fila de trás). Falta confirmares no jogo, sobretudo se a dificuldade ficou boa.
 
 ---
 
@@ -336,7 +336,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Lojas e cenário atrás do caminho, nunca à frente
+### [x] Lojas e cenário atrás do caminho, nunca à frente
 
 - **Tipo:** tabuleiro, mapa, visual
 - **Prioridade (alta / média / baixa):**
@@ -346,11 +346,11 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** Feito: lojas (incluindo o Ferreiro da Mina), casa da mina, acampamento, estações de metro, mastros do teleférico e entrada do parque passam a ficar do lado de lá do caminho (longe da câmara). Se esse sítio cair em cima de outro caminho, o edifício roda um pouco até encontrar espaço. Portagens, alavancas e outros objetos ao lado das casas também preferem o lado de lá; só ficam do lado de cá quando do outro lado não há espaço. Falta confirmares no jogo, mapa a mapa.
 
 ---
 
-### [ ] Força Certa: só aparecem 6 de 10 jogadores
+### [x] Força Certa: só aparecem 6 de 10 jogadores
 
 - **Tipo:** minijogo, visual
 - **Prioridade (alta / média / baixa):**
@@ -360,11 +360,11 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** Feito: a câmara afasta-se conforme o número de pistas, para caberem todas (até 10). Com 4 jogadores fica igual. Falta confirmares no jogo.
 
 ---
 
-### [ ] Armadilha com modelo 3D no tabuleiro
+### [x] Armadilha com modelo 3D no tabuleiro
 
 - **Tipo:** tabuleiro, visual
 - **Prioridade (alta / média / baixa):**
@@ -374,7 +374,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** Feito: a armadilha passa a ser uma armadilha de mandíbulas em 3D (base de metal, duas mandíbulas abertas com dentes, placa dourada e mola), que aparece a saltar do chão ao lado da casa. Feita no código, porque não encontrei modelo nos packs. Falta confirmares no jogo.
 
 ---
 
