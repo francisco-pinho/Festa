@@ -238,7 +238,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Símbolos das casas por cima dos dados
+### [x] Símbolos das casas por cima dos dados
 
 - **Tipo:** tabuleiro, visual
 - **Prioridade (alta / média / baixa):**
@@ -248,7 +248,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:** os dados ficam sempre à frente; nenhum símbolo das casas aparece por cima deles.
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):** dados-simbolo-casa-por-cima.png
-- **Notas do Claude:** A tua frase ficou a meio («talvez seja melhor apenas retirar…»). Retirar o quê? Os símbolos das casas enquanto se lançam os dados, ou só alguns deles?
+- **Notas do Claude:** Feito: as placas do cenário (símbolos de túneis, vagoneta, lojas, portagens, banco, armadilhas, fantasma…) eram desenhadas sempre por cima de tudo. Agora ficam escondidas atrás do que estiver à frente (dados, personagens). Os números e textos que flutuam por cima das personagens continuam sempre visíveis. Não retirei nenhum símbolo (a tua frase ficou a meio). Falta confirmares no jogo.
 
 ---
 
@@ -270,7 +270,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Dados iguais: os dois primeiros dados não desaparecem
+### [?] Dados iguais: os dois primeiros dados não desaparecem
 
 - **Tipo:** tabuleiro, visual
 - **Prioridade (alta / média / baixa):**
@@ -280,7 +280,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:** no fim veem-se os três dados lado a lado antes de se juntarem no número total.
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** O que vi no código: o terceiro dado já é acrescentado sem apagar os outros (`spawnDice(id, 1, true)` em `BoardStage.ts`). Os dois primeiros deslizam para o lado, para os três ficarem numa fila. Causa provável: a câmara do lançamento (`rollView`) está tão perto que só cabem dois dados no ecrã (como na foto dos dados). Os dois de fora saem do enquadramento e parece que desaparecem. Falta confirmar no jogo. Soluções possíveis:
+- **Notas do Claude:** Dúvida: no código, os dois primeiros dados já não desaparecem: o terceiro junta-se na mesma fila e a câmara afasta-se para caberem os três (corrigido no commit 6940e3e). A câmara do lançamento já calcula a distância para caberem todos os dados. Viste isto na app de computador (npm run app)? Essa usa a última build, que pode ser anterior à correção. Se viste em npm run dev, diz-me em que momento (dados iguais normais, Dado Extra, Dado Dourado…).
   1. Com três dados, a câmara afasta-se um pouco (recomendo; é o mais simples).
   2. Os três dados encolhem e ficam mais juntos.
   3. O terceiro dado aparece por cima, no meio dos outros dois, em triângulo, sem mexer nos primeiros.
@@ -392,7 +392,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Plataformas que Caem: rachar primeiro, cair à segunda
+### [x] Plataformas que Caem: rachar primeiro, cair à segunda
 
 - **Tipo:** minijogo
 - **Prioridade (alta / média / baixa):**
@@ -402,6 +402,6 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** Feito: na primeira passagem o azulejo fica com uma racha escura no meio; só quando alguém volta a entrar nele é que se desfaz e cai (agora demora 1,3 s, e 0,9 s na 2.ª ronda; antes 0,75 s e 0,5 s). Saltar e cair no mesmo azulejo não conta como nova passagem; o azulejo onde cada um começa também não. Os bots evitam azulejos rachados. Falta confirmares no jogo.
 
 ---
