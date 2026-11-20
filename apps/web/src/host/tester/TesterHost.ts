@@ -119,9 +119,11 @@ export class TesterHost {
   }
 
   private sendState(): void {
-    const party = this.d.director.flow?.partyState;
+    const phase = this.phase();
+    // De volta ao lobby, a festa anterior já não interessa ao painel.
+    const party = phase === 'lobby' ? undefined : this.d.director.flow?.partyState;
     const state: TesterState = {
-      phase: this.phase(),
+      phase,
       scenario: this.stored?.scenario ?? null,
       timeScale: this.d.engine.timeScale,
       round: party?.round,

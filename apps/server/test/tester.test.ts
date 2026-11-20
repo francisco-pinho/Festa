@@ -167,3 +167,34 @@ describe('testerCmdSchema', () => {
     expect(testerCmdSchema.safeParse({ t: 'scenario', scenario: mg }).success).toBe(true);
   });
 });
+
+// O PartyHooks não depende do browser: testa-se aqui (a app web não tem vitest).
+import { PartyHooks } from '../../web/src/host/tester/PartyHooks';
+
+describe('PartyHooks', () => {
+  it('um fim de minijogo pedido tarde não passa para o minijogo seguinte', () => {
+    const h = new PartyHooks();
+    h.phase = 'minigame';
+    h.apply({ t: 'endMinigame' });
+    h.phase = 'board'; // o minijogo acabou sozinho antes de o pedido ser usado
+    h.phase = 'minigame';
+    expect(h.ending).toBe(false);
+  });
+
+  it('saltar o treino pedido tarde não passa para o treino seguinte', () => {
+    const h = new PartyHooks();
+    h.phase = 'practice';
+    h.apply({ t: 'skipPractice' });
+    h.phase = 'minigame';
+    h.phase = 'practice';
+    expect(h.takeSkipPractice()).toBe(false);
+  });
+
+  it('dentro da mesma fase o pedido mantém-se', () => {
+    const h = new PartyHooks();
+    h.phase = 'minigame';
+    h.apply({ t: 'endMinigame', winners: ['a'] });
+    expect(h.ending).toBe(true);
+    expect(h.takeEnd()).toEqual(['a']);
+  });
+});

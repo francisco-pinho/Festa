@@ -8,11 +8,24 @@ import type { TesterCmd, TesterState } from '@festa/shared';
 export type BoardEdit = Extract<TesterCmd, { t: 'teleport' | 'give' | 'takeItem' | 'round' | 'moveStar' }>;
 
 export class PartyHooks {
-  phase: TesterState['phase'] = 'other';
+  private current: TesterState['phase'] = 'other';
   private dice: number[] = [];
   private edits: BoardEdit[] = [];
   private end: { winners: string[] | null } | null = null;
   private skip = false;
+
+  get phase(): TesterState['phase'] {
+    return this.current;
+  }
+
+  /** Ao sair do minijogo/treino, um pedido que chegou tarde não passa para o seguinte. */
+  set phase(next: TesterState['phase']) {
+    if (next !== this.current) {
+      if (next !== 'minigame' && next !== 'practice') this.end = null;
+      this.skip = false;
+    }
+    this.current = next;
+  }
 
   /** Guarda o comando, se fizer sentido na fase atual; os outros são ignorados. */
   apply(cmd: TesterCmd): void {
