@@ -32,6 +32,7 @@ import { Bobsled } from './Bobsled';
 import { BeachVolley } from './BeachVolley';
 import { TimberChop } from './TimberChop';
 import { ClockHop } from './ClockHop';
+import { ChickenChase } from './ChickenChase';
 import type { MinigameDef } from './types';
 
 /** Para adicionar um minijogo: cria o ficheiro e acrescenta-o aqui. */
@@ -44,7 +45,7 @@ export const MINIGAMES: MinigameDef[] = [
   FallingTiles, ShellSoccer, PizzaRush, PhotoShoot,
   ConveyorBombs, Pinball, Bobsled, BeachVolley,
   // Duelos novos (lote 5)
-  TimberChop, ClockHop,
+  TimberChop, ClockHop, ChickenChase,
 ];
 
 /**

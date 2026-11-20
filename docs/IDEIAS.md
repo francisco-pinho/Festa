@@ -287,7 +287,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Mais duelos e mais minijogos
+### [~] Mais duelos e mais minijogos
 
 - **Tipo:** minijogo
 - **Prioridade (alta / média / baixa):**
@@ -297,7 +297,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):** Mario Party 3 e 7 (duelos), Wii Party (1 vs 1), Pummel Party
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** Lote 5 (duelos): Corta a Árvore, Salta o Ponteiro, Apanha a Galinha, Foge do Choque, Constrói a Ponte, Pesa os Sacos, Luzes por Ordem, Corrida da Bandeira. Lote 6: Chuva de Morteiros, Picos Fantasma, Rei da Coroa, Ementa de Memória, Notas que Caem, Gotas no Balde, Escolhe a Porta, Fruta Certa. Ainda falta o lote 4, que já estava marcado como o próximo.
+- **Notas do Claude:** A fazer. Duelos novos já feitos (lote 5): Corta a Árvore (carregar depressa em A ou abanar para derrubar a árvore primeiro), Salta o Ponteiro (saltar o ponteiro de um relógio gigante; 3 corações; cada volta mais rápido) e Apanha a Galinha (cercado com joystick; a galinha foge; melhor de 3). Agora há 6 duelos. Falta: o resto do lote 5 (Foge do Choque, Constrói a Ponte, Pesa os Sacos, Luzes por Ordem, Corrida da Bandeira) e o lote 6 de minijogos. Falta confirmares os 3 novos no jogo (no menu «Testar minijogos» ou no painel de tester).
 
 ---
 

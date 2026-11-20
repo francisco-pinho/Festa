@@ -15,6 +15,8 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 | 2 | ✅ | Chuva de Meteoros, Olha para o Lado, Bombardeiro (1 vs 3), Conta as Ovelhas, Força Certa, Parede com Buraco, Pesca de Baús, Memória, Corrida no Gelo |
 | 3 | ✅ | Plataformas que Caem, Pizza Rápida, Fotografia Certa, Futebol de Carapaças, Bombas Sobe-Desce, Pinball, Corrida de Bobsled, Volei de Praia |
 | 4 | 🔜 | Escalada, Labirinto a Dois, Bolos em Série (equipa), Hamburguer Alto, Sombras, Diferenças, Puzzle, Carros de Choque |
+| 5 (duelos) | 🔜 | ✅ Corta a Árvore, ✅ Salta o Ponteiro, ✅ Apanha a Galinha, Foge do Choque, Constrói a Ponte, Pesa os Sacos, Luzes por Ordem, Corrida da Bandeira |
+| 6 | ⬜ | Chuva de Morteiros, Picos Fantasma, Rei da Coroa, Ementa de Memória, Notas que Caem, Gotas no Balde, Escolhe a Porta, Fruta Certa |
 
 ---
 
@@ -196,3 +198,46 @@ Não copiamos nomes, personagens nem visual — só a **ideia de jogo**, com nom
 - ⬜ Cozinha em equipa: Potaje acompasado, Postre a cucharazos, Nata sincronizada, Unta conjunta, Tortitas en su punto, Bocatata, Imitación al curry, Brochetas al vuelo, Verduras a paladas
 - ⬜ Desafios «Contra…» (sobreviver): Contra el fuego, Contra las bolas de hierro, Contra las explosiones, Contra los Bill Balas, Contra las caídas
 - ➖ Modos de personagem: Los clásicos de Mario, Al rescate de Luigi, El día libre de Peach, Las medallas de Daisy, El concurso de Wario, Pinball Waluigi, Carrera silvestre de Yoshi, Estela sobre la nieve, Al ritmo de Donkey Kong, El multi desafío de Bowsy, Lucha acuática de Hidragón, Mega Abejorro en combate, Mega Tortopo a cañonazos, Puzles del Hno., Ataque aéreo de Bowser, Las áridas ruinas de Spike
+
+---
+
+## Mais fontes (pesquisa de 2026-11-20)
+
+Para termos **mais duelos** (só há 3: Pontaria, Saque Rápido, Cabo de Guerra) e mais minijogos.
+Os lotes 5 e 6 acima escolhem os que se jogam bem com o telemóvel.
+
+### Duelos (1 contra 1)
+
+**Mario Party 3 (tabuleiro de duelo)**
+- ✅ Tick Tock Hop → **Salta o Ponteiro** — saltar o ponteiro do relógio no tempo certo (lote 5)
+- ⬜ Vine With Me → Escolhe a Liana — escolher a liana certa (sorte)
+- ⬜ Motor Rooter → **Foge do Choque** — andar à volta de um poste elétrico e fugir da faísca (lote 5)
+- ✅ Fowl Play → **Apanha a Galinha** — apanhar a galinha primeiro; encostá-la à parede ajuda (lote 5)
+- ⬜ Popgun Pick-Off — disparar a alvos de cartão
+- ⬜ Crowd Cover — fotografar a personagem certa no meio da multidão
+- ⬜ End of the Line — vagoneta: escolher a linha
+- ⬜ Silly Screws — apertar parafusos
+- ➖ Baby Bowser Bonkers, Bowser Toss — dependem de personagens
+
+**Mario Party 7** — já listados na secção acima: Bridge Work → **Constrói a Ponte**, Weight for It → **Pesa os Sacos**, Light Speed → **Luzes por Ordem** (lote 5), Warp Pipe Dreams, Mad Props, Gimme a Sign, Spin Doctor, Hip Hop Drop, Royal Rumpus, Fish & Cheeps, Camp Ukiki
+
+**Wii Party (1 vs 1)**
+- ✅ Timber Topple → **Corta a Árvore** — carregar depressa: quem derrubar a árvore primeiro ganha (lote 5)
+- ⬜ Flag Footrace → **Corrida da Bandeira** — correr até à bandeira (lote 5)
+- ⬜ Commuter Count — contar os passageiros do comboio que passa (≈ Conta as Ovelhas, mas a dois)
+- ⬜ Fruit Focus → Fruta Certa — dizer que fruta aparece mais (serve também para 4, lote 6)
+- ⬜ Delivery Duel, Roll to the Goal, Channel Changers, Spring Time, Jangle Wranglers, Poppin' Pilots, Pop-Up Bandits
+
+### Minijogos (4 jogadores)
+
+**Pummel Party**
+- ⬜ Mortar Mayhem → **Chuva de Morteiros** — decorar as setas mostradas e mexer-se para fugir das explosões; ganha o último vivo (lote 6)
+- ⬜ Spooky Spikes → **Picos Fantasma** — saltar ou baixar para fugir dos picos; ganha o último vivo (lote 6)
+- ⬜ Crown Capture → **Rei da Coroa** — ficar com a coroa o máximo de tempo (lote 6)
+- ⬜ Memory Menu → **Ementa de Memória** — decorar o pedido (lote 6)
+- ⬜ Animal Arithmetic — contar animais (≈ Conta as Ovelhas)
+- ⬜ Acidic Atoll, Altitude Attack, Barn Brawl, Batty Batters, Billiard Battle, Bouncing Balls, Bounding Blocks, Breaking Blocks, Bullet Barrage, Cannon Circle, Daring Dogfight, Elemental Escalation, Explosive Exchange, Fractured Faces, Gift Grab, Grifting Gifts, Laser Leap, Magma & Mages, Miniature Motors, Morphing Maze, Motor Murder, Mystery Maze, Pack And Pile, Rockin Rhythm, Rotor Race, Rolly Ragdolls, Rusty Racers, Sandy Search, Searing Spotlights, Selfish Stride, Sharky Swim, Sidestep Slope, Slippery Sprint, Snowy Spin, Sorcerers Sprint, Speedy Sabers, Strategic Shockwave, Swift Shooters, Temporal Trails, Thunderous Trench, Traffic Theft, Tunneling Tanks, Word Wars
+
+**Da secção do Mario Party 7, já listados** — Catchy Tunes → **Notas que Caem**, Big Dripper → **Gotas no Balde**, Ghost in the Hall → **Escolhe a Porta** (lote 6)
+
+Fontes: [Mario Party 3 (Dice Block wiki)](https://diceblock.fandom.com/wiki/List_of_Mario_Party_3_minigames) · [Pummel Party (Fandom)](https://pummel-party.fandom.com/wiki/Minigames) · [Wii Party 1 vs 1](https://wiisports.fandom.com/wiki/1_vs_1_Minigame)
