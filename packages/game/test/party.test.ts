@@ -104,7 +104,8 @@ describe('festa', () => {
   it('casa de evento troca o jogador de lugar com outro', () => {
     const s = party();
     const [p, q] = s.players as [typeof s.players[0], typeof s.players[0]];
-    const ev = s.board.spaces.find((sp) => sp.type === 'event')!;
+    // Casa de evento normal (as das zonas com baús têm outro evento).
+    const ev = s.board.spaces.find((sp) => sp.type === 'event' && !s.board.zoneEvents?.[sp.zone ?? ''])!;
     p.spaceId = ev.id;
     s.players.slice(1).forEach((o) => (o.spaceId = 7));
     const res = resolveLanding(s, p, createRng(2));

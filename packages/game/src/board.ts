@@ -316,68 +316,84 @@ function markStarCandidates(spaces: Space[], every = 3, minId = 5): void {
   }
 }
 
-// ── Mapa 1: Ilha do Coqueiro (renovada) ───────────────────
+// ── Mapa 1: Ilha do Coqueiro (em oito) ─────────────────────
 
 /**
- * Ilha grande com anel exterior, atalho pelo centro, ponte sobre o mar (só com
- * maré baixa) e túnel pela gruta (só com maré alta). A maré muda a cada 3 rondas.
+ * Ilha em forma de oito: dois anéis (a baía a este e a montanha a oeste) que se cruzam na praça
+ * da aldeia, ao meio. Na praça escolhe-se: dar outra volta ao mesmo anel ou passar para o outro.
+ * Ponte sobre o mar a norte, entre os dois anéis (só com maré baixa), túnel pela gruta de ponta a
+ * ponta (só com maré alta) e trilho da selva a cortar o anel este (portão com alavanca na aldeia).
+ * A maré muda a cada 3 rondas.
  */
 export function createIslandBoard(): Board {
   const b = new BoardBuilder();
-  const RING = 56;
-  const BRIDGE_FROM = 33;
-  const BRIDGE_TO = 51;
-  const A = 40;
-  const B = 27;
-  const P = 3.2;
-  const ring = (t: number): Point => {
+  const N = 64;
+  // Lemniscata (oito deitado), esticada na vertical para os anéis ficarem redondos.
+  const A = 46;
+  const eight = (t: number): Point => {
     const th = t * Math.PI * 2;
-    const c = Math.cos(th);
-    const s = Math.sin(th);
-    return { x: A * Math.sign(c) * Math.abs(c) ** (2 / P), z: B * Math.sign(s) * Math.abs(s) ** (2 / P) };
+    const d = 1 + Math.sin(th) ** 2;
+    return { x: (A * Math.cos(th)) / d, z: (1.75 * A * Math.sin(th) * Math.cos(th)) / d };
   };
-  const ringIds = b.addChain(resample(ring, RING + 1, true).slice(0, RING));
-  b.link(ringIds[RING - 1]!, ringIds[0]!);
-  for (const id of ringIds) {
-    const s = b.spaces[id]!;
-    if (s.z > 18) s.zone = 'beach';
+  const pts = resample(eight, N + 1, true).slice(0, N);
+  // As duas passagens pelo meio do oito passam a ser uma só casa: a praça (cruzamento).
+  const byDist = pts.map((p, i) => [Math.hypot(p.x, p.z), i] as const).sort((x, y) => x[0] - y[0]);
+  const iA = byDist[0]![1];
+  const iB = byDist.find(([, i]) => Math.abs(i - iA) > 4 && Math.abs(i - iA) < N - 4)![1];
+  const id = new Map<number, number>();
+  for (let i = 0; i < N; i++) {
+    if (i === iB) continue;
+    const p = i === iA ? { x: 0, z: 0 } : pts[i]!;
+    id.set(i, b.addChain([p])[0]!);
   }
+  const ring = (i: number) => id.get(((i % N) + N) % N === iB ? iA : ((i % N) + N) % N)!;
+  for (let i = 0; i < N; i++) b.link(ring(i), ring(i + 1));
+  const plaza = ring(iA);
+  /** Casa do anel mais perto de (x, z). */
+  const near = (x: number, z: number, among = [...id.values()]) =>
+    among.reduce((best, s) => (Math.hypot(b.spaces[s]!.x - x, b.spaces[s]!.z - z) < Math.hypot(b.spaces[best]!.x - x, b.spaces[best]!.z - z) ? s : best));
+  for (const s of b.spaces) {
+    if (s.z > 16) s.zone = 'beach';
+    if (Math.hypot(s.x, s.z) < 8) s.zone = 'village';
+  }
+  const startId = near(A, 0);
 
-  // Atalho pelo centro (praça da aldeia)
-  const center = b.addBranch(6, 22, 13, { x: 0, z: 2 }, 'village');
-  // Ponte sobre o mar (lado de baixo do mapa)
-  const bridge = b.addBranch(BRIDGE_FROM, BRIDGE_TO, 17, { x: 0, z: -96 }, 'bridge');
-
-  // Túnel da gruta: atravessa a montanha do oeste para o este (contra o sentido do anel encurta muito)
-  const caveFrom = 28;
-  const caveTo = 2;
+  // Ponte sobre o mar, a norte: do anel oeste ao anel este, por fora da ilha.
+  const bridgeFrom = near(-24, -22);
+  const bridgeTo = near(24, -22);
+  const bridge = b.addBranch(bridgeFrom, bridgeTo, 15, { x: 0, z: -62 }, 'bridge');
+  // Túnel da gruta: da ponta oeste à ponta este, por baixo da praça (encurta muito).
+  const caveFrom = near(-A, 0);
+  const caveTo = near(A - 6, 8);
   b.link(caveFrom, caveTo);
-
-  // Trilho da selva: do meio da aldeia até ao topo da ilha (portão com alavanca na aldeia)
-  const jungle = b.addBranch(center[6]!, ringIds[42]!, 8, { x: 7, z: -8 }, 'jungle');
-  const jungleLever = center[3]!;
+  // Trilho da selva: atravessa o anel este pelo meio, da saída da praça até à praia do outro lado
+  // (salta a ponta este da ilha).
+  const jungleFrom = near(12, -16);
+  const jungle = b.addBranch(jungleFrom, near(36, 14), 7, { x: 22, z: 2 }, 'jungle');
+  const jungleLever = near(-6, 6);
   b.set(jungleLever, 'lever');
-  // Canhão pirata na praia: dispara para o norte da ilha
-  const cannon = ringIds[14]!;
+  // Canhão pirata na praia oeste: dispara para o norte da ilha.
+  const cannon = near(-22, 22);
   b.set(cannon, 'cannon');
-  // Cofre do pirata na aldeia
-  b.set(center[9]!, 'bank');
+  // Cofre do pirata ao lado da praça.
+  const bankId = near(6, -6);
+  b.set(bankId, 'bank');
   // Baús do tesouro (casas "?" fixas na praia e na selva)
-  for (const id of [ringIds[10]!, ringIds[19]!, jungle[2]!, jungle[6]!]) b.set(id, 'event');
+  for (const s of [near(14, 22), near(-34, 16), jungle[2]!, jungle[5]!]) b.set(s, 'event');
 
-  const shopBeach = 12;
-  const shopCave = 44;
+  const shopBeach = near(32, 18);
+  const shopCave = near(-36, -14);
   b.set(shopBeach, 'shop');
   b.set(shopCave, 'shop');
   b.spaces[shopBeach]!.shopId = 'praia';
   b.spaces[shopCave]!.shopId = 'gruta';
 
   // Casas especiais fixas
-  for (const id of [center[6]!, 40]) b.set(id, 'vs');
-  for (const id of [17, bridge[8]!]) b.set(id, 'villain');
-  for (const id of [9, 25, center[2]!, bridge[3]!, 53]) b.set(id, 'item');
+  for (const s of [plaza, near(-12, -18)]) b.set(s, 'vs');
+  for (const s of [near(12, -20), bridge[7]!]) b.set(s, 'villain');
+  for (const s of [near(40, -8), near(-14, 18), near(-40, -6), bridge[3]!, jungle[3]!]) b.set(s, 'item');
 
-  fillTypes(b.spaces, 0, 20261111, [
+  fillTypes(b.spaces, startId, 20261111, [
     ['blue', 58],
     ['red', 16],
     ['lucky', 10],
@@ -391,23 +407,23 @@ export function createIslandBoard(): Board {
   return {
     id: 'ilha',
     name: 'Ilha do Coqueiro',
-    description: 'Maré baixa abre a ponte; maré alta abre o túnel da gruta (muda a cada 3 rondas). Puxa a alavanca da aldeia para abrir a selva, e cuidado com o canhão da praia!',
+    description: 'Ilha em oito: na praça da aldeia escolhes o anel. Maré baixa abre a ponte; maré alta abre o túnel da gruta (muda a cada 3 rondas). Puxa a alavanca da aldeia para abrir a selva, e cuidado com o canhão da praia!',
     theme: 'island',
     spaces: b.spaces,
-    startId: 0,
+    startId,
     shops: [
       { id: 'praia', name: 'Quiosque da Praia', kind: 'geral', spaceId: shopBeach },
       { id: 'gruta', name: 'Bazar da Gruta', kind: 'luxo', spaceId: shopCave },
     ],
     tunnels: [{ from: caveFrom, to: caveTo, kind: 'cave', cost: 0, name: 'Túnel da Gruta' }],
     gates: [
-      { from: BRIDGE_FROM, to: bridge[0]!, flag: 'highTide', openWhen: false, name: 'Ponte' },
+      { from: bridgeFrom, to: bridge[0]!, flag: 'highTide', openWhen: false, name: 'Ponte' },
       { from: caveFrom, to: caveTo, flag: 'highTide', openWhen: true, name: 'Gruta' },
-      { from: center[6]!, to: jungle[0]!, flag: 'jungle', openWhen: true, name: 'Portão da Selva', lever: true },
+      { from: jungleFrom, to: jungle[0]!, flag: 'jungle', openWhen: true, name: 'Portão da Selva', lever: true },
     ],
     levers: [{ spaceId: jungleLever, flag: 'jungle', name: 'Alavanca da Selva', onText: 'O portão da selva abriu!', offText: 'O portão da selva fechou!' }],
     tolls: [],
-    cannons: [{ spaceId: cannon, targets: [ringIds[37]!, ringIds[45]!, jungle[4]!, ringIds[50]!], name: 'Canhão Pirata' }],
+    cannons: [{ spaceId: cannon, targets: [near(-30, -20), near(20, -24), jungle[4]!, near(40, -10)], name: 'Canhão Pirata' }],
     bankName: 'Cofre do Pirata',
     zoneEvents: { beach: 'chest', jungle: 'chest' },
     mechanic: 'tide',

@@ -182,7 +182,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Disposição das casas única em cada mapa
+### [~] Disposição das casas única em cada mapa
 
 - **Tipo:** mapa, tabuleiro
 - **Prioridade (alta / média / baixa):**
@@ -192,7 +192,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** A fazer, mapa a mapa. Ilha feita (ver ideias-fotos/ilha-nova-em-oito.svg): passa a ser um oito, com dois anéis que se cruzam na praça da aldeia. Na praça escolhe-se dar outra volta ao mesmo anel ou passar para o outro. Mantém a ponte sobre o mar a norte (maré baixa), o túnel da gruta de ponta a ponta (maré alta), o trilho da selva que corta o anel este (alavanca na aldeia), o canhão, o cofre, as duas lojas e os baús. 85 casas (antes 56 no anel). Falta veres no jogo antes de eu fazer cidade, vulcão, castelo e parque.
 
 ---
 
