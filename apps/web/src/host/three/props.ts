@@ -246,6 +246,17 @@ export const PROPS = {
     'kaykit-halloween/bench',
   ],
   minigolf: [...K('kaykit-medieval', ['building_windmill_yellow', 'building_castle_blue', 'building_windmill_red']), ...K('kaykit-platformer', ['flag_A_red', 'flag_A_blue', 'flag_C_red'])],
+  /** Castelo assombrado (por dentro): torres, poço, bancas, paredes do salão, pilares, archotes, mobília. */
+  castleKit: [
+    ...K('kaykit-medieval', ['building_well_blue', 'building_market_blue', 'building_market_green', 'building_market_red', 'building_market_yellow', 'flag_red', 'flag_blue']),
+    ...K('kaykit-dungeon', [
+      'banner_patternA_red', 'banner_patternB_red', 'banner_triple_red', 'torch_lit', 'torch_mounted', 'wall', 'wall_archedwindow_open', 'wall_shelves',
+      'pillar_decorated', 'column', 'chair', 'shelves', 'candle_triple', 'table_long_tablecloth_decorated_A', 'table_medium_tablecloth_decorated_B',
+      'crates_stacked', 'box_stacked', 'chest', 'trunk_large_A', 'keg_decorated', 'barrel_large', 'barrel_small_stack', 'sword_shield',
+    ]),
+    ...K('kaykit-halloween', ['fence_gate', 'coffin_decorated', 'skull_candle', 'candle_triple', 'pumpkin_orange_jackolantern', 'lantern_standing', 'ribcage']),
+    ...K('kaykit-mixed2', ['ornate_mirror']),
+  ],
   /** Natal / neve. */
   holiday: K('kaykit-holiday', ['christmas_tree_decorated', 'snowman_A', 'snowman_B', 'snowball_pile', 'present_A_red', 'present_B_blue', 'present_C_green', 'lantern_decorated', 'candycane_small']),
 } as const;
@@ -276,7 +287,7 @@ export const THEME_PROPS: Record<string, readonly string[]> = {
   island: [...PROPS.palms, ...PROPS.sandRocks, ...PROPS.beach, ...PROPS.islandHuts, ...PROPS.tallRocks, ...PROPS.ships, ...PROPS.pirateBits, ...PROPS.plants, ...PROPS.rocks, ...PROPS.pebbles, ...PROPS.trees, ...PROPS.fantasyProps],
   city: [...BOARD_COMMON, ...PROPS.buildings, ...PROPS.cars, ...PROPS.street, ...PROPS.trees.slice(0, 5), ...PROPS.plants.slice(0, 2), 'kaykit-city/watertower'],
   volcano: [...BOARD_COMMON, ...PROPS.tallRocks, ...PROPS.rocks, ...PROPS.mountains, ...PROPS.camp, ...PROPS.deadTrees, ...PROPS.pebbles, ...PROPS.fences, 'kaykit-medieval/building_mine_red'],
-  castle: [...BOARD_COMMON, ...PROPS.graveyard, ...PROPS.deadTrees, ...PROPS.spooky, ...PROPS.medieval, ...PROPS.medievalNature, ...PROPS.fences, ...PROPS.village, ...PROPS.fantasyProps],
+  castle: [...BOARD_COMMON, ...PROPS.castleKit, ...PROPS.fantasyProps],
   park: [...BOARD_COMMON, ...PROPS.park, ...PROPS.minigolf, ...PROPS.food, ...PROPS.trees, ...PROPS.plants, ...PROPS.fantasyProps, 'kaykit-city/streetlight'],
   golf: [...PROPS.trees, ...PROPS.pines, ...PROPS.treesFall,...PROPS.plants, ...PROPS.rocks, ...PROPS.pebbles, ...PROPS.natureBits, ...PROPS.medievalNature],
   bowling: [...PROPS.furniture, ...PROPS.food],

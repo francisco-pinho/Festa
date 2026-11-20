@@ -14,6 +14,7 @@ import type { HubPlayer, PlayerHub } from '../PlayerHub';
 import { GRAPHICS_LEVELS, settings } from '../game/Settings';
 import { sound } from '../audio/Sound';
 import { esc } from './Hud';
+import type { MenuSink } from './ScreenMenu';
 
 type Screen = 'main' | 'settings' | 'confirm' | 'quit';
 
@@ -87,6 +88,15 @@ export class GameMenu {
   /** «Jogar online» (túnel da Cloudflare): estado mostrado no item do menu. */
   private online: 'off' | 'opening' | 'on' | 'failed' = 'off';
   private lobbySuspended = false;
+  /** Enquanto houver, o menu não aparece no ecrã: vai para aqui (a televisão da sala). */
+  private sink: MenuSink | null = null;
+
+  /** Passa a desenhar o menu noutro sítio (null = volta ao ecrã normal). */
+  setSink(sink: MenuSink | null): void {
+    this.sink = sink;
+    this.el.hidden = !this.open || !!sink;
+    if (this.open) this.render();
+  }
 
   /** Abre o menu para um jogador (Ⓑ no lobby). Não reabre logo a seguir a fechar com o mesmo Ⓑ. */
   openFor(player: HubPlayer): void {
@@ -117,7 +127,7 @@ export class GameMenu {
       this.lobbySuspended = true;
       this.hub.suspendLayouts({ kind: 'pad', title: 'Definições', sub: 'Menu no ecrã grande · ◀ ▶ ajusta o volume', stick: 'dpad', buttons: { a: 'Escolher', b: 'Fechar' } });
     }
-    this.el.hidden = false;
+    this.el.hidden = !!this.sink;
     this.render();
   }
 
@@ -125,6 +135,7 @@ export class GameMenu {
     if (!this.open) return;
     this.open = false;
     this.el.hidden = true;
+    this.sink?.(null);
     this.closedAt = performance.now();
     if (this.lobbySuspended) {
       this.lobbySuspended = false;
@@ -207,6 +218,21 @@ export class GameMenu {
     // No mesmo ecrã do menu, só atualiza a seleção e os textos (sem refazer o cartão,
     // que voltava a fazer a animação de abrir a cada mudança).
     const items = this.items();
+    if (this.sink) {
+      // Na TV: os volumes aparecem como valor «◀ 50% ▶».
+      this.sink({
+        req: {
+          player: null,
+          title,
+          cancel: 'close',
+          options: items.map((it, i) =>
+            it.slider ? { id: String(i), label: it.label, values: [`${Math.round(it.slider.value * 100)}%`], value: 0 } : { id: String(i), label: it.label },
+          ),
+        },
+        sel: this.selected,
+      });
+      return;
+    }
     const buttons = this.el.querySelectorAll<HTMLButtonElement>('.menu-item');
     if (this.el.dataset.screen === this.screen && buttons.length === items.length) {
       buttons.forEach((btn, i) => {

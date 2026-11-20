@@ -11,6 +11,8 @@ import { Clouds, Water, bush, palmTree, rock, setupSky } from './environment';
 import { PROPS, pickProp, prop } from '../three/props';
 import { addGrassField, pathTexture } from './realism';
 import { addBoardExtras, stoneTexture, volcanicGround } from './boardExtras';
+import { CABLE_ABOVE, ELEVATOR_RISE } from './rideVehicles';
+import { lancetArt, lancetWindow, roseArt, roseWindow } from './stainedGlass';
 
 export interface BoardTheme {
   readonly group: THREE.Group;
@@ -81,19 +83,9 @@ function extraDecor(board: Board, theme: BoardTheme): void {
     case 'volcano':
       decorate(board, theme.group, area, 26, 702, (rng) => (rng.next() < 0.5 ? sizes(rng, PROPS.fences, [1, 1.4]) : sizes(rng, [...PROPS.camp, ...PROPS.pebbles], [0.6, 1.6])), 2.6, (x, z) => Math.hypot(x, z) < 16);
       break;
-    case 'castle': {
-      // Só fora do castelo: nada dentro dos andares (pátio, salão, torre).
-      const floors = ['floor0', 'floor1', 'floor2'].map((z) => {
-        const sp = board.spaces.filter((x) => x.zone === z);
-        return { minX: Math.min(...sp.map((x) => x.x)) - 6, maxX: Math.max(...sp.map((x) => x.x)) + 6, minZ: Math.min(...sp.map((x) => x.z)) - 6, maxZ: Math.max(...sp.map((x) => x.z)) + 6 };
-      });
-      const inside = (x: number, z: number) => floors.some((f) => x > f.minX && x < f.maxX && z > f.minZ && z < f.maxZ);
-      decorate(board, theme.group, { ...area, w: area.w + 30, d: area.d + 30 }, 34, 703, (rng) => {
-        const r = rng.next();
-        return r < 0.35 ? sizes(rng, PROPS.fences, [1, 1.6]) : r < 0.65 ? sizes(rng, PROPS.village, [0.8, 2.4]) : sizes(rng, ['kaykit-halloween/candle_triple', 'kaykit-medieval/flag_red', 'kaykit-medieval/flag_blue', 'kaykit-dungeon/torch_lit', 'kaykit-restaurant/pot_A_stew', 'kaykit-dungeon/barrel_large', 'kaykit-dungeon/keg'], [1, 2.6]);
-      }, 2.6, inside);
+    case 'castle':
+      // A mobília do salão é posta pelo castleHall (CastleTheme).
       break;
-    }
     case 'park':
       decorate(board, theme.group, area, 30, 704, (rng) => {
         const r = rng.next();
@@ -151,9 +143,29 @@ function outward(s: Space, cx: number, cz: number): THREE.Vector2 {
 }
 
 /** Loja: casinha com toldo às riscas e letreiro. */
-function shopBuilding(kind: ShopKind, name: string, neon: boolean): THREE.Group {
+/** Bancas do mercado medieval (KayKit) para as lojas do castelo, numa cor por tipo de loja. */
+const CASTLE_STALL: Record<ShopKind, string> = {
+  geral: 'kaykit-medieval/building_market_blue',
+  barata: 'kaykit-medieval/building_market_green',
+  luxo: 'kaykit-medieval/building_market_red',
+  ultimo: 'kaykit-medieval/building_market_yellow',
+};
+
+function shopBuilding(kind: ShopKind, name: string, neon: boolean, stall?: Record<ShopKind, string>): THREE.Group {
   const g = new THREE.Group();
   const sign = SHOP_SIGN[kind];
+  const model = stall && prop(stall[kind], { width: 3 });
+  if (model) {
+    // Banca do pack: só a tabuleta, o ícone e o nome por cima (a banca já tem o resto).
+    const board = mesh(new THREE.BoxGeometry(2.2, 0.7, 0.12), toonUnique(sign.color));
+    board.position.set(0, 2.7, 0.2);
+    const icon = textSprite(sign.emoji, { height: 1.1 });
+    icon.position.set(0, 3.8, 0.2);
+    const label = textSprite(name, { height: 0.45, color: '#ffffff' });
+    label.position.set(0, 2.7, 0.35);
+    g.add(model, board, icon, label);
+    return g;
+  }
   const base = mesh(new THREE.BoxGeometry(2.6, 2, 2), toon(neon ? '#2b2440' : '#fff4e0'), { receive: true });
   base.position.y = 1;
   const awning = mesh(
@@ -575,11 +587,23 @@ class IslandTheme implements BoardTheme {
 // ── Curvas das viagens (vagoneta, elevador, montanha-russa) ─
 
 /** Curva de uma viagem entre dois pontos do tabuleiro. */
-export function rideCurve(from: THREE.Vector3, to: THREE.Vector3, kind: 'cart' | 'elevator' | 'coaster'): THREE.CatmullRomCurve3 {
+export function rideCurve(from: THREE.Vector3, to: THREE.Vector3, kind: 'cart' | 'elevator' | 'coaster'): THREE.Curve<THREE.Vector3> {
   const mid = from.clone().lerp(to, 0.5);
   if (kind === 'elevator') {
-    const top = Math.max(from.y, to.y) + 3;
-    return new THREE.CatmullRomCurve3([from, new THREE.Vector3(from.x, top, from.z), new THREE.Vector3(to.x, top, to.z), to]);
+    // Teleférico: sobe a direito no poço, segue pelo cabo (reto, por cima de tudo) e desce no outro poço.
+    const top = Math.max(from.y, to.y) + ELEVATOR_RISE;
+    const dir = new THREE.Vector3(to.x - from.x, 0, to.z - from.z);
+    const r = Math.min(1.2, dir.length() / 2);
+    dir.normalize();
+    const upA = new THREE.Vector3(from.x, top, from.z);
+    const upB = new THREE.Vector3(to.x, top, to.z);
+    const path = new THREE.CurvePath<THREE.Vector3>();
+    path.add(new THREE.LineCurve3(from, upA.clone().setY(top - r)));
+    path.add(new THREE.QuadraticBezierCurve3(upA.clone().setY(top - r), upA, upA.clone().addScaledVector(dir, r)));
+    path.add(new THREE.LineCurve3(upA.clone().addScaledVector(dir, r), upB.clone().addScaledVector(dir, -r)));
+    path.add(new THREE.QuadraticBezierCurve3(upB.clone().addScaledVector(dir, -r), upB, upB.clone().setY(top - r)));
+    path.add(new THREE.LineCurve3(upB.clone().setY(top - r), to));
+    return path;
   }
   if (kind === 'cart') {
     return new THREE.CatmullRomCurve3([from, from.clone().lerp(to, 0.25).setY(1.4), mid.clone().setY(2.2), from.clone().lerp(to, 0.75).setY(1.4), to]);
@@ -625,7 +649,7 @@ function rails(curve: THREE.Curve<THREE.Vector3>, color: string, supports: boole
   });
 }
 
-export function tunnelCurve(board: Board, t: Board['tunnels'][number]): THREE.CatmullRomCurve3 {
+export function tunnelCurve(board: Board, t: Board['tunnels'][number]): THREE.Curve<THREE.Vector3> {
   const a = getSpace(board, t.from);
   const b = getSpace(board, t.to);
   const kind = t.kind === 'coaster' ? 'coaster' : t.kind === 'elevator' ? 'elevator' : 'cart';
@@ -709,11 +733,11 @@ function decorate(board: Board, group: THREE.Group, area: { cx: number; cz: numb
   }
 }
 
-function shopsFor(board: Board, group: THREE.Group, cx: number, cz: number, neon: boolean): void {
+function shopsFor(board: Board, group: THREE.Group, cx: number, cz: number, neon: boolean, stall?: Record<ShopKind, string>): void {
   for (const shop of board.shops) {
     const s = getSpace(board, shop.spaceId);
     const out = outward(s, cx, cz);
-    const building = shopBuilding(shop.kind, shop.name, neon);
+    const building = shopBuilding(shop.kind, shop.name, neon, stall);
     building.position.set(s.x + out.x * 3.2, s.y ?? 0, s.z + out.y * 3.2);
     building.rotation.y = Math.atan2(-out.x, -out.y);
     group.add(building);
@@ -889,6 +913,289 @@ class VolcanoTheme implements BoardTheme {
 
 // ── Castelo ───────────────────────────────────────────────
 
+/** Pilar de canto dos andares do castelo (também usado pelo boardExtras para pôr os estandartes). */
+export const CASTLE_TOWER = 'kaykit-dungeon/pillar_decorated';
+
+/** Limites do salão do castelo (paredes atrás e dos lados; a frente fica aberta para a câmara). */
+export function castleHallBounds(board: Board) {
+  const b = boundsOf(board.spaces);
+  return { minX: b.minX - 16, maxX: b.maxX + 16, minZ: b.minZ - 18, maxZ: b.maxZ + 14 };
+}
+
+/** Tapete de canvas: cor de fundo, barra e losango dourados. */
+function rugMaterial(main: string, border: string): THREE.MeshToonMaterial {
+  return toonUnique('#ffffff', {
+    map: canvasTexture(256, (ctx, s) => {
+      ctx.fillStyle = border;
+      ctx.fillRect(0, 0, s, s);
+      ctx.fillStyle = main;
+      ctx.fillRect(s * 0.06, s * 0.06, s * 0.88, s * 0.88);
+      ctx.strokeStyle = border;
+      ctx.lineWidth = s * 0.015;
+      ctx.strokeRect(s * 0.12, s * 0.12, s * 0.76, s * 0.76);
+      ctx.beginPath();
+      ctx.moveTo(s / 2, s * 0.25);
+      ctx.lineTo(s * 0.75, s / 2);
+      ctx.lineTo(s / 2, s * 0.75);
+      ctx.lineTo(s * 0.25, s / 2);
+      ctx.closePath();
+      ctx.stroke();
+    }),
+  });
+}
+
+/**
+ * Interior do castelo à volta do tabuleiro (modelos KayKit Dungeon/Halloween/Mixed): em baixo,
+ * paredes com janelas em arco (noite lá fora), estantes e pilares com archotes; por cima, uma
+ * parede alta e lisa até ao teto, com pilastras, cornija e vitrais (ogivas e rosáceas); estandartes;
+ * mobília encostada às paredes e espalhada pelo salão; tapetes, lustres, o banquete no salão e o
+ * trono na torre. Se faltar algum modelo, essa peça não aparece (ou fica a versão simples).
+ */
+function castleHall(board: Board, group: THREE.Group, flames: THREE.MeshToonMaterial[]): void {
+  const hall = castleHallBounds(board);
+  const rng = createRng(4242);
+  const H = 15;
+  // As paredes sobem até onde a câmara do mapa (de cima, ao início) deixava de ver o lado de fora.
+  const WALL_TOP = 60;
+  const wallMat = toon('#6f6878');
+  // As paredes do salão não fazem sombra (a luz da lua entra pelas janelas; com 60 m de parede
+  // a sombra cobria meio tabuleiro).
+  const noShadow = (o: THREE.Object3D) => o.traverse((c) => (c.castShadow = false));
+  const lancets = [0, 1, 2].map((i) => lancetArt(91 + i * 17));
+  const roses = [0, 1].map((i) => roseArt(501 + i * 23));
+  const sky = new THREE.MeshBasicMaterial({ color: '#2c3a7a' });
+  const lights: THREE.Vector3[] = [];
+  // Cada parede: início, fim, rotação (virada para dentro) e direção para fora.
+  const walls = [
+    { ax: hall.minX, az: hall.minZ, bx: hall.maxX, bz: hall.minZ, rot: 0, ox: 0, oz: -1 },
+    { ax: hall.minX, az: hall.maxZ, bx: hall.minX, bz: hall.minZ, rot: Math.PI / 2, ox: -1, oz: 0 },
+    { ax: hall.maxX, az: hall.minZ, bx: hall.maxX, bz: hall.maxZ, rot: -Math.PI / 2, ox: 1, oz: 0 },
+  ];
+  walls.forEach((w, wi) => {
+    const len = Math.hypot(w.bx - w.ax, w.bz - w.az);
+    const n = Math.max(2, Math.round(len / H));
+    const piece = len / n;
+    // Céu da noite por trás (vê-se pelas janelas de baixo).
+    const back = mesh(new THREE.PlaneGeometry(len + 10, piece * 1.2), sky, { cast: false });
+    back.position.set((w.ax + w.bx) / 2 + w.ox * 4, piece * 0.6, (w.az + w.bz) / 2 + w.oz * 4);
+    back.rotation.y = w.rot;
+    group.add(back);
+    // Por cima das peças: parede lisa de pedra até ao teto, alinhada com a face de dentro, e uma
+    // cornija a separar as duas.
+    const cx = (w.ax + w.bx) / 2;
+    const cz = (w.az + w.bz) / 2;
+    const upH = WALL_TOP - piece;
+    const upTex = stoneTexture('#77707e', 6, 4).clone();
+    upTex.needsUpdate = true;
+    upTex.repeat.set(len / 6, upH / 6);
+    const upper = mesh(new THREE.BoxGeometry(len + 4, upH, 1.6), toonUnique('#ffffff', { map: upTex }), { cast: false, receive: true });
+    upper.position.set(cx + w.ox * -1, piece + upH / 2, cz + w.oz * -1);
+    upper.rotation.y = w.rot;
+    group.add(upper);
+    const corniceTex = stoneTexture('#8a8290', 2, 8).clone();
+    corniceTex.needsUpdate = true;
+    corniceTex.repeat.set(len / 4, 1);
+    const cornice = mesh(new THREE.BoxGeometry(len + 4, 0.9, 1.4), toonUnique('#ffffff', { map: corniceTex }), { cast: false });
+    cornice.position.set(cx - w.ox * 2.1, piece + 0.2, cz - w.oz * 2.1);
+    cornice.rotation.y = w.rot;
+    group.add(cornice);
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n;
+      const x = w.ax + (w.bx - w.ax) * t;
+      const z = w.az + (w.bz - w.az) * t;
+      const kind = (i + wi) % 3 === 0 ? 'wall_shelves' : (i + wi) % 3 === 1 ? 'wall_archedwindow_open' : 'wall';
+      const p = prop(`kaykit-dungeon/${kind}`, { width: piece + 0.05 });
+      if (p) {
+        p.position.set(x, 0, z);
+        p.rotation.y = w.rot;
+        noShadow(p);
+        group.add(p);
+      } else {
+        const box = mesh(new THREE.BoxGeometry(piece, piece, 1.2), wallMat, { cast: false, receive: true });
+        box.position.set(x, piece / 2, z);
+        box.rotation.y = w.rot;
+        group.add(box);
+      }
+      // Vitrais na parede alta: uma janela gótica comprida e uma rosácea por cima, entre as
+      // pilastras, em molduras de pedra.
+      const lw = Math.min(6, piece * 0.42);
+      const lh = lw * 3.4;
+      const art = lancets[(i + wi) % lancets.length]!;
+      const win = lancetWindow(art, lw, lh);
+      win.position.set(x - w.ox * 1.82, piece + 4, z - w.oz * 1.82);
+      win.rotation.y = w.rot;
+      const rd = lw * 1.25;
+      const rose = roseWindow(roses[(i + wi) % roses.length]!, rd);
+      rose.position.set(x - w.ox * 1.82, Math.min(WALL_TOP - rd / 2 - 2, piece + 4 + lh + 2.2 + rd / 2), z - w.oz * 1.82);
+      rose.rotation.y = w.rot;
+      group.add(win, rose);
+      // Estandarte nas paredes lisas.
+      if (kind === 'wall') {
+        const banner = prop(i % 2 ? 'kaykit-dungeon/banner_triple_red' : 'kaykit-dungeon/banner_patternB_red', { height: 6 });
+        if (banner) {
+          banner.position.set(x - w.ox * 2, 4.5, z - w.oz * 2);
+          banner.rotation.y = w.rot;
+          group.add(banner);
+        }
+      }
+      // Mobília encostada à parede, à frente de cada peça.
+      const pick: [string, number] = kind === 'wall_archedwindow_open'
+        ? ['kaykit-dungeon/table_long_tablecloth_decorated_A', 2]
+        : kind === 'wall'
+          ? ['kaykit-mixed2/ornate_mirror', 3.6]
+          : ['kaykit-dungeon/barrel_small_stack', 1.8];
+      const f = prop(pick[0], { height: pick[1] });
+      if (f) {
+        f.position.set(x - w.ox * 3.4, 0, z - w.oz * 3.4);
+        f.rotation.y = w.rot + (pick[0].includes('table') ? Math.PI / 2 : 0);
+        group.add(f);
+      }
+      // Pilar com archote em cada junta (e nas pontas).
+      for (const j of i === 0 ? [0, 1] : [1]) {
+        const tj = (i + j) / n;
+        const px = w.ax + (w.bx - w.ax) * tj - w.ox * 0.9;
+        const pz = w.az + (w.bz - w.az) * tj - w.oz * 0.9;
+        const pillar = prop('kaykit-dungeon/pillar_decorated', { height: piece + 0.5 });
+        if (pillar) {
+          pillar.scale.set(0.5, 1, 0.5);
+          pillar.position.set(px, 0, pz);
+          pillar.rotation.y = w.rot;
+          noShadow(pillar);
+          group.add(pillar);
+        }
+        // Pilastra de pedra a continuar o pilar até ao teto.
+        const pil = mesh(new THREE.BoxGeometry(1.8, WALL_TOP - piece, 1.2), toonUnique('#ffffff', { map: corniceTex }), { cast: false });
+        pil.position.set(px - w.ox * 1.4, piece + (WALL_TOP - piece) / 2, pz - w.oz * 1.4);
+        pil.rotation.y = w.rot;
+        group.add(pil);
+        const tx = px - w.ox * 1.8;
+        const tz = pz - w.oz * 1.8;
+        const torch = prop('kaykit-dungeon/torch_mounted', { height: 1.6 });
+        if (torch) {
+          torch.position.set(tx, 4.2, tz);
+          torch.rotation.y = w.rot;
+          group.add(torch);
+        }
+        const fm = toonUnique('#ffb020', { emissive: '#ff8a1a', emissiveIntensity: 1.5 });
+        flames.push(fm);
+        const flame = mesh(new THREE.SphereGeometry(0.28, 8, 6), fm, { cast: false });
+        flame.position.set(tx - w.ox * 0.2, 5.9, tz - w.oz * 0.2);
+        group.add(flame);
+        lights.push(flame.position.clone());
+      }
+    }
+  });
+  // Luz dos archotes: só algumas (luzes pontuais custam caro).
+  const step = Math.max(1, Math.floor(lights.length / 8));
+  for (let i = 0; i < lights.length; i += step) {
+    const l = new THREE.PointLight('#ffb35c', 30, 22);
+    l.position.copy(lights[i]!).setY(5);
+    group.add(l);
+  }
+  // Parede da frente e teto: planos que só têm face para dentro. Vistos de dentro (câmaras
+  // perto das personagens) fecham o salão; vistos de fora (a câmara do mapa, à frente e por cima)
+  // não se desenham, e por isso não tapam nada.
+  const innerTex = stoneTexture('#5d5866', 6, 4).clone();
+  innerTex.needsUpdate = true;
+  innerTex.repeat.set((hall.maxX - hall.minX) / 8, WALL_TOP / 8);
+  const front = mesh(new THREE.PlaneGeometry(hall.maxX - hall.minX, WALL_TOP), toonUnique('#ffffff', { map: innerTex }), { cast: false });
+  front.position.set((hall.minX + hall.maxX) / 2, WALL_TOP / 2, hall.maxZ);
+  front.rotation.y = Math.PI;
+  group.add(front);
+  const ceilTex = stoneTexture('#3a2e2a', 3, 6).clone();
+  ceilTex.needsUpdate = true;
+  ceilTex.repeat.set((hall.maxX - hall.minX) / 10, (hall.maxZ - hall.minZ) / 10);
+  const ceiling = mesh(new THREE.PlaneGeometry(hall.maxX - hall.minX, hall.maxZ - hall.minZ), toonUnique('#ffffff', { map: ceilTex }), { cast: false });
+  ceiling.rotation.x = Math.PI / 2;
+  ceiling.position.set((hall.minX + hall.maxX) / 2, WALL_TOP, (hall.minZ + hall.maxZ) / 2);
+  group.add(ceiling);
+
+  // No meio de cada andar: tapete e lustre; no salão (floor1) o banquete, na torre (floor2) o trono.
+  for (const zone of ['floor0', 'floor1', 'floor2']) {
+    const sp = board.spaces.filter((s) => s.zone === zone);
+    if (!sp.length) continue;
+    const b = boundsOf(sp);
+    const y = sp[0]!.y ?? 0;
+    const top = y ? y : 0.02;
+    const cx = (b.minX + b.maxX) / 2;
+    const cz = (b.minZ + b.maxZ) / 2;
+    const rw = (b.maxX - b.minX) * 0.55;
+    const rd = (b.maxZ - b.minZ) * 0.45;
+    const rug = mesh(new THREE.PlaneGeometry(rw, rd), rugMaterial(zone === 'floor2' ? '#3a1f5c' : '#6b1a22', '#c9a227'), { cast: false, receive: true });
+    rug.rotation.x = -Math.PI / 2;
+    rug.position.set(cx, top + 0.02, cz);
+    group.add(rug);
+    // Lustre: aro de ferro com velas, preso por uma corrente que sobe até fora de vista.
+    const ch = new THREE.Group();
+    const ring = mesh(new THREE.TorusGeometry(1.6, 0.09, 6, 28), toon('#2f2f3a'));
+    ring.rotation.x = Math.PI / 2;
+    ch.add(ring);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const candle = mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.35, 6), toon('#f2ead8'));
+      candle.position.set(Math.cos(a) * 1.6, 0.2, Math.sin(a) * 1.6);
+      const fm = toonUnique('#ffd060', { emissive: '#ffb030', emissiveIntensity: 1.6 });
+      flames.push(fm);
+      const fl = mesh(new THREE.SphereGeometry(0.09, 6, 4), fm, { cast: false });
+      fl.position.set(candle.position.x, 0.46, candle.position.z);
+      ch.add(candle, fl);
+    }
+    const chain = mesh(new THREE.CylinderGeometry(0.05, 0.05, 30, 5), toon('#2f2f3a'), { cast: false });
+    chain.position.y = 15;
+    ch.add(chain);
+    ch.position.set(cx, y + 11, cz);
+    group.add(ch);
+    const glow = new THREE.PointLight('#ffcf80', 38, 26); // mais forte: é a luz principal de cada andar
+    glow.position.set(cx, y + 10.5, cz);
+    group.add(glow);
+    if (zone === 'floor1') {
+      const table = prop('kaykit-dungeon/table_long_tablecloth_decorated_A', { height: 2 });
+      if (table) {
+        table.position.set(cx, top, cz);
+        table.rotation.y = Math.PI / 2;
+        group.add(table);
+        for (let i = -1; i <= 1; i++)
+          for (const side of [-1, 1]) {
+            const chair = prop('kaykit-dungeon/chair', { height: 1.5 });
+            if (!chair) continue;
+            chair.position.set(cx + i * 1.4, top, cz + side * 1.5);
+            chair.rotation.y = side > 0 ? Math.PI : 0;
+            group.add(chair);
+          }
+      }
+    }
+    if (zone === 'floor2') {
+      const throne = prop('kaykit-dungeon/chair', { height: 3 });
+      if (throne) {
+        throne.position.set(cx, top, cz - rd * 0.2);
+        group.add(throne);
+      }
+      for (const sx of [-1, 1]) {
+        const c = prop('kaykit-dungeon/candle_triple', { height: 1.4 });
+        if (!c) continue;
+        c.position.set(cx + sx * 1.6, top, cz - rd * 0.2);
+        group.add(c);
+      }
+    }
+  }
+
+  // Mobília espalhada pelo salão (fora dos andares e longe dos caminhos).
+  const floors = ['floor0', 'floor1', 'floor2'].map((zn) => {
+    const sp = board.spaces.filter((x) => x.zone === zn);
+    return { minX: Math.min(...sp.map((x) => x.x)) - 5, maxX: Math.max(...sp.map((x) => x.x)) + 5, minZ: Math.min(...sp.map((x) => x.z)) - 5, maxZ: Math.max(...sp.map((x) => x.z)) + 5 };
+  });
+  const ITEMS: [string, number][] = [
+    ['kaykit-dungeon/barrel_large', 1.6], ['kaykit-dungeon/keg_decorated', 1.5], ['kaykit-dungeon/crates_stacked', 2.2], ['kaykit-dungeon/box_stacked', 1.8],
+    ['kaykit-dungeon/chest', 1.1], ['kaykit-dungeon/trunk_large_A', 1.2], ['kaykit-dungeon/table_medium_tablecloth_decorated_B', 1.6], ['kaykit-dungeon/shelves', 2.8],
+    ['kaykit-halloween/coffin_decorated', 0.9], ['kaykit-halloween/skull_candle', 0.8], ['kaykit-halloween/candle_triple', 1.2], ['kaykit-halloween/pumpkin_orange_jackolantern', 1],
+    ['kaykit-dungeon/sword_shield', 1.6], ['kaykit-halloween/lantern_standing', 1.6], ['kaykit-dungeon/column', 2.6], ['kaykit-halloween/ribcage', 0.8],
+  ];
+  decorate(board, group, { cx: (hall.minX + hall.maxX) / 2, cz: (hall.minZ + hall.maxZ) / 2, w: hall.maxX - hall.minX - 8, d: hall.maxZ - hall.minZ - 6 }, 55, 13, () => {
+    const [key, h] = ITEMS[Math.floor(rng.next() * ITEMS.length)]!;
+    return deco([key], rng, { height: h * (0.9 + rng.next() * 0.25) }, () => new THREE.Group());
+  }, 3.2, (x, z) => floors.some((f) => x > f.minX && x < f.maxX && z > f.minZ && z < f.maxZ));
+}
+
 class CastleTheme implements BoardTheme {
   readonly group = new THREE.Group();
   readonly bounds;
@@ -896,23 +1203,27 @@ class CastleTheme implements BoardTheme {
   private readonly ghost: THREE.Sprite;
   private readonly flames: THREE.MeshToonMaterial[] = [];
   private fireflies: Particles | null = null;
+  private readonly pulleys: THREE.Mesh[] = [];
+  private readonly braziers: THREE.Mesh[] = [];
 
   constructor(board: Board, scene: THREE.Scene) {
     this.bounds = boundsOf(board.spaces);
-    scene.background = new THREE.Color('#251a44');
-    scene.fog = new THREE.Fog('#251a44', 90, 220);
-    scene.add(new THREE.HemisphereLight('#c9bcff', '#3a3458', 2.2));
-    const moon = new THREE.DirectionalLight('#dfe6ff', 2);
+    // Dentro do castelo: um grande salão de pedra (sem teto, aberto à frente para a câmara).
+    // Luz sombria: ambiente frio e baixo (luar pelas janelas), e o calor vem dos archotes, braseiros e lustres.
+    scene.background = new THREE.Color('#0b0814');
+    scene.fog = new THREE.Fog('#0b0814', 70, 190);
+    scene.add(new THREE.HemisphereLight('#9a8fd6', '#1c1828', 1.35));
+    const moon = new THREE.DirectionalLight('#a9b8ff', 1.15);
     moon.position.set(-30, 60, 40);
     moon.castShadow = true;
     moon.shadow.mapSize.set(2048, 2048);
     Object.assign(moon.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 200 });
     scene.add(moon);
-    const moonDisc = mesh(new THREE.CircleGeometry(6, 32), new THREE.MeshBasicMaterial({ color: '#fff6d8' }), { cast: false });
-    moonDisc.position.set(-40, 50, -120);
-    this.group.add(moonDisc);
-
-    const ground = mesh(new THREE.PlaneGeometry(220, 220), toon('#3d4c37'), { cast: false, receive: true });
+    // Chão de lajes.
+    const floorTex = stoneTexture('#5d5866', 4, 4).clone();
+    floorTex.needsUpdate = true;
+    floorTex.repeat.set(220 / 5, 220 / 5);
+    const ground = mesh(new THREE.PlaneGeometry(220, 220), toonUnique('#ffffff', { map: floorTex }), { cast: false, receive: true });
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.02;
     this.group.add(ground);
@@ -932,133 +1243,107 @@ class CastleTheme implements BoardTheme {
       const slab = mesh(new THREE.BoxGeometry(w, h, d), toonUnique('#ffffff', { map: slabTex }), { receive: true });
       slab.position.set((b.minX + b.maxX) / 2, h / 2 - (y ? 0 : 0.28), (b.minZ + b.maxZ) / 2);
       this.group.add(slab);
-      // Torres nos cantos
+      // Nos cantos: pilares de pedra que seguram o andar (vêm do chão do salão), com um braseiro em cima.
       for (const [cx, cz] of [[b.minX - 3.5, b.minZ - 3.5], [b.maxX + 3.5, b.minZ - 3.5], [b.minX - 3.5, b.maxZ + 3.5], [b.maxX + 3.5, b.maxZ + 3.5]] as const) {
-        const towerTex = stoneTexture('#8a8072').clone();
-        towerTex.needsUpdate = true;
-        towerTex.repeat.set(3, (y + 6) / 1.4);
-        const tower = mesh(new THREE.CylinderGeometry(1.6, 1.8, y + 6, 16), toonUnique('#ffffff', { map: towerTex }));
-        tower.position.set(cx, (y + 6) / 2, cz);
-        const roof = mesh(new THREE.ConeGeometry(2.1, 3, 12), toon('#5b3a8a'));
-        roof.position.set(cx, y + 7.5, cz);
+        const ph = y + 6;
+        const pillar = prop(CASTLE_TOWER, { height: ph });
+        if (pillar) {
+          const k = Math.min(1, 2.6 / (2.23 * (ph / 4))); // largura fixa (~2,6 m), seja qual for a altura
+          pillar.scale.set(k, 1, k);
+          pillar.position.set(cx, 0, cz);
+          this.group.add(pillar);
+        } else {
+          const tex = stoneTexture('#8a8072').clone();
+          tex.needsUpdate = true;
+          tex.repeat.set(3, ph / 1.4);
+          const col = mesh(new THREE.CylinderGeometry(1.1, 1.3, ph, 16), toonUnique('#ffffff', { map: tex }));
+          col.position.set(cx, ph / 2, cz);
+          this.group.add(col);
+        }
+        // Braseiro: taça de ferro com fogo (a chama tremeluz no update).
+        const bowl = mesh(new THREE.CylinderGeometry(0.9, 0.45, 0.6, 14), toon('#2f2f3a'));
+        bowl.position.set(cx, ph + 0.3, cz);
+        const coals = mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.08, 14), toonUnique('#ff5a1f', { emissive: '#ff3a00', emissiveIntensity: 1.2 }), { cast: false });
+        coals.position.set(cx, ph + 0.58, cz);
         const flameMat = toonUnique('#ffb020', { emissive: '#ff8a1a', emissiveIntensity: 1.5 });
         this.flames.push(flameMat);
-        const flame = mesh(new THREE.SphereGeometry(0.3, 8, 6), flameMat, { cast: false });
-        flame.position.set(cx, y + 2, cz + 1.9);
-        this.group.add(tower, roof, flame);
+        const fire = mesh(new THREE.ConeGeometry(0.6, 1.4, 10), flameMat, { cast: false });
+        fire.position.set(cx, ph + 1.3, cz);
+        this.braziers.push(fire);
+        this.group.add(bowl, coals, fire);
       }
     }
     addPathStrips(board, this.group, () => ({ width: 1.3, height: 0.1, color: '#a39a8a', y: 0.05 }));
 
-    // Elevadores: poços com cabos
+    // Elevadores: teleférico. Em cada ponta, um mastro de ferro ao lado da casa com um braço e uma
+    // roldana por cima dela; entre as roldanas, o cabo por onde a cabine segue (ver rideVehicles).
+    const iron = toon('#2f2f3a');
+    const brass = toon('#c9a227');
     for (const t of board.tunnels.filter((t) => t.kind === 'elevator')) {
-      for (const id of [t.from, t.to]) {
-        const s = getSpace(board, id);
-        const top = 10;
-        for (const [ox, oz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-          const post = mesh(new THREE.BoxGeometry(0.15, top, 0.15), toon('#4a4f58'));
-          const out = outward(s, 0, 0);
-          post.position.set(s.x + out.x * 2.2 + ox * 0.9, top / 2, s.z + out.y * 2.2 + oz * 0.9);
-          this.group.add(post);
-        }
-        const sign = textSprite('🛗', { height: 1 });
-        sign.position.set(s.x, (s.y ?? 0) + 3, s.z);
+      const a = getSpace(board, t.from);
+      const b = getSpace(board, t.to);
+      const cableY = Math.max(a.y ?? 0, b.y ?? 0) + 0.32 + ELEVATOR_RISE + CABLE_ABOVE;
+      for (const s of [a, b]) {
+        const out = outward(s, 0, 0);
+        const mx = s.x + out.x * 2.2;
+        const mz = s.z + out.y * 2.2;
+        const y0 = s.y ?? 0;
+        const h = cableY + 0.8 - y0;
+        const mast = mesh(new THREE.BoxGeometry(0.32, h, 0.32), iron);
+        mast.position.set(mx, y0 + h / 2, mz);
+        const armLen = Math.hypot(mx - s.x, mz - s.z);
+        const arm = mesh(new THREE.BoxGeometry(0.22, 0.22, armLen + 0.3), iron);
+        arm.position.set((mx + s.x) / 2, cableY + 0.65, (mz + s.z) / 2);
+        arm.rotation.y = Math.atan2(s.x - mx, s.z - mz);
+        const wheel = mesh(new THREE.TorusGeometry(0.42, 0.09, 8, 20), brass);
+        wheel.position.set(s.x, cableY + 0.2, s.z);
+        wheel.rotation.y = Math.atan2((s === a ? b : a).x - s.x, (s === a ? b : a).z - s.z) + Math.PI / 2;
+        const axle = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 6), iron);
+        axle.position.set(s.x, cableY + 0.42, s.z);
+        this.group.add(mast, arm, wheel, axle);
+        this.pulleys.push(wheel);
+        const sign = textSprite('🛗', { height: 1.1 });
+        sign.position.set(mx, cableY + 1.6, mz);
         this.group.add(sign);
       }
+      const pa = new THREE.Vector3(a.x, cableY, a.z);
+      const pb = new THREE.Vector3(b.x, cableY, b.z);
+      const cable = mesh(new THREE.CylinderGeometry(0.05, 0.05, pa.distanceTo(pb), 6), toon('#1d1d24'), { cast: false });
+      cable.position.copy(pa).lerp(pb, 0.5);
+      cable.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pb.clone().sub(pa).normalize());
+      this.group.add(cable);
     }
     // Portas nas escadarias
     for (const gate of board.gates.filter((g) => !g.lever)) {
       const a = getSpace(board, gate.from);
       const b = getSpace(board, gate.to);
       const pivot = new THREE.Group();
-      const door = mesh(new THREE.BoxGeometry(2.2, 2.6, 0.2), toon('#6b4423'));
-      door.position.set(1.1, 1.3, 0);
-      const knob = mesh(new THREE.SphereGeometry(0.12, 8, 6), toon('#ffd23f'), { cast: false });
-      knob.position.set(1.9, 1.3, 0.15);
-      pivot.add(door, knob);
+      // Portão de ferro do cemitério (KayKit Halloween); sem ele, a porta de madeira feita à mão.
+      const iron = prop('kaykit-halloween/fence_gate', { width: 2.2 });
+      if (iron) {
+        iron.scale.y = 1.4; // mais alto que a vedação do cemitério, para ler como porta
+        iron.position.set(1.1, 0, 0);
+        pivot.add(iron);
+      } else {
+        const door = mesh(new THREE.BoxGeometry(2.2, 2.6, 0.2), toon('#6b4423'));
+        door.position.set(1.1, 1.3, 0);
+        const knob = mesh(new THREE.SphereGeometry(0.12, 8, 6), toon('#ffd23f'), { cast: false });
+        knob.position.set(1.9, 1.3, 0.15);
+        pivot.add(door, knob);
+      }
       pivot.position.set((a.x + b.x) / 2 - 1.1, ((a.y ?? 0) + (b.y ?? 0)) / 2, (a.z + b.z) / 2);
       this.group.add(pivot);
       this.doors.push({ gate, door: pivot });
     }
-    shopsFor(board, this.group, 0, -6, false);
+    shopsFor(board, this.group, 0, -6, false, CASTLE_STALL);
     const b0 = boundsOf(board.spaces);
     // Fantasma
     this.ghost = textSprite('👻', { height: 2.4 });
     this.group.add(this.ghost);
-    // Árvores secas e lápides à volta
-    decorate(board, this.group, { cx: 0, cz: -4, w: 120, d: 110 }, 60, 13, (rng) => {
-      const r = rng.next();
-      if (r < 0.45) {
-        return deco(PROPS.graveyard, rng, { height: 1.3 + rng.next() * 0.6 }, () => {
-          const g = new THREE.Group();
-          const stone = mesh(new THREE.BoxGeometry(0.9, 1.2, 0.25), toon('#8a8f99'));
-          stone.position.y = 0.6;
-          g.add(stone);
-          return g;
-        });
-      }
-      if (r < 0.62) {
-        const keys = PROPS.spooky.filter((k) => /lantern|pumpkin|skull|candle|coffin|bone|ribcage/.test(k));
-        return deco(keys, rng, { height: 0.9 + rng.next() * 0.8 }, () => new THREE.Group());
-      }
-      return deco(PROPS.deadTrees, rng, { height: 4 + rng.next() * 2.5 }, () => {
-        const tree = new THREE.Group();
-        const trunk = mesh(new THREE.CylinderGeometry(0.15, 0.25, 3, 6), toon('#2b2224'));
-        trunk.position.y = 1.5;
-        const top = mesh(new THREE.SphereGeometry(1.2, 6, 5), toon('#3a2a4d'));
-        top.position.y = 3.4;
-        tree.add(trunk, top);
-        return tree;
-      });
-    }, 4);
-    // Ao fundo: o castelo e as torres; à frente, a cripta e o portão do cemitério.
-    const castle = prop('kaykit-medieval/building_castle_red', { height: 26 });
-    if (castle) {
-      castle.position.set(0, -0.5, b0.minZ - 26);
-      this.group.add(castle);
-      for (const sx of [-1, 1]) {
-        const t = prop('kaykit-medieval/building_tower_B_red', { height: 18 });
-        if (!t) continue;
-        t.position.set(sx * 28, -0.5, b0.minZ - 18);
-        this.group.add(t);
-      }
-    }
-    // Luzes quentes no cemitério e pirilampos por todo o lado.
-    const lrng = createRng(31);
-    for (let i = 0; i < 8; i++) {
-      const th = (i / 8) * Math.PI * 2;
-      const x = Math.cos(th) * (b0.maxX - b0.minX) * 0.75;
-      const z = (b0.minZ + b0.maxZ) / 2 + Math.sin(th) * (b0.maxZ - b0.minZ) * 0.7;
-      const lamp = prop('kaykit-halloween/post_lantern', { height: 4 });
-      if (lamp) {
-        lamp.position.set(x, 0, z);
-        lamp.rotation.y = lrng.next() * 6;
-        this.group.add(lamp);
-      }
-      const light = new THREE.PointLight('#ffb35c', 26, 16);
-      light.position.set(x, 3.6, z);
-      this.group.add(light);
-    }
-    this.fireflies = new Particles('firefly', 120, { cx: 0, cz: (b0.minZ + b0.maxZ) / 2, w: 90, d: 90, h: 8 }, '#d8ff7a');
+    // O salão: paredes, pilares, archotes, mobília, tapetes, lustres e o banquete.
+    castleHall(board, this.group, this.flames);
+    this.fireflies = new Particles('firefly', 90, { cx: 0, cz: (b0.minZ + b0.maxZ) / 2, w: 80, d: 90, h: 10 }, '#ffcf8a');
     this.group.add(this.fireflies.mesh);
-    const crypt = prop('kaykit-halloween/crypt', { height: 7 });
-    if (crypt) {
-      crypt.position.set(b0.maxX + 14, 0, b0.maxZ - 4);
-      crypt.rotation.y = -Math.PI / 2;
-      this.group.add(crypt);
-    }
-    const gateArch = prop('kaykit-halloween/arch_gate', { height: 5 });
-    if (gateArch) {
-      gateArch.position.set(0, 0, b0.maxZ + 10);
-      this.group.add(gateArch);
-      for (let i = 1; i <= 5; i++)
-        for (const sx of [-1, 1]) {
-          const f = prop('kaykit-halloween/fence', { width: 4 });
-          if (!f) continue;
-          f.position.set(sx * (2.1 + i * 4), 0, b0.maxZ + 10);
-          this.group.add(f);
-        }
-    }
     scene.add(this.group);
   }
 
@@ -1074,6 +1359,8 @@ class CastleTheme implements BoardTheme {
     this.ghost.position.set(Math.sin(time * 0.3) * 24, 9 + Math.sin(time * 1.3) * 1.2, -6 + Math.cos(time * 0.23) * 22);
     (this.ghost.material as THREE.SpriteMaterial).opacity = 0.55 + Math.sin(time * 2) * 0.25;
     this.flames.forEach((f, i) => (f.emissiveIntensity = 1.2 + Math.sin(time * 9 + i) * 0.4));
+    for (const w of this.pulleys) w.rotation.z = time * 0.6;
+    this.braziers.forEach((f, i) => f.scale.set(1, 1 + Math.sin(time * 11 + i * 1.7) * 0.15, 1));
     this.fireflies?.update(dt, time);
   }
 }

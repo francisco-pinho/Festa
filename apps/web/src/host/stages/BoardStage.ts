@@ -12,6 +12,7 @@ import { canvasTexture, disposeObject, FONT, mesh, textSprite, toon, toonUnique 
 import { damp, ease, lerp } from '../three/tweens';
 import { starMesh } from './environment';
 import { createBoardTheme, rideCurve, type BoardTheme } from './boardThemes';
+import { CABLE_ABOVE, ELEVATOR_RISE, rideVehicle, type RideKind } from './rideVehicles';
 import { BoardObjects } from './boardObjects';
 import { prop } from '../three/props';
 import { drawIcon, iconFor } from '../../common/icons';
@@ -954,7 +955,8 @@ export class BoardStage implements Stage {
     }
     for (const t of this.board.tunnels) {
       const s = getSpace(this.board, t.from);
-      label(t.kind === 'metro' ? 'Ⓜ️' : '🕳️', s.x, s.z, 5, 2.6);
+      const icon = { metro: 'Ⓜ️', cave: '🕳️', cart: '🛤️', elevator: '🛗', coaster: '🎢' }[t.kind];
+      label(icon, s.x, s.z, 5 + (s.y ?? 0), 2.6);
     }
     for (const l of this.board.levers) {
       const s = getSpace(this.board, l.spaceId);
@@ -1010,66 +1012,153 @@ export class BoardStage implements Stage {
     }
   }
 
-  /** Viagem por túnel/metro: desce na entrada e sobe na saída. */
+  /**
+   * Viagem por túnel/metro: a personagem mergulha na entrada e a câmara segue o percurso por
+   * baixo do chão (rasto de terra na gruta, luzes do comboio no metro) até sair do outro lado.
+   */
   async travelTunnel(id: string, toSpace: number, kind: 'cave' | 'metro' | 'cart' | 'elevator' | 'coaster'): Promise<void> {
+    if (kind === 'cart' || kind === 'coaster' || kind === 'elevator') return this.ride(id, toSpace, kind);
     sound.play('whoosh');
     const t = this.token(id);
     const to = getSpace(this.board, toSpace);
-    const toY = TILE_TOP + (to.y ?? 0);
-    if (kind === 'cart' || kind === 'coaster' || kind === 'elevator') return this.ride(id, toSpace, kind);
-    const y0 = t.root.position.y;
+    const from = t.root.position.clone();
+    const toPos = new THREE.Vector3(to.x, TILE_TOP + (to.y ?? 0), to.z);
+    const metro = kind === 'metro';
+    const color = metro ? '#7dffe9' : '#8a6a4a';
+    t.faceYaw(Math.atan2(toPos.x - from.x, toPos.z - from.z), true);
+    // Mergulha: salto pequeno e afunda a encolher.
     t.setAnim('jump');
-    await this.engine.tween(0.45, (k) => {
-      t.root.position.y = y0 - k * 3;
-      t.root.scale.setScalar(1 - k * 0.6);
+    await this.engine.tween(0.5, (k) => {
+      t.root.position.y = from.y + Math.sin(k * Math.PI) * 0.8 - k * k * 2.5;
+      t.root.scale.setScalar(1 - k * 0.7);
     });
-    this.floatTextAt(kind === 'metro' ? '🚇' : '🕳️', t.root.position.x, t.root.position.z);
-    this.focusPoint(to.x, to.z, 1);
-    await this.engine.wait(kind === 'metro' ? 1.1 : 0.8);
-    t.root.position.set(to.x, toY - 3, to.z);
-    await this.engine.tween(0.45, (k) => {
-      t.root.position.y = toY - 3 + k * 3;
-      t.root.scale.setScalar(0.4 + k * 0.6);
-    }, ease.backOut);
+    this.ringFlash(from, color);
+    this.sparkle(from.clone().setY(from.y + 0.3), color, 10, 2.5);
+    t.root.visible = false;
+    // Marcador que corre por baixo do chão (a câmara segue a personagem invisível).
+    const marker = textSprite(metro ? '🚇' : '🕳️', { height: 1.3 });
+    this.scene.add(marker);
+    this.follow = t;
+    this.followDistance = 1.4;
+    const dist = from.distanceTo(toPos);
+    let trail = 0;
+    await this.engine.tween(Math.min(3.2, 1 + dist / 16), (k) => {
+      const p = from.clone().lerp(toPos, k);
+      t.root.position.copy(p).setY(p.y - 1);
+      marker.position.copy(p).setY(p.y + 0.9 + Math.abs(Math.sin(k * Math.PI * 6)) * 0.25);
+      // Rasto: anéis no chão de tantos em tantos metros.
+      const d = k * dist;
+      if (d - trail > 2.2) {
+        trail = d;
+        this.ringFlash(p, color, 1.2);
+      }
+    }, ease.inOut);
+    this.scene.remove(marker);
+    disposeObject(marker);
+    // Sai do outro lado com um salto.
+    t.root.visible = true;
+    t.root.position.set(toPos.x, toPos.y - 2, toPos.z);
+    this.ringFlash(toPos, color);
+    this.sparkle(toPos.clone().setY(toPos.y + 0.3), color, 12, 3);
+    sound.play('pop');
+    await this.engine.tween(0.5, (k) => {
+      t.root.position.y = toPos.y - 2 * (1 - k) + Math.sin(k * Math.PI) * 1.2;
+      t.root.scale.setScalar(0.3 + k * 0.7);
+    }, ease.out);
+    t.root.position.copy(toPos);
+    t.root.scale.setScalar(1);
+    this.followDistance = 1;
     t.setAnim('idle');
   }
 
-  /** Viagem visível: vagoneta (carris), elevador ou montanha-russa (ao longo de uma curva). */
-  private async ride(id: string, toSpace: number, kind: 'cart' | 'elevator' | 'coaster'): Promise<void> {
+  /**
+   * Viagem visível ao longo de uma curva: teleférico/elevador (castelo), vagoneta (vulcão) ou
+   * montanha-russa (parque). O veículo aparece, a personagem salta lá para dentro, fecha-se a
+   * porta/barra, vai (com a câmara atrás) e no fim salta para a casa de chegada.
+   */
+  private async ride(id: string, toSpace: number, kind: RideKind): Promise<void> {
     const t = this.token(id);
     const fromPos = t.root.position.clone();
     const to = getSpace(this.board, toSpace);
     const toPos = new THREE.Vector3(to.x, TILE_TOP + (to.y ?? 0), to.z);
     const curve = rideCurve(fromPos, toPos, kind);
-    const vehicle = new THREE.Group();
-    const color = kind === 'coaster' ? '#ff3b5c' : kind === 'cart' ? '#7a5230' : '#c0c0c0';
-    const body = mesh(new THREE.BoxGeometry(1.5, 0.7, 1.8), toonUnique(color));
-    body.position.y = 0.2;
-    vehicle.add(body);
-    if (kind === 'elevator') {
-      const cage = mesh(new THREE.BoxGeometry(1.7, 2.6, 1.7), toonUnique('#9aa3ad', { transparent: true, opacity: 0.35 }), { cast: false });
-      cage.position.y = 1.3;
-      vehicle.add(cage);
-    }
-    this.scene.add(vehicle);
+    const v = rideVehicle(kind);
+    const lift = kind === 'elevator';
+    const flatYaw = Math.atan2(toPos.x - fromPos.x, toPos.z - fromPos.z);
+    const cableY = lift ? Math.max(fromPos.y, toPos.y) + ELEVATOR_RISE + CABLE_ABOVE : undefined;
+    // O veículo vira-se para onde vai (o elevador fica sempre na horizontal).
+    let yaw = flatYaw;
+    const place = (p: THREE.Vector3, k: number) => {
+      v.root.position.copy(p);
+      if (lift) {
+        v.root.rotation.set(0, flatYaw, v.root.rotation.z);
+        return;
+      }
+      const dir = curve.getPointAt(Math.min(1, k + 0.01)).sub(curve.getPointAt(Math.max(0, k - 0.01)));
+      if (dir.lengthSq() < 1e-8) return;
+      yaw = Math.atan2(dir.x, dir.z);
+      v.root.lookAt(p.clone().add(dir));
+    };
+    const seatAt = () => t.root.position.copy(v.root.position).setY(v.root.position.y + v.seat);
+    place(fromPos, 0);
+    v.setOpen(1);
+    v.root.scale.setScalar(0.01);
+    this.scene.add(v.root);
+    this.follow = t;
+    this.followDistance = kind === 'coaster' ? 1.7 : lift ? 1.6 : 1.3;
+    sound.play('pop');
+    this.ringFlash(fromPos, lift ? '#c9a227' : kind === 'cart' ? '#ffa53a' : '#ff3b5c');
+    await this.engine.tween(0.35, (k) => v.root.scale.setScalar(Math.max(0.01, k)), ease.backOut);
+    v.update(0, 0, cableY);
+    // Salta para dentro e fecha-se.
+    t.faceYaw(flatYaw, true);
+    t.setAnim('jump');
+    await this.engine.tween(0.35, (k) => (t.root.position.y = fromPos.y + Math.sin(k * Math.PI) * 0.9 + k * v.seat));
+    seatAt();
     t.setAnim(kind === 'coaster' ? 'cheer' : 'idle');
     this.floatTextAt(kind === 'coaster' ? '🎢' : kind === 'cart' ? '🛤️' : '🛗', fromPos.x, fromPos.z);
-    this.follow = t;
-    this.followDistance = kind === 'coaster' ? 1.6 : 1.2;
+    await this.engine.tween(0.3, (k) => v.setOpen(1 - k));
+    sound.play(lift ? 'bell' : kind === 'cart' ? 'roll' : 'go');
+    // A viagem: mais longa quanto maior o percurso; arranca e trava devagar.
     const len = curve.getLength();
-    const duration = kind === 'elevator' ? 2 : Math.min(4.5, 1.2 + len / 14);
+    const duration = lift ? Math.min(7, Math.max(2.8, 1.4 + len / 10)) : Math.min(kind === 'coaster' ? 6 : 5, 1.4 + len / 12);
+    let prevK = 0;
+    let time = 0;
+    let last = performance.now();
+    let cheered = false;
     await this.engine.tween(duration, (k) => {
+      const now = performance.now();
+      const dt = Math.max(1e-3, (now - last) / 1000);
+      last = now;
+      time += dt;
+      const speed = ((k - prevK) * len) / dt;
+      prevK = k;
       const p = curve.getPointAt(k);
-      const tan = curve.getTangentAt(Math.min(0.999, k + 0.001));
-      vehicle.position.copy(p).add(new THREE.Vector3(0, -0.35, 0));
-      vehicle.rotation.y = Math.atan2(tan.x, tan.z);
-      t.root.position.copy(p);
-      if (kind !== 'elevator') t.faceYaw(Math.atan2(tan.x, tan.z), true);
+      place(p, k);
+      v.update(time, speed, cableY);
+      seatAt();
+      if (!lift) t.faceYaw(yaw, true);
+      // No ponto mais alto da montanha-russa, braços no ar e grito.
+      if (kind === 'coaster' && !cheered && k > 0.45) {
+        cheered = true;
+        sound.play('cheer');
+      }
     }, ease.inOut);
-    this.scene.remove(vehicle);
-    disposeObject(vehicle);
+    place(toPos, 1);
+    v.update(time, 0, cableY);
+    seatAt();
+    // Abre-se e salta para a casa.
+    sound.play(lift ? 'bell' : 'step');
+    await this.engine.tween(0.3, (k) => v.setOpen(k));
+    t.setAnim('jump');
+    await this.engine.tween(0.35, (k) => (t.root.position.y = toPos.y + v.seat * (1 - k) + Math.sin(k * Math.PI) * 0.9));
     t.root.position.copy(toPos);
     t.setAnim('idle');
+    this.ringFlash(toPos, '#ffffff', 1.6);
+    await this.engine.tween(0.3, (k) => v.root.scale.setScalar(Math.max(0.01, 1 - k)));
+    this.scene.remove(v.root);
+    disposeObject(v.root);
+    this.followDistance = 1;
   }
 
   /** Armadilhas no tabuleiro (casa → dono). */

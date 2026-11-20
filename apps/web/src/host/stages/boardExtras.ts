@@ -8,8 +8,8 @@
  *    caranguejos, tochas tiki e selva mais cerrada;
  *  - vulcão: vulcão a sério (rocha irregular, rios de lava, fumo), chão com fendas de lava, poças de
  *    lava, colunas de basalto, fumarolas, a ponte de lava em tábuas e abutres;
- *  - castelo: muralhas com ameias, escadas com degraus e base de pedra, fosso com ponte levadiça,
- *    estandartes e janelas nas torres, archotes, poço, névoa no chão e morcegos;
+ *  - castelo (por dentro): muralhas com ameias, escadas com degraus e base de pedra, estandartes
+ *    e janelas nas torres, archotes, poço, névoa no chão e morcegos (o salão à volta é do boardThemes);
  *  - parque: fonte com repuxos, torre de queda, barco pirata, bandeirinhas na avenida, candeeiros,
  *    canteiros e fogo de artifício;
  *  - cidade: lancis, passadeiras, terraços (ar condicionado, depósitos, antenas), painéis animados,
@@ -18,9 +18,9 @@
 import * as THREE from 'three';
 import { createRng, getSpace, type Board, type Rng, type Space } from '@festa/game';
 import { canvasTexture, mesh, toon, toonUnique } from '../three/materials';
-import { PROPS, pickProp, prop } from '../three/props';
+import { PROPS, hasProp, pickProp, prop } from '../three/props';
 import { palmTree, waterNormalMap } from './environment';
-import { boundsOf, interactiveSpaces, distToSegment, segmentsOf, tunnelCurve } from './boardThemes';
+import { CASTLE_TOWER, boundsOf, castleHallBounds, interactiveSpaces, distToSegment, segmentsOf, tunnelCurve } from './boardThemes';
 import { bunting, swayBunting } from '../minigames/scenery';
 
 export interface BoardExtras {
@@ -1226,8 +1226,22 @@ function castle(k: Kit): void {
       }
     });
 
-    // Estandartes e janelas nas torres dos cantos (viradas para a câmara).
+    // Estandartes e janelas nos cantos (virados para a câmara). Com o pilar do pack (KayKit Dungeon)
+    // fica só o estandarte do pack, pendurado à frente do pilar.
+    const packTower = hasProp(CASTLE_TOWER);
     for (const [tx, tz] of [[f.minX, f.minZ], [f.maxX, f.minZ], [f.minX, f.maxZ], [f.maxX, f.maxZ]] as const) {
+      const packBanner = packTower ? prop('kaykit-dungeon/banner_patternA_red', { height: 2.6 }) : null;
+      if (packBanner) {
+        const pivot = new THREE.Group();
+        packBanner.position.y = -2.6;
+        pivot.add(packBanner);
+        pivot.position.set(tx, f.y + 5.2, tz + 1.35);
+        group.add(pivot);
+        const ph = rng.next() * 5;
+        k.updaters.push((_dt, time) => (pivot.rotation.x = Math.sin(time * 1.5 + ph) * 0.05));
+        continue;
+      }
+      if (packTower) continue;
       const banner = new THREE.Group();
       const cloth = mesh(new THREE.PlaneGeometry(1.1, 2.6, 1, 6), toonUnique('#5b2a8a', { side: THREE.DoubleSide }), { cast: false });
       cloth.position.y = -1.3;
@@ -1250,10 +1264,12 @@ function castle(k: Kit): void {
     }
   }
   for (const p of torches) {
-    const holder = mesh(new THREE.CylinderGeometry(0.1, 0.06, 0.4, 6), toon('#2b2b38'));
-    holder.position.copy(p).add(new THREE.Vector3(0, 0.2, 0));
-    const f = flame(k, 1.1);
-    f.position.copy(p).add(new THREE.Vector3(0, 0.42, 0));
+    // Archote do pack (KayKit Dungeon) com a chama animada por cima; sem ele, o suporte feito à mão.
+    const torch = prop('kaykit-dungeon/torch_lit', { height: 0.9 });
+    const holder = torch ?? mesh(new THREE.CylinderGeometry(0.1, 0.06, 0.4, 6), toon('#2b2b38'));
+    holder.position.copy(p).add(new THREE.Vector3(0, torch ? 0 : 0.2, 0));
+    const f = flame(k, torch ? 0.8 : 1.1);
+    f.position.copy(p).add(new THREE.Vector3(0, torch ? 0.75 : 0.42, 0));
     group.add(holder, f);
   }
 
@@ -1290,104 +1306,50 @@ function castle(k: Kit): void {
     }
   }
 
-  // Fosso à volta do castelo, com ponte levadiça à frente (junto ao portão do cemitério).
-  if (floors.length) {
-    const minX = Math.min(...floors.map((f) => f.minX)) - 5;
-    const maxX = Math.max(...floors.map((f) => f.maxX)) + 5;
-    const minZ = Math.min(...floors.map((f) => f.minZ)) - 5;
-    const maxZ = Math.max(...floors.map((f) => f.maxZ)) + 2.2;
-    const W = 3.4;
-    const water = waterMat(k, '#2a4f5c');
-    const edgeMat = stoneMat('#6f6a60', 4, 0.5);
-    const band = (x0: number, z0: number, x1: number, z1: number) => {
-      const w = Math.abs(x1 - x0) || W;
-      const d = Math.abs(z1 - z0) || W;
-      const cxm = (x0 + x1) / 2;
-      const czm = (z0 + z1) / 2;
-      const sw = mesh(new THREE.PlaneGeometry(w, d, 8, 8), water, { cast: false, receive: true });
-      sw.rotation.x = -Math.PI / 2;
-      sw.position.set(cxm, -0.15, czm);
-      group.add(sw);
-      const bed = mesh(new THREE.PlaneGeometry(w, d), toon('#16262c'), { cast: false });
-      bed.rotation.x = -Math.PI / 2;
-      bed.position.set(cxm, -0.35, czm);
-      group.add(bed);
-      // Tira a decoração que caiu dentro do fosso.
-      for (const o of [...group.children]) {
-        if (!o.userData.deco && !o.userData.prop) continue;
-        if (Math.abs(o.position.x - cxm) < w / 2 + 0.8 && Math.abs(o.position.z - czm) < d / 2 + 0.8) group.remove(o);
-      }
-    };
-    band(minX - W, minZ - W / 2, maxX + W, minZ - W / 2);
-    band(minX - W, maxZ + W / 2, maxX + W, maxZ + W / 2);
-    band(minX - W / 2, minZ, minX - W / 2, maxZ);
-    band(maxX + W / 2, minZ, maxX + W / 2, maxZ);
-    // Bordas de pedra do fosso.
-    for (const [x0, z0, x1, z1] of [
-      [minX - W, minZ - W, maxX + W, minZ - W], [minX, minZ, maxX, minZ], [minX - W, maxZ + W, maxX + W, maxZ + W], [minX, maxZ, maxX, maxZ],
-      [minX - W, minZ - W, minX - W, maxZ + W], [minX, minZ, minX, maxZ], [maxX + W, minZ - W, maxX + W, maxZ + W], [maxX, minZ, maxX, maxZ],
-    ] as const) {
-      const len = Math.hypot(x1 - x0, z1 - z0);
-      const e = mesh(new THREE.BoxGeometry(0.45, 0.35, len), edgeMat, { receive: true });
-      e.position.set((x0 + x1) / 2, 0.1, (z0 + z1) / 2);
-      e.rotation.y = Math.atan2(x1 - x0, z1 - z0);
-      group.add(e);
-    }
-    const bridge = new THREE.Group();
-    for (let i = 0; i < 9; i++) {
-      const plank = mesh(new THREE.BoxGeometry(3.2, 0.14, 0.5), toon(i % 2 ? '#6b4524' : '#7a5230'), { receive: true });
-      plank.position.set(0, 0.32, -W / 2 - 0.4 + i * 0.52);
-      bridge.add(plank);
-    }
-    for (const sx of [-1, 1]) {
-      const chain = mesh(new THREE.CylinderGeometry(0.04, 0.04, 4.2, 6), toon('#3a3a44'));
-      chain.position.set(sx * 1.5, 2, -W / 2 - 0.2);
-      chain.rotation.x = 0.6;
-      bridge.add(chain);
-    }
-    bridge.position.set(0, 0, maxZ + W / 2);
-    group.add(bridge);
-  }
-
   // Poço no pátio.
   const f0 = floors.find((f) => f.zone === 'floor0');
   if (f0) {
     const [w] = k.spots({ n: 1, area: f0, min: 1.8, sep: 4, max: 3, step: 1 });
     if (w) {
       k.claim(w.x, w.z, 1.8);
-      const well = new THREE.Group();
-      const ring = mesh(new THREE.CylinderGeometry(0.95, 1, 0.9, 16, 1, true), stoneMat('#8a8578', 3, 1), { receive: true });
-      ring.position.y = 0.45;
-      well.add(ring);
-      const water = mesh(new THREE.CircleGeometry(0.85, 16), toon('#1d3a44'), { cast: false });
-      water.rotation.x = -Math.PI / 2;
-      water.position.y = 0.6;
-      well.add(water);
-      for (const sx of [-1, 1]) {
-        const post = mesh(new THREE.BoxGeometry(0.14, 1.8, 0.14), toon('#5a3a1e'));
-        post.position.set(sx * 0.85, 1.3, 0);
-        well.add(post);
+      // Poço do pack (KayKit Medieval); sem ele, o poço feito à mão.
+      const packWell = prop('kaykit-medieval/building_well_blue', { height: 2.6 });
+      const well = packWell ?? new THREE.Group();
+      if (!packWell) {
+        const ring = mesh(new THREE.CylinderGeometry(0.95, 1, 0.9, 16, 1, true), stoneMat('#8a8578', 3, 1), { receive: true });
+        ring.position.y = 0.45;
+        well.add(ring);
+        const water = mesh(new THREE.CircleGeometry(0.85, 16), toon('#1d3a44'), { cast: false });
+        water.rotation.x = -Math.PI / 2;
+        water.position.y = 0.6;
+        well.add(water);
+        for (const sx of [-1, 1]) {
+          const post = mesh(new THREE.BoxGeometry(0.14, 1.8, 0.14), toon('#5a3a1e'));
+          post.position.set(sx * 0.85, 1.3, 0);
+          well.add(post);
+        }
+        const roof = mesh(new THREE.ConeGeometry(1.4, 0.8, 4), toon('#6b3a2a'));
+        roof.position.y = 2.55;
+        roof.rotation.y = Math.PI / 4;
+        const bucket = mesh(new THREE.CylinderGeometry(0.16, 0.12, 0.25, 8), toon('#7a5230'));
+        bucket.position.set(0, 1.4, 0);
+        well.add(roof, bucket);
       }
-      const roof = mesh(new THREE.ConeGeometry(1.4, 0.8, 4), toon('#6b3a2a'));
-      roof.position.y = 2.55;
-      roof.rotation.y = Math.PI / 4;
-      const bucket = mesh(new THREE.CylinderGeometry(0.16, 0.12, 0.25, 8), toon('#7a5230'));
-      bucket.position.set(0, 1.4, 0);
-      well.add(roof, bucket);
       well.position.set(w.x, 0, w.z);
       group.add(well);
     }
   }
 
-  // Névoa rasteira a deslizar pelo cemitério.
+  // Névoa rasteira a deslizar pelo chão do salão (só dentro das paredes).
+  const hall = castleHallBounds(board);
   const fogMat = new THREE.MeshBasicMaterial({ map: softTexture(), color: '#bfc4ff', transparent: true, opacity: 0.16, depthWrite: false });
   const mists: { m: THREE.Mesh; x: number; z: number; ph: number }[] = [];
   const all = boundsOf(board.spaces);
   for (let i = 0; i < 14; i++) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), fogMat);
     m.rotation.x = -Math.PI / 2;
-    const x = lerp(all.minX - 30, all.maxX + 30, rng.next());
-    const z = lerp(all.minZ - 20, all.maxZ + 30, rng.next());
+    const x = lerp(hall.minX + 8, hall.maxX - 8, rng.next());
+    const z = lerp(hall.minZ + 8, hall.maxZ, rng.next());
     if (floors.some((f) => x > f.minX - 6 && x < f.maxX + 6 && z > f.minZ - 6 && z < f.maxZ + 6)) continue;
     m.position.set(x, 0.5 + rng.next() * 0.5, z);
     m.renderOrder = 2;

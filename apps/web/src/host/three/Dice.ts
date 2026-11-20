@@ -34,10 +34,11 @@ function getFaceMaterials(): THREE.MeshStandardMaterial[] {
   faceMaterials ??= FACE_VALUES.map(
     (value) =>
       new THREE.MeshStandardMaterial({
-        roughness: 0.6,
-        envMapIntensity: 0.6,
+        // Branco-marfim mate: quase branco puro com reflexos estourava ao sol (e com o bloom).
+        roughness: 0.85,
+        envMapIntensity: 0.25,
         map: canvasTexture(128, (ctx, s) => {
-          ctx.fillStyle = '#f1efea';
+          ctx.fillStyle = '#d8d2c6';
           ctx.fillRect(0, 0, s, s);
           ctx.fillStyle = value === 1 ? '#ff3b5c' : '#2b1d3a';
           for (const [x, y] of PIPS[value]!) {
@@ -74,7 +75,7 @@ export class Dice {
       this.numberCanvas.width = this.numberCanvas.height = 128;
       this.numberTexture = new THREE.CanvasTexture(this.numberCanvas);
       this.numberTexture.colorSpace = THREE.SRGBColorSpace;
-      material = new THREE.MeshStandardMaterial({ roughness: 0.35, map: this.numberTexture });
+      material = new THREE.MeshStandardMaterial({ roughness: 0.75, envMapIntensity: 0.25, map: this.numberTexture });
       this.drawNumber(1 + Math.floor(Math.random() * this.numbers));
     }
     this.cube = new THREE.Mesh(new RoundedBoxGeometry(size, size, size, 4, size * 0.16), material);

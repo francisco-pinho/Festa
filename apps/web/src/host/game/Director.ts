@@ -29,7 +29,7 @@ import type { GameMenu } from '../ui/GameMenu';
 import { BOT_LEVELS, settings } from './Settings';
 import { BotPad, SeatControl, type Seat } from './Seats';
 import { PartyFlow } from './PartyFlow';
-import { creditsHtml } from '../ui/credits';
+import { creditsHtml, creditsLines } from '../ui/credits';
 import { loading } from '../ui/loading';
 
 type LobbyChoice = { mode: 'party'; rounds: number; boardId: string } | { mode: 'sports'; sport: SportDef } | { mode: 'test' };
@@ -51,6 +51,8 @@ export class Director {
   private lastBoard = BOARDS[0]!.id;
   /** A sala de estar já foi preparada na placa gráfica (ao abrir o jogo). */
   private roomWarm = false;
+  /** TV da sala de estar: se ainda estiver ligada ao montar os lugares, o aviso dos bots passa lá. */
+  private roomTv: ShowcaseStage['tv'] = null;
 
   constructor(
     private readonly engine: Engine,
@@ -159,6 +161,7 @@ export class Director {
     await loadProps(ROOM_PROPS);
     const stage = new ShowcaseStage({ room: true });
     this.engine.setStage(stage);
+    this.roomTv = stage.tv;
     // Perto e ao centro, a apanhar os 10 lugares (sofá, cadeirões, chão, estante e lareira).
     stage.view({ distance: 11, height: 3.6, orbitSpeed: 0, target: new THREE.Vector3(0.5, 1.6, -5.2) });
     // A placa gráfica prepara a sala (e o ecrã ligado da TV) ainda atrás do ecrã de carregamento.
@@ -260,12 +263,16 @@ export class Director {
       ui.classList.toggle('at-tv', on);
       if (on) {
         stage.flyTo(TV_VIEW.pos, TV_VIEW.look);
-        if (tv) this.menus.setSink((v) => tv.show(v));
+        if (tv) {
+          this.menus.setSink((v) => tv.show(v));
+          this.menu.setSink((v) => tv.show(v));
+        }
         await this.engine.wait(0.9);
         tv?.powerOn();
         await this.engine.wait(0.6);
       } else {
         this.menus.setSink(null);
+        this.menu.setSink(null);
         const t = tv?.powerOff() ?? 0;
         await this.engine.wait(t * 0.8);
         stage.flyHome();
@@ -550,11 +557,18 @@ export class Director {
       } else if (pickMode === 'test') {
         choice = { mode: 'test' };
       } else if (pickMode === 'credits') {
-        this.hud.panel(creditsHtml());
-        this.hud.panelElement().classList.add('compact');
-        await this.menus.ask({ player: leader, keyboard: true, corner: true, title: 'Créditos', options: [], cancel: 'back' });
-        this.hud.panelElement().classList.remove('compact');
-        this.hud.panel(null);
+        if (tv) {
+          // Na TV: o menu fica escondido (só para o Ⓑ voltar) e os créditos passam no ecrã dela.
+          const back = this.menus.ask({ player: leader, keyboard: true, hidden: true, title: 'Créditos', options: [{ id: 'back', label: 'Voltar' }], cancel: 'back' });
+          tv.showPage('Créditos', creditsLines(), 'Ⓐ ou Ⓑ voltar');
+          await back;
+        } else {
+          this.hud.panel(creditsHtml());
+          this.hud.panelElement().classList.add('compact');
+          await this.menus.ask({ player: leader, keyboard: true, corner: true, title: 'Créditos', options: [], cancel: 'back' });
+          this.hud.panelElement().classList.remove('compact');
+          this.hud.panel(null);
+        }
       } else if (pickMode === 'settings') {
         this.menu.show('settings');
         while (this.menu.isOpen) await this.engine.wait(0.2);
@@ -568,6 +582,7 @@ export class Director {
       }
     }
     this.menus.setSink(null);
+    this.menu.setSink(null);
     offs.forEach((off) => off());
     ui.remove();
     this.menu.close();
@@ -647,10 +662,15 @@ export class Director {
       this.seats.push({ id: `bot-${c.id}`, name: c.name, characterId: c.id, isBot: true, botPad: new BotPad() });
     }
     if (botCount) {
-      await this.hud.banner(`${botCount} bot${botCount > 1 ? 's' : ''} entra${botCount > 1 ? 'm' : ''} no jogo!`, {
-        sub: `${this.seats.filter((s) => s.isBot).map((s) => s.name).join(', ')} · ${settings.botLevelLabel}`,
-        hold: 1.8,
-      });
+      const title = `${botCount} bot${botCount > 1 ? 's' : ''} entra${botCount > 1 ? 'm' : ''} no jogo!`;
+      const sub = `${this.seats.filter((s) => s.isBot).map((s) => s.name).join(', ')} · ${settings.botLevelLabel}`;
+      // Ainda na sala, com a câmara na TV: o aviso passa no ecrã dela.
+      const tv = this.roomTv?.isOn ? this.roomTv : null;
+      if (tv) {
+        sound.play('banner');
+        tv.showText(title, sub);
+        await this.engine.wait(1.8);
+      } else await this.hud.banner(title, { sub, hold: 1.8 });
     }
   }
 

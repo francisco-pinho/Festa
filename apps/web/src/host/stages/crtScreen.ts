@@ -90,6 +90,8 @@ export class CrtScreen {
   private phaseStart = -1;
   private now = 0;
   private view: TvMenuView | null = null;
+  private text: { title: string; sub?: string } | null = null;
+  private page: { title: string; lines: string[]; foot?: string } | null = null;
   private flick = 1;
 
   constructor(
@@ -152,6 +154,22 @@ export class CrtScreen {
   /** O que passa na TV: um menu (ou null para o logótipo). */
   show(view: TvMenuView | null): void {
     this.view = view;
+    this.text = null;
+    this.page = null;
+    this.draw();
+  }
+
+  /** Um aviso grande na TV (título e linha por baixo), em vez do menu. */
+  showText(title: string, sub?: string): void {
+    this.text = { title, sub };
+    this.page = null;
+    this.draw();
+  }
+
+  /** Uma página de texto corrido (ex.: créditos); «# » no início de uma linha faz dela um título. */
+  showPage(title: string, lines: string[], foot?: string): void {
+    this.page = { title, lines, foot };
+    this.text = null;
     this.draw();
   }
 
@@ -262,6 +280,62 @@ export class CrtScreen {
     const mx = W * 0.09;
     const my = H * 0.1;
     const v = this.view;
+    if (this.text) {
+      c.textAlign = 'center';
+      c.font = `bold ${H * 0.1}px ${FONT}`;
+      c.lineWidth = H * 0.015;
+      c.strokeStyle = '#1d1433';
+      const title = removeDecorativeEmojis(this.text.title);
+      c.strokeText(title, W / 2, H * 0.42, W - mx * 2);
+      c.fillStyle = '#ffd23f';
+      c.fillText(title, W / 2, H * 0.42, W - mx * 2);
+      if (this.text.sub) {
+        c.font = `${H * 0.045}px ${FONT}`;
+        c.fillStyle = 'rgba(255,255,255,0.85)';
+        c.fillText(removeDecorativeEmojis(this.text.sub), W / 2, H * 0.58, W - mx * 2);
+      }
+      this.texture.needsUpdate = true;
+      return;
+    }
+    if (this.page) {
+      const pg = this.page;
+      c.textAlign = 'left';
+      c.font = `bold ${H * 0.065}px ${FONT}`;
+      c.fillStyle = '#ffd23f';
+      c.fillText(removeDecorativeEmojis(pg.title), mx, my + H * 0.05);
+      const top = my + H * 0.13;
+      const bottom = H - my - (pg.foot ? H * 0.07 : 0);
+      const maxW = W - mx * 2;
+      // Encolhe a letra até o texto todo caber entre o título e o rodapé.
+      let size = H * 0.04;
+      let rows: { text: string; head: boolean }[] = [];
+      for (; size > H * 0.018; size *= 0.92) {
+        rows = [];
+        for (const raw of pg.lines) {
+          const head = raw.startsWith('# ');
+          c.font = `${head ? 'bold ' : ''}${size}px ${FONT}`;
+          for (const t of wrapText(c, removeDecorativeEmojis(head ? raw.slice(2) : raw), maxW)) rows.push({ text: t, head });
+        }
+        const heads = rows.filter((r) => r.head).length;
+        if (rows.length * size * 1.3 + heads * size * 0.5 <= bottom - top) break;
+      }
+      let y = top + size * 0.65;
+      for (const r of rows) {
+        if (r.head && y > top + size) y += size * 0.5;
+        c.font = `${r.head ? 'bold ' : ''}${size}px ${FONT}`;
+        c.fillStyle = r.head ? '#ffd23f' : 'rgba(255,255,255,0.85)';
+        c.fillText(r.text, mx, y);
+        y += size * 1.3;
+      }
+      if (pg.foot) {
+        c.textAlign = 'center';
+        c.font = `${H * 0.034}px ${FONT}`;
+        c.fillStyle = 'rgba(255,255,255,0.75)';
+        c.fillText(pg.foot, W / 2, H - my - H * 0.015);
+      }
+      this.texture.needsUpdate = true;
+      return;
+    }
     if (!v) {
       c.textAlign = 'center';
       c.font = `bold ${H * 0.2}px ${FONT}`;
@@ -349,6 +423,21 @@ function roundRect(c: CanvasRenderingContext2D, x: number, y: number, w: number,
   c.arcTo(x, y + h, x, y, r);
   c.arcTo(x, y, x + w, y, r);
   c.closePath();
+}
+
+/** Parte o texto em linhas que caibam em `max` (com a letra já escolhida no contexto). */
+function wrapText(c: CanvasRenderingContext2D, text: string, max: number): string[] {
+  const out: string[] = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && c.measureText(next).width > max) {
+      out.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) out.push(line);
+  return out;
 }
 
 /** Escreve o texto e, se não couber, encolhe-o na horizontal. */

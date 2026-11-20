@@ -19,6 +19,21 @@ export const MUSIC_CREDITS: { title: string; where: string }[] = [
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
+/** Créditos em texto simples, para o ecrã da TV da sala («# » marca um título). */
+export function creditsLines(): string[] {
+  return [
+    '# Música',
+    MUSIC_CREDITS.map((m) => `«${m.title}» (${m.where})`).join(' · '),
+    'Kevin MacLeod (incompetech.com) · Licensed under Creative Commons: By Attribution 4.0 License · http://creativecommons.org/licenses/by/4.0/',
+    '# Jingles',
+    '«Music Jingles» — Kenney (kenney.nl), CC0',
+    '# Modelos 3D',
+    'KayKit (Adventurers, Skeletons, Character Animations, Forest Nature, Dungeon, Medieval Hexagon, Platformer, City Builder, Furniture, Restaurant, Halloween, Holiday, Mixed Bag 1 e 2, Board Game, Fantasy Weapons, RPG Tools, Resource, Block, Prototype e Space Base Bits) — Kay Lousberg (kaylousberg.com), CC0',
+    'Palmeiras, navios, cais e canhão: Pirate Kit — Kenney (kenney.nl), CC0',
+    '«CRT TV» — Timothy Ahene (sketchfab.com/timothyahene) — Sketchfab Free Standard',
+  ];
+}
+
 /** HTML do painel de créditos. */
 export function creditsHtml(): string {
   return `
