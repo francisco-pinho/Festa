@@ -137,6 +137,20 @@ packages/game/src/sports/<id>.ts   regras puras e testadas (pontuação, contage
 3. `apps/web/src/host/sports/<id>/sport.ts` a exportar por omissão o `SportDef`.
 4. Testar: `http://localhost:5173/?sport=<id>&players=2` (bots completam os lugares).
 
+## Modo tester (só em `npm run dev`)
+
+Para testar qualquer parte do jogo sem jogar até lá chegar.
+
+- `localhost:5173/` → jogo normal. `localhost:5173/teste` → o mesmo jogo, com um QR no canto.
+- O QR abre `/tester` no telemóvel: painel com **Cenário** (lobby, menu de minijogos, festa,
+  minijogo, desporto, fim da festa; jogadores, nível dos bots, lugar do teclado), **Tempo**
+  (pausa, ×1, ×2, ×4), **Tabuleiro** (dado forçado, moedas, estrelas, itens, casa, ronda,
+  estrela), **Minijogo** (saltar treino, terminar, escolher vencedor) e **Estado**.
+- O cenário fica no `sessionStorage`: ao gravar código, o Vite recarrega e o `/teste` volta ao
+  mesmo cenário (do início). Fora do lobby, a sala fica trancada: só bots e o Teclado 1.
+- Código: `apps/web/src/host/tester/` (ecrã), `apps/web/src/tester/` (painel), canal
+  `tester:*` em `socketServer.ts` (só com `FESTA_DEV=1`). Nada disto entra na build.
+
 ## Online
 
 - Alojar: `npm install && npm run build && npm start` em qualquer serviço com Node e WebSockets.
