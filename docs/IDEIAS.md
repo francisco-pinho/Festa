@@ -139,3 +139,269 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Notas do Claude:** Feito. Havia duas causas. 1) Se o ecrã bloqueava a meio de um toque, o «largar» perdia-se: o botão ficava «preso» e o toque seguinte era ignorado, tanto no telemóvel como no PC (por isso falhava um toque sim, outro não). Agora o telemóvel larga tudo ao ir para segundo plano e o PC conta sempre cada toque. 2) Depois de mais de 20 s em segundo plano, a ligação podia estar morta sem o browser saber. Agora o telemóvel religa logo ao voltar (mesmo lugar e mesmo ecrã). Falta confirmares no telemóvel.
 
 ---
+
+### [ ] Botão para alternar ecrã inteiro
+
+- **Tipo:** menu, outro
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** ecrã do PC, sempre visível (em todos os ecrãs)
+- **Como funciona:** um botão fixo no ecrã do PC que alterna entre ecrã inteiro (sem barra de separadores do browser) e janela normal (com os separadores à vista).
+- **Controlos no telemóvel (botões, joystick, abanar…):** nenhum; carrega-se com o rato no PC.
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---
+
+### [ ] Mapa do vulcão dentro de um vulcão
+
+- **Tipo:** mapa, visual
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** mapa do vulcão
+- **Como funciona:** o tabuleiro passa a ficar mesmo dentro da cratera de um vulcão, e não como está agora. As paredes da cratera rodeiam o mapa, como as muralhas do castelo, e tapam o horizonte: não se vê o cenário infinito.
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):** mapa do castelo (as paredes não deixam ver o infinito)
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---
+
+### [ ] Não se ver o cenário infinito
+
+- **Tipo:** visual, mapa
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** todos os jogos, exceto o mapa da ilha
+- **Como funciona:** em cada jogo, arranjar maneira de o horizonte infinito não ficar estranho (paredes, montanhas, edifícios, nevoeiro, cúpula…), como no castelo. A ilha fica como está: o mar infinito faz sentido.
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):** mapa do castelo
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---
+
+### [ ] Disposição das casas única em cada mapa
+
+- **Tipo:** mapa, tabuleiro
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** todos os mapas do tabuleiro
+- **Como funciona:** os mapas deixam de ser todos um círculo com um caminho extra. Cada mapa tem uma disposição de casas própria e mais complexa (vários cruzamentos, atalhos, ramos, voltas diferentes), para que nenhum se pareça com outro.
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---
+
+### [ ] Valor dos dados da ordem no placar
+
+- **Tipo:** tabuleiro, visual
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** início da festa, quando se lançam os dados para decidir a ordem de jogar
+- **Como funciona:** à medida que cada jogador lança, o placar mostra quanto tirou, ao lado do nome.
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---
+
+### [ ] Cenário dos minijogos coerente com o mapa
+
+- **Tipo:** minijogo, visual
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** minijogos da festa, a começar pela Pontaria (`Marksman.ts`)
+- **Como funciona:** o cenário de cada minijogo combina com o mapa onde se está a jogar. Exemplo: na Pontaria, no mapa do vulcão, não aparecem árvores; aparecem coisas do vulcão (rochas, lava…). O mesmo para os outros mapas.
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---
+
+### [ ] Treino numa janela durante a explicação do minijogo
+
+- **Tipo:** minijogo, comando (telemóvel), visual
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** ecrã de explicação antes de cada minijogo (título, regras e comandos)
+- **Como funciona:** enquanto o texto explica o minijogo e os comandos, aparece ao lado uma janela pequena com uma versão de treino do minijogo a correr. Os jogadores já controlam as suas personagens nessa janela, para experimentar. Nada do que acontece no treino conta. Cada jogador carrega em − quando estiver pronto, e o ecrã mostra quem já está pronto. O minijogo a sério só começa quando todos estiverem prontos. Substitui o «Treino!» atual em ecrã inteiro, que aparece depois da explicação (`practice()` no `PartyFlow.ts`).
+- **Controlos no telemóvel (botões, joystick, abanar…):** os do próprio minijogo, na janela de treino; − = «Pronto».
+- **Como se ganha / o que acontece no fim:** com todos prontos, a janela fecha e o minijogo começa (contagem 3, 2, 1). Os bots ficam prontos sozinhos.
+- **Inspirado em (jogo, vídeo, link, imagem…):** Super Mario Party Jamboree (Switch). Antes de cada minijogo há um ecrã com a explicação e os comandos e, ao lado, uma janela com uma versão de treino que se joga por inteiro. O minijogo só começa quando todos carregam em «Pronto», por isso pode treinar-se o tempo que se quiser. Fonte: https://gamerant.com/super-mario-party-jamboree-beginner-tips-best-strategies/
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---
+
+### [ ] Símbolos das casas por cima dos dados
+
+- **Tipo:** tabuleiro, visual
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** tabuleiro, ao lançar os dados
+- **Como funciona:** ao lançar os dados, os símbolos das casas (ex.: a escada) aparecem desenhados por cima dos dados, quando deviam ficar escondidos atrás deles. É preciso corrigir. Antes tinha pedido para tirar todos os emojis do jogo; talvez seja melhor apenas retirar… (frase incompleta — ver Notas do Claude).
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:** os dados ficam sempre à frente; nenhum símbolo das casas aparece por cima deles.
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):** dados-simbolo-casa-por-cima.png
+- **Notas do Claude:** A tua frase ficou a meio («talvez seja melhor apenas retirar…»). Retirar o quê? Os símbolos das casas enquanto se lançam os dados, ou só alguns deles?
+
+---
+
+### [ ] Saque Rápido: banana, pistola de bandeira e misses
+
+- **Tipo:** minijogo
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** minijogo Saque Rápido (`QuickDraw.ts`)
+- **Como funciona:**
+  - **Banana:** arranjar um modelo de banana em estilo de desenho animado, mas que se perceba que é uma banana.
+  - **Pistola da personagem do meio:** fica sempre na mão, com a mão a apontar para cima.
+  - **Hora de disparar:** só aparece uma animação da pistola a disparar, e dela sai a bandeira (como as pistolas de brincar com «BANG»).
+  - **Misses:** quem carrega mais devagar não conta como miss. Só conta como miss quem carrega antes da hora. Não faz sentido perder duas vidas de uma vez.
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---
+
+### [ ] Dados iguais: os dois primeiros dados não desaparecem
+
+- **Tipo:** tabuleiro, visual
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** tabuleiro, quando se tiram dois dados iguais e aparece o terceiro dado
+- **Como funciona:** ao tirar dados iguais, os dois primeiros dados não podem desaparecer para dar lugar ao terceiro. Pode aparecer uma mensagem («Dados iguais!»), mesmo que os tape por um momento, mas os dados continuam lá e o terceiro junta-se a eles.
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:** no fim veem-se os três dados lado a lado antes de se juntarem no número total.
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:** O que vi no código: o terceiro dado já é acrescentado sem apagar os outros (`spawnDice(id, 1, true)` em `BoardStage.ts`). Os dois primeiros deslizam para o lado, para os três ficarem numa fila. Causa provável: a câmara do lançamento (`rollView`) está tão perto que só cabem dois dados no ecrã (como na foto dos dados). Os dois de fora saem do enquadramento e parece que desaparecem. Falta confirmar no jogo. Soluções possíveis:
+  1. Com três dados, a câmara afasta-se um pouco (recomendo; é o mais simples).
+  2. Os três dados encolhem e ficam mais juntos.
+  3. O terceiro dado aparece por cima, no meio dos outros dois, em triângulo, sem mexer nos primeiros.
+
+---
+
+### [ ] Mais duelos e mais minijogos
+
+- **Tipo:** minijogo
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** duelos e minijogos da festa
+- **Como funciona:** fazer mais duelos (só há 3: Pontaria, Saque Rápido e Cabo de Guerra) e mais minijogos, inspirados em jogos que já existem. A lista completa, com a pesquisa, está em `docs/MINIJOGOS-LISTA.md`: lote 5 (8 duelos) e lote 6 (8 minijogos).
+- **Controlos no telemóvel (botões, joystick, abanar…):** depende de cada um
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):** Mario Party 3 e 7 (duelos), Wii Party (1 vs 1), Pummel Party
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:** Lote 5 (duelos): Corta a Árvore, Salta o Ponteiro, Apanha a Galinha, Foge do Choque, Constrói a Ponte, Pesa os Sacos, Luzes por Ordem, Corrida da Bandeira. Lote 6: Chuva de Morteiros, Picos Fantasma, Rei da Coroa, Ementa de Memória, Notas que Caem, Gotas no Balde, Escolhe a Porta, Fruta Certa. Ainda falta o lote 4, que já estava marcado como o próximo.
+
+---
+
+### [ ] Voleibol de Praia: cenário, equipas, campo e serviço
+
+- **Tipo:** minijogo, visual
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** minijogo Voleibol de Praia (`BeachVolley.ts`)
+- **Como funciona:**
+  - **Cenário:** o campo parece estar a flutuar sobre lava. Corrigir o cenário todo, para parecer uma praia a sério.
+  - **Equipas:** num jogo de 10 jogadores só jogam 8. Têm de jogar todos (5 contra 5, e o mesmo para outros números).
+  - **Tamanho do campo:** o campo ajusta-se ao número de jogadores. As dimensões têm de permitir perder pontos; senão fica fácil demais e ninguém perde.
+  - **Linhas:** faltam as linhas normais de um campo de voleibol.
+  - **Serviço:** a bola é servida por um jogador, em vez de aparecer do nada.
+  - **Animações:** as animações de bater na bola têm de ser melhores.
+  - **Posições iniciais:** os jogadores não começam todos na mesma linha. Ficam espalhados pelo campo, de forma alinhada.
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---
+
+### [ ] Ecrã a explicar o item ao recebê-lo
+
+- **Tipo:** tabuleiro, menu
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** tabuleiro: depois de rodar o item grátis e depois de comprar um item na loja
+- **Como funciona:** quando se recebe um item (na roleta do item grátis ou ao comprar na loja), aparece um ecrã a explicar o que o item faz. Avança-se com o botão −.
+- **Controlos no telemóvel (botões, joystick, abanar…):** − para avançar
+- **Como se ganha / o que acontece no fim:** depois de carregar em −, o jogo continua.
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---
+
+### [ ] Lojas e cenário atrás do caminho, nunca à frente
+
+- **Tipo:** tabuleiro, mapa, visual
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** todos os mapas; exemplo: o «Ferreiro da Mina» (loja)
+- **Como funciona:** o Ferreiro da Mina está do lado de cá das casas e do caminho (entre a câmara e o tabuleiro) e tapa a vista. Lojas, edifícios e outros objetos do cenário têm de ficar do lado de lá do caminho, para se ver sempre a frente sem nada a tapar. Corrigir em todo o jogo, onde quer que aconteça.
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---
+
+### [ ] Força Certa: só aparecem 6 de 10 jogadores
+
+- **Tipo:** minijogo, visual
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** minijogo Força Certa (atirar a bola para ficar perto da bandeira, `RightForce.ts`)
+- **Como funciona:** num jogo de 10 jogadores só se veem 6 no ecrã. Corrigir para se verem todos (pistas e câmara ajustadas ao número de jogadores).
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---
+
+### [ ] Armadilha com modelo 3D no tabuleiro
+
+- **Tipo:** tabuleiro, visual
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** tabuleiro, nas casas onde alguém pôs uma armadilha (item Armadilha)
+- **Como funciona:** a armadilha posta numa casa passa a ter um modelo 3D próprio (ex.: uma ratoeira ou um alçapão), em vez de ser só um símbolo por cima da casa.
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---
+
+### [x] Painel de tester: deixar escolher até 10 jogadores
+
+- **Tipo:** outro
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** painel de tester (`/tester`), separador Cenário
+- **Como funciona:** ao pôr 10 jogadores no painel, só jogam 8. O jogo aceita até 10 (`MAX_PLAYERS = 10`), por isso o painel também tem de deixar escolher 10.
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:** Feito: o painel e a validação do servidor usam MAX_PLAYERS (10); o lugar do teclado vai até 10. Falta confirmares no jogo.
+
+---
+
+### [ ] Plataformas que Caem: rachar primeiro, cair à segunda
+
+- **Tipo:** minijogo
+- **Prioridade (alta / média / baixa):**
+- **Onde no jogo (ecrã, minijogo, mapa…):** minijogo Plataformas que Caem (`FallingTiles.ts`)
+- **Como funciona:** hoje as placas caem logo que se pisam. Passam a demorar mais a partir. Na primeira passagem, a placa fica com uma racha no meio. Só cai quando alguém volta a passar por cima dela.
+- **Controlos no telemóvel (botões, joystick, abanar…):**
+- **Como se ganha / o que acontece no fim:**
+- **Inspirado em (jogo, vídeo, link, imagem…):**
+- **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
+- **Notas do Claude:**
+
+---

@@ -7,7 +7,7 @@
  * os tipos (via `import type`), por isso o zod não vai para o bundle do browser.
  */
 import { z } from 'zod';
-import { ROOM_CODE_LENGTH } from './constants';
+import { MAX_PLAYERS, ROOM_CODE_LENGTH } from './constants';
 
 export const roomCodeSchema = z
   .string()
@@ -264,9 +264,9 @@ export const rtcSendSchema = z.object({ to: z.string().min(1).max(64), data: rtc
 // ── Painel de tester (só em `npm run dev`) ──────────────────
 
 const id = z.string().min(1).max(64);
-const testPlayers = z.number().int().min(1).max(8);
+const testPlayers = z.number().int().min(1).max(MAX_PLAYERS);
 const botLevel = z.string().min(1).max(32);
-const keyboardSeat = z.number().int().min(0).max(7).nullable();
+const keyboardSeat = z.number().int().min(0).max(MAX_PLAYERS - 1).nullable();
 
 /** Cenário que o ecrã /teste lança (e volta a lançar depois de recarregar). */
 export const testerScenarioSchema = z.discriminatedUnion('kind', [
@@ -294,7 +294,7 @@ export const testerCmdSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('takeItem'), playerId: id, index: z.number().int().min(0).max(9) }),
   z.object({ t: z.literal('round'), round: z.number().int().min(1).max(30) }),
   z.object({ t: z.literal('moveStar') }),
-  z.object({ t: z.literal('endMinigame'), winners: z.array(id).max(8).optional() }),
+  z.object({ t: z.literal('endMinigame'), winners: z.array(id).max(MAX_PLAYERS).optional() }),
   z.object({ t: z.literal('skipPractice') }),
   z.object({ t: z.literal('reload') }),
 ]);

@@ -157,8 +157,8 @@ describe('testerCmdSchema', () => {
     expect(testerCmdSchema.safeParse({ t: 'nextDice', values: [7] }).success).toBe(false);
   });
 
-  it('limita os jogadores do cenário a 8', () => {
-    const party = { kind: 'party', board: 'ilha', rounds: 2, players: 9, botLevel: 'normal', keyboardSeat: null };
+  it('limita os jogadores do cenário a 10', () => {
+    const party = { kind: 'party', board: 'ilha', rounds: 2, players: 11, botLevel: 'normal', keyboardSeat: null };
     expect(testerCmdSchema.safeParse({ t: 'scenario', scenario: party }).success).toBe(false);
   });
 

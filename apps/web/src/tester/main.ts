@@ -2,7 +2,7 @@
  * Página /tester: painel de controlo do modo tester, no telemóvel (só em `npm run dev`).
  * Lê o QR do ecrã /teste. Não entra como jogador: fala com o ecrã pelo canal `tester:*`.
  */
-import type { TesterCmd, TesterScenario, TesterState } from '@festa/shared';
+import { MAX_PLAYERS, type TesterCmd, type TesterScenario, type TesterState } from '@festa/shared';
 import { connectSocket } from '../common/socket';
 import './tester.css';
 
@@ -154,11 +154,11 @@ const VIEWS: Record<Tab, (s: TesterState) => string> = {
     }
     if (k === 'sport') parts.push(field('Desporto', `<select data-f="sport">${c.sports.map((x) => opt(x.id, x.name, x.id === form.sport)).join('')}</select>`));
     if (k !== 'lobby') {
-      parts.push(field('Jogadores', `<input type="number" min="1" max="8" data-f="players" value="${form.players}">`));
+      parts.push(field('Jogadores', `<input type="number" min="1" max="${MAX_PLAYERS}" data-f="players" value="${form.players}">`));
       parts.push(field('Bots', `<select data-f="botLevel">${c.botLevels.map((l) => opt(l.id, l.label, l.id === form.botLevel)).join('')}</select>`));
     }
     if (k !== 'lobby' && k !== 'finale') {
-      const seats = ['nenhum', ...Array.from({ length: 8 }, (_, i) => `lugar ${i + 1}`)];
+      const seats = ['nenhum', ...Array.from({ length: MAX_PLAYERS }, (_, i) => `lugar ${i + 1}`)];
       parts.push(field('Teclado do PC', `<select data-f="keyboardSeat">${seats.map((l, i) => opt(String(i - 1), l, i - 1 === (form.keyboardSeat ?? -1))).join('')}</select>`));
     }
     return `<div class="form">${parts.join('')}</div><button class="big" data-cmd="launch">▶ Lançar</button>`;
@@ -221,7 +221,7 @@ const VIEWS: Record<Tab, (s: TesterState) => string> = {
 // ── Ações ───────────────────────────────────────────────
 
 function scenario(): TesterScenario {
-  const common = { players: Math.min(8, Math.max(1, form.players | 0)), botLevel: form.botLevel };
+  const common = { players: Math.min(MAX_PLAYERS, Math.max(1, form.players | 0)), botLevel: form.botLevel };
   const keyboardSeat = form.keyboardSeat;
   switch (form.kind) {
     case 'lobby':
