@@ -30,6 +30,8 @@ import { ConveyorBombs } from './ConveyorBombs';
 import { Pinball } from './Pinball';
 import { Bobsled } from './Bobsled';
 import { BeachVolley } from './BeachVolley';
+import { TimberChop } from './TimberChop';
+import { ClockHop } from './ClockHop';
 import type { MinigameDef } from './types';
 
 /** Para adicionar um minijogo: cria o ficheiro e acrescenta-o aqui. */
@@ -41,6 +43,8 @@ export const MINIGAMES: MinigameDef[] = [
   MemoryCards, IceRace,
   FallingTiles, ShellSoccer, PizzaRush, PhotoShoot,
   ConveyorBombs, Pinball, Bobsled, BeachVolley,
+  // Duelos novos (lote 5)
+  TimberChop, ClockHop,
 ];
 
 /**
