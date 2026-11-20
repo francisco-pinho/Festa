@@ -192,7 +192,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** A fazer, mapa a mapa. Ilha feita (ver ideias-fotos/ilha-nova-em-oito.svg): passa a ser um oito, com dois anéis que se cruzam na praça da aldeia. Na praça escolhe-se dar outra volta ao mesmo anel ou passar para o outro. Mantém a ponte sobre o mar a norte (maré baixa), o túnel da gruta de ponta a ponta (maré alta), o trilho da selva que corta o anel este (alavanca na aldeia), o canhão, o cofre, as duas lojas e os baús. 85 casas (antes 56 no anel). Falta veres no jogo antes de eu fazer cidade, vulcão, castelo e parque.
+- **Notas do Claude:** A fazer, mapa a mapa. Ilha refeita ao estilo dos mapas do Super Mario Party Jamboree (Goomba Lagoon), ver ideias-fotos/ilha-colar-de-ilhotas.svg: colar de 4 ilhotas em cima de rochas (aldeia, doca, gruta, praia das conchas). Em cada ilhota o caminho divide-se em dois à volta e volta a juntar-se. Entre ilhotas: cais do navio (com a Taberna do Navio, 3.ª loja) e carreiro na encosta do vulcão. Atalhos: ponte sobre a baía (maré baixa), túnel da gruta (maré alta) e trilho da selva da aldeia ao topo do vulcão (alavanca). 104 casas, 7 cruzamentos. Falta veres no jogo, sobretudo as rochas das ilhotas e as rampas entre ilhotas e caminhos, antes de eu fazer os outros mapas.
 
 ---
 

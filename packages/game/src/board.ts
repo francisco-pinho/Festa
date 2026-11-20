@@ -132,6 +132,8 @@ export interface Board {
   bankName?: string;
   /** A casa "?" desta zona faz este evento em vez do `eventKind` do mapa. */
   zoneEvents: Record<string, EventKind>;
+  /** Planaltos (ilhotas sobre rochas) que o cenário desenha por baixo das casas: centro, raio e altura. */
+  plateaus?: { x: number; z: number; r: number; y: number }[];
 }
 
 export function getSpace(board: Board, id: number): Space {
@@ -316,82 +318,107 @@ function markStarCandidates(spaces: Space[], every = 3, minId = 5): void {
   }
 }
 
-// ── Mapa 1: Ilha do Coqueiro (em oito) ─────────────────────
+// ── Mapa 1: Ilha do Coqueiro (colar de ilhotas) ───────────
 
 /**
- * Ilha em forma de oito: dois anéis (a baía a este e a montanha a oeste) que se cruzam na praça
- * da aldeia, ao meio. Na praça escolhe-se: dar outra volta ao mesmo anel ou passar para o outro.
- * Ponte sobre o mar a norte, entre os dois anéis (só com maré baixa), túnel pela gruta de ponta a
- * ponta (só com maré alta) e trilho da selva a cortar o anel este (portão com alavanca na aldeia).
+ * Ilha com ilhotas em cima de rochas, como num colar: a rota principal passa por quatro ilhotas e,
+ * em cada uma, divide-se em dois caminhos à volta (um curto e um longo, com coisas diferentes) que
+ * se voltam a juntar do outro lado. Entre ilhotas: o cais do navio (a este) e o carreiro na encosta
+ * do vulcão (a norte). Atalhos: ponte sobre a baía a sul (só com maré baixa), túnel da gruta do
+ * navio para oeste (só com maré alta) e trilho da selva da aldeia ao topo do vulcão (alavanca).
  * A maré muda a cada 3 rondas.
  */
 export function createIslandBoard(): Board {
   const b = new BoardBuilder();
-  const N = 64;
-  // Lemniscata (oito deitado), esticada na vertical para os anéis ficarem redondos.
-  const A = 46;
-  const eight = (t: number): Point => {
-    const th = t * Math.PI * 2;
-    const d = 1 + Math.sin(th) ** 2;
-    return { x: (A * Math.cos(th)) / d, z: (1.75 * A * Math.sin(th) * Math.cos(th)) / d };
+  const UP = 1.2; // altura das ilhotas
+  const PI = Math.PI;
+  const plateaus: { x: number; z: number; r: number; y: number }[] = [];
+  const one = (x: number, z: number, zone?: string, y?: number): number => {
+    const id = b.addChain([{ x, z }], zone)[0]!;
+    if (y) b.spaces[id]!.y = y;
+    return id;
   };
-  const pts = resample(eight, N + 1, true).slice(0, N);
-  // As duas passagens pelo meio do oito passam a ser uma só casa: a praça (cruzamento).
-  const byDist = pts.map((p, i) => [Math.hypot(p.x, p.z), i] as const).sort((x, y) => x[0] - y[0]);
-  const iA = byDist[0]![1];
-  const iB = byDist.find(([, i]) => Math.abs(i - iA) > 4 && Math.abs(i - iA) < N - 4)![1];
-  const id = new Map<number, number>();
-  for (let i = 0; i < N; i++) {
-    if (i === iB) continue;
-    const p = i === iA ? { x: 0, z: 0 } : pts[i]!;
-    id.set(i, b.addChain([p])[0]!);
-  }
-  const ring = (i: number) => id.get(((i % N) + N) % N === iB ? iA : ((i % N) + N) % N)!;
-  for (let i = 0; i < N; i++) b.link(ring(i), ring(i + 1));
-  const plaza = ring(iA);
-  /** Casa do anel mais perto de (x, z). */
-  const near = (x: number, z: number, among = [...id.values()]) =>
-    among.reduce((best, s) => (Math.hypot(b.spaces[s]!.x - x, b.spaces[s]!.z - z) < Math.hypot(b.spaces[best]!.x - x, b.spaces[best]!.z - z) ? s : best));
-  for (const s of b.spaces) {
-    if (s.z > 16) s.zone = 'beach';
-    if (Math.hypot(s.x, s.z) < 8) s.zone = 'village';
-  }
-  const startId = near(A, 0);
+  /** Pontos ao longo de um arco de círculo (ângulos em rad: 0 = este, π/2 = sul), sem as pontas. */
+  const arcPts = (cx: number, cz: number, r: number, a0: number, a1: number, n: number): Point[] =>
+    resample((t) => ({ x: cx + Math.cos(a0 + (a1 - a0) * t) * r, z: cz + Math.sin(a0 + (a1 - a0) * t) * r }), n, false);
+  /** Casas em fila de `from` até `to`. */
+  const run = (from: number, pts: Point[], to: number, zone?: string, y?: number): number[] => {
+    const ids = b.addChain(pts, zone);
+    if (y) for (const id of ids) b.spaces[id]!.y = y;
+    b.link(from, ids[0]!);
+    b.link(ids[ids.length - 1]!, to);
+    return ids;
+  };
+  /** Ilhota em cima de rochas: entra-se num ponto do círculo, sai-se noutro, com dois caminhos à volta. */
+  const islet = (cx: number, cz: number, r: number, aIn: number, aOut: number, nA: number, nB: number, zone: string) => {
+    plateaus.push({ x: cx, z: cz, r: r + 2.2, y: UP });
+    const entry = one(cx + Math.cos(aIn) * r, cz + Math.sin(aIn) * r, zone, UP);
+    const exit = one(cx + Math.cos(aOut) * r, cz + Math.sin(aOut) * r, zone, UP);
+    const sideA = run(entry, arcPts(cx, cz, r, aIn, aOut, nA), exit, zone, UP);
+    const sideB = run(entry, arcPts(cx, cz, r, aIn, aOut + (aOut > aIn ? -PI * 2 : PI * 2), nB), exit, zone, UP);
+    return { entry, exit, sideA, sideB };
+  };
 
-  // Ponte sobre o mar, a norte: do anel oeste ao anel este, por fora da ilha.
-  const bridgeFrom = near(-24, -22);
-  const bridgeTo = near(24, -22);
-  const bridge = b.addBranch(bridgeFrom, bridgeTo, 15, { x: 0, z: -62 }, 'bridge');
-  // Túnel da gruta: da ponta oeste à ponta este, por baixo da praça (encurta muito).
-  const caveFrom = near(-A, 0);
-  const caveTo = near(A - 6, 8);
+  // Aldeia (sul, ao meio): entra-se a oeste, sai-se a este; a partida fica no caminho de baixo.
+  const village = islet(0, 18, 8, PI, 0, 6, 5, 'village');
+  // Doca (sudeste): caminho curto por dentro, longo à volta do farol.
+  const dock = islet(30, 22, 6, PI, PI * 1.5, 2, 6, 'beach');
+  // Gruta (oeste): entra-se por cima, sai-se por baixo.
+  const cave = islet(-40, 2, 7, -PI / 2, PI / 2, 5, 5, 'cave');
+  // Praia das conchas (sudoeste).
+  const shell = islet(-22, 26, 6, PI, 0, 4, 4, 'beach');
+
+  // Rota principal: aldeia → doca → cais do navio → encosta do vulcão → gruta → praia das conchas → aldeia.
+  run(village.exit, resample(line({ x: 8, z: 18 }, { x: 24, z: 22 }), 4, false), dock.entry);
+  const shipEnd = one(34, -16, 'ship');
+  const ship = run(dock.exit, resample(bezier({ x: 30, z: 16 }, { x: 44, z: 0 }, { x: 34, z: -16 }), 8, false), shipEnd, 'ship');
+  const volcano = run(shipEnd, resample((t) => {
+    // Arco pela encosta norte e, no fim, desce até à entrada da gruta.
+    const arc = (k: number) => { const a = -(0.12 + k * (PI - 0.24)); return { x: Math.cos(a) * 34, z: -14 + Math.sin(a) * 24 }; };
+    if (t < 0.88) return arc(t / 0.88);
+    const e = arc(1);
+    const k = (t - 0.88) / 0.12;
+    return { x: e.x + (-40 - e.x) * k, z: e.z + (-5 - e.z) * k };
+  }, 19, false), cave.entry, 'volcano');
+  run(cave.exit, resample(line({ x: -40, z: 9 }, { x: -28, z: 26 }), 5, false), shell.entry);
+  run(shell.exit, resample(line({ x: -16, z: 26 }, { x: -8, z: 18 }), 2, false), village.entry);
+
+  const startId = village.sideA[2]!;
+
+  // Ponte sobre a baía (maré baixa): da praia das conchas à doca, por fora da aldeia.
+  const bridgeFrom = shell.exit;
+  const bridge = b.addBranch(bridgeFrom, dock.entry, 10, { x: 4, z: 46 }, 'bridge');
+  // Túnel da gruta (maré alta): do fim do cais do navio diretamente para a gruta, por dentro do vulcão.
+  const caveFrom = shipEnd;
+  const caveTo = cave.entry;
   b.link(caveFrom, caveTo);
-  // Trilho da selva: atravessa o anel este pelo meio, da saída da praça até à praia do outro lado
-  // (salta a ponta este da ilha).
-  const jungleFrom = near(12, -16);
-  const jungle = b.addBranch(jungleFrom, near(36, 14), 7, { x: 22, z: 2 }, 'jungle');
-  const jungleLever = near(-6, 6);
+  // Trilho da selva: do caminho de cima da aldeia até ao topo do vulcão (portão com alavanca).
+  const jungleFrom = village.sideB[2]!;
+  const jungle = b.addBranch(jungleFrom, volcano[8]!, 10, null, 'jungle');
+  const jungleLever = village.entry;
   b.set(jungleLever, 'lever');
-  // Canhão pirata na praia oeste: dispara para o norte da ilha.
-  const cannon = near(-22, 22);
+  // Canhão pirata na praia das conchas: dispara para o norte.
+  const cannon = shell.sideB[2]!;
   b.set(cannon, 'cannon');
-  // Cofre do pirata ao lado da praça.
-  const bankId = near(6, -6);
-  b.set(bankId, 'bank');
-  // Baús do tesouro (casas "?" fixas na praia e na selva)
-  for (const s of [near(14, 22), near(-34, 16), jungle[2]!, jungle[5]!]) b.set(s, 'event');
+  // Cofre do pirata na aldeia.
+  b.set(village.sideB[4]!, 'bank');
+  // Baús do tesouro (casas "?" fixas nas praias e na selva)
+  for (const id of [dock.sideB[3]!, shell.sideA[2]!, jungle[2]!, jungle[5]!]) b.set(id, 'event');
 
-  const shopBeach = near(32, 18);
-  const shopCave = near(-36, -14);
+  const shopBeach = dock.sideB[1]!;
+  const shopCave = cave.sideB[2]!;
+  const shopShip = ship[5]!;
   b.set(shopBeach, 'shop');
   b.set(shopCave, 'shop');
+  b.set(shopShip, 'shop');
   b.spaces[shopBeach]!.shopId = 'praia';
   b.spaces[shopCave]!.shopId = 'gruta';
+  b.spaces[shopShip]!.shopId = 'navio';
 
   // Casas especiais fixas
-  for (const s of [plaza, near(-12, -18)]) b.set(s, 'vs');
-  for (const s of [near(12, -20), bridge[7]!]) b.set(s, 'villain');
-  for (const s of [near(40, -8), near(-14, 18), near(-40, -6), bridge[3]!, jungle[3]!]) b.set(s, 'item');
+  for (const id of [village.exit, volcano[10]!, cave.sideA[2]!]) b.set(id, 'vs');
+  for (const id of [volcano[6]!, bridge[5]!, ship[2]!]) b.set(id, 'villain');
+  for (const id of [village.sideA[5]!, volcano[14]!, cave.sideB[1]!, bridge[2]!, dock.sideA[0]!, jungle[4]!]) b.set(id, 'item');
 
   fillTypes(b.spaces, startId, 20261111, [
     ['blue', 58],
@@ -407,13 +434,14 @@ export function createIslandBoard(): Board {
   return {
     id: 'ilha',
     name: 'Ilha do Coqueiro',
-    description: 'Ilha em oito: na praça da aldeia escolhes o anel. Maré baixa abre a ponte; maré alta abre o túnel da gruta (muda a cada 3 rondas). Puxa a alavanca da aldeia para abrir a selva, e cuidado com o canhão da praia!',
+    description: 'Colar de ilhotas: em cada uma escolhes o caminho à volta. Maré baixa abre a ponte da baía; maré alta abre o túnel da gruta (muda a cada 3 rondas). Puxa a alavanca da aldeia para abrir a selva até ao vulcão, e cuidado com o canhão da praia!',
     theme: 'island',
     spaces: b.spaces,
     startId,
     shops: [
       { id: 'praia', name: 'Quiosque da Praia', kind: 'geral', spaceId: shopBeach },
       { id: 'gruta', name: 'Bazar da Gruta', kind: 'luxo', spaceId: shopCave },
+      { id: 'navio', name: 'Taberna do Navio', kind: 'barata', spaceId: shopShip },
     ],
     tunnels: [{ from: caveFrom, to: caveTo, kind: 'cave', cost: 0, name: 'Túnel da Gruta' }],
     gates: [
@@ -423,12 +451,13 @@ export function createIslandBoard(): Board {
     ],
     levers: [{ spaceId: jungleLever, flag: 'jungle', name: 'Alavanca da Selva', onText: 'O portão da selva abriu!', offText: 'O portão da selva fechou!' }],
     tolls: [],
-    cannons: [{ spaceId: cannon, targets: [near(-30, -20), near(20, -24), jungle[4]!, near(40, -10)], name: 'Canhão Pirata' }],
+    cannons: [{ spaceId: cannon, targets: [volcano[4]!, volcano[15]!, jungle[6]!, ship[6]!], name: 'Canhão Pirata' }],
     bankName: 'Cofre do Pirata',
     zoneEvents: { beach: 'chest', jungle: 'chest' },
     mechanic: 'tide',
     initialFlags: { highTide: false, jungle: false },
     eventKind: 'tornado',
+    plateaus,
   };
 }
 

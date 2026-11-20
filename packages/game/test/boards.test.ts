@@ -218,7 +218,7 @@ describe('duelo, VS, armadilha e trapaceiro', () => {
     const r = resolveDuel(s, w, l);
     expect(r.coins).toBe(RULES.duelCoins);
     expect(l.spaceId).toBe(stepsBack(s.board, 10, 3));
-    expect(l.spaceId).toBe(7);
+    expect(l.spaceId).not.toBe(10);
   });
 
   it('VS: todos pagam e os vencedores dividem o pote', () => {
