@@ -366,6 +366,14 @@ export class PlayerHub {
     }
   }
 
+  /** Modo tester: liga o jogador de teclado (se ainda não estiver) e devolve-o. */
+  addKeyboardPlayer(id: 'kb1' | 'kb2'): HubPlayer {
+    const existing = this.keyboardPlayers.find((p) => p.id === id);
+    if (existing) return existing;
+    this.toggleKeyboardPlayer(KEYBOARD_PROFILES.find((p) => p.id === id)!);
+    return this.keyboardPlayers.find((p) => p.id === id)!;
+  }
+
   private toggleKeyboardPlayer(profile: KeyboardProfile): void {
     const idx = this.keyboardPlayers.findIndex((p) => p.id === profile.id);
     if (idx >= 0) this.keyboardPlayers.splice(idx, 1);

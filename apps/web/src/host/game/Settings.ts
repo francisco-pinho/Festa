@@ -38,18 +38,25 @@ const DEFAULTS: SettingsData = { botLevel: 'normal', hints: true, sfxVolume: 0.7
 class Settings {
   readonly events = new Emitter<{ changed: SettingsData }>();
   private data: SettingsData = load();
+  /** Modo tester: nível dos bots só em memória (não muda as definições guardadas). */
+  private botOverride: BotLevel | null = null;
 
   get value(): Readonly<SettingsData> {
-    return this.data;
+    return this.botOverride ? { ...this.data, botLevel: this.botOverride } : this.data;
   }
 
   /** Habilidade dos bots, de 0 (péssimo) a 1 (perfeito). */
   get botSkill(): number {
-    return BOT_LEVELS.find((l) => l.id === this.data.botLevel)?.skill ?? 0.6;
+    return BOT_LEVELS.find((l) => l.id === this.value.botLevel)?.skill ?? 0.6;
   }
 
   get botLevelLabel(): string {
-    return BOT_LEVELS.find((l) => l.id === this.data.botLevel)?.label ?? 'Normal';
+    return BOT_LEVELS.find((l) => l.id === this.value.botLevel)?.label ?? 'Normal';
+  }
+
+  /** Modo tester: força o nível dos bots sem o gravar (null volta ao guardado). */
+  overrideBotLevel(level: BotLevel | null): void {
+    this.botOverride = level;
   }
 
   set<K extends keyof SettingsData>(key: K, value: SettingsData[K]): void {

@@ -81,7 +81,12 @@ const ready = Promise.all([
   if (!toLobby) loading.hide();
 });
 
-const main = ready.then(() => testParty
+// Modo tester (só em dev): /teste é o jogo com o QR do painel, a voltar ao último cenário.
+const testerMode = import.meta.env.DEV && location.pathname === '/teste';
+
+const main = ready.then(async () => testerMode
+  ? new (await import('./tester/TesterHost')).TesterHost({ engine, director, connection }).start()
+  : testParty
   ? director.testParty(testParty, Number(params.get('players') ?? 4), Number(params.get('rounds') ?? 2))
   : testSport
   ? director.testSport(testSport, Number(params.get('players') ?? 2))

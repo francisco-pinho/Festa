@@ -9,6 +9,8 @@ import type {
   PlayerId,
   PlayerInfo,
   RtcSignal,
+  TesterCmd,
+  TesterState,
 } from '@festa/shared';
 import { Emitter } from '../common/emitter';
 import { ACK_TIMEOUT_MS, connectSocket, type FestaSocket } from '../common/socket';
@@ -63,6 +65,23 @@ export class HostConnection {
 
   kick(playerId: PlayerId): void {
     this.socket.emit('host:kick', playerId);
+  }
+
+  // ── Modo tester (só em `npm run dev`, página /teste) ──
+
+  /** Anuncia este ecrã como o host de teste, agora e sempre que voltar a ligar. */
+  announceTesterHost(): void {
+    if (this.socket.connected) this.socket.emit('tester:host');
+    this.socket.on('connect', () => this.socket.emit('tester:host'));
+  }
+
+  onTesterCmd(fn: (cmd: TesterCmd) => void): () => void {
+    this.socket.on('tester:cmd', fn);
+    return () => void this.socket.off('tester:cmd', fn);
+  }
+
+  sendTesterState(state: TesterState): void {
+    this.socket.emit('tester:state', state);
   }
 
   private async ensureRoom(): Promise<void> {
