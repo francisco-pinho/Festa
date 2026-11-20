@@ -260,3 +260,41 @@ export const rtcSignalSchema = z.discriminatedUnion('kind', [
 
 /** `to`: id do espectador (quando envia o host) ou 'host' (quando envia o espectador). */
 export const rtcSendSchema = z.object({ to: z.string().min(1).max(64), data: rtcSignalSchema });
+
+// ── Painel de tester (só em `npm run dev`) ──────────────────
+
+const id = z.string().min(1).max(64);
+const testPlayers = z.number().int().min(1).max(8);
+const botLevel = z.string().min(1).max(32);
+const keyboardSeat = z.number().int().min(0).max(7).nullable();
+
+/** Cenário que o ecrã /teste lança (e volta a lançar depois de recarregar). */
+export const testerScenarioSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('lobby') }),
+  z.object({ kind: z.literal('menu'), players: testPlayers, botLevel, keyboardSeat }),
+  z.object({ kind: z.literal('party'), board: id, rounds: z.number().int().min(1).max(30), players: testPlayers, botLevel, keyboardSeat }),
+  z.object({ kind: z.literal('minigame'), id, mode: z.enum(['ffa', 'teams', 'oneVsAll']), players: testPlayers, botLevel, keyboardSeat }),
+  z.object({ kind: z.literal('sport'), id, players: testPlayers, botLevel, keyboardSeat }),
+  z.object({ kind: z.literal('finale'), board: id, players: testPlayers, botLevel }),
+]);
+
+/** Comandos do painel de tester para o ecrã /teste. */
+export const testerCmdSchema = z.discriminatedUnion('t', [
+  z.object({ t: z.literal('scenario'), scenario: testerScenarioSchema }),
+  z.object({ t: z.literal('time'), scale: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(4)]) }),
+  z.object({ t: z.literal('nextDice'), values: z.array(z.number().int().min(1).max(6)).min(1).max(3) }),
+  z.object({ t: z.literal('teleport'), playerId: id, spaceId: z.number().int().min(0) }),
+  z.object({
+    t: z.literal('give'),
+    playerId: id,
+    coins: z.number().int().min(-999).max(999).optional(),
+    stars: z.number().int().min(-99).max(99).optional(),
+    item: id.optional(),
+  }),
+  z.object({ t: z.literal('takeItem'), playerId: id, index: z.number().int().min(0).max(9) }),
+  z.object({ t: z.literal('round'), round: z.number().int().min(1).max(30) }),
+  z.object({ t: z.literal('moveStar') }),
+  z.object({ t: z.literal('endMinigame'), winners: z.array(id).max(8).optional() }),
+  z.object({ t: z.literal('skipPractice') }),
+  z.object({ t: z.literal('reload') }),
+]);

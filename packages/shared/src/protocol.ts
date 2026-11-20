@@ -17,6 +17,8 @@ import type {
   motionActionSchema,
   playerJoinSchema,
   rtcSignalSchema,
+  testerCmdSchema,
+  testerScenarioSchema,
   viewerJoinSchema,
 } from './schemas';
 
@@ -33,6 +35,30 @@ export type HostResumeRequest = z.infer<typeof hostResumeSchema>;
 export type PlayerJoinRequest = z.input<typeof playerJoinSchema>;
 export type ViewerJoinRequest = z.input<typeof viewerJoinSchema>;
 export type RtcSignal = z.infer<typeof rtcSignalSchema>;
+export type TesterScenario = z.infer<typeof testerScenarioSchema>;
+export type TesterCmd = z.infer<typeof testerCmdSchema>;
+
+/** Listas para o painel de tester preencher os menus (vêm do código do jogo). */
+export interface TesterCatalog {
+  boards: { id: string; name: string }[];
+  minigames: { id: string; name: string; modes: string[]; duel: boolean }[];
+  sports: { id: string; name: string }[];
+  botLevels: { id: string; label: string }[];
+  items: { id: string; name: string }[];
+}
+
+/** Estado do ecrã /teste mostrado no painel. */
+export interface TesterState {
+  phase: 'lobby' | 'menu' | 'board' | 'minigame' | 'practice' | 'sport' | 'finale' | 'other';
+  scenario: TesterScenario | null;
+  timeScale: number;
+  round?: number;
+  totalRounds?: number;
+  starSpaceId?: number;
+  spaces?: { id: number; type: string }[];
+  players: { id: string; name: string; isBot: boolean; coins?: number; stars?: number; items?: string[]; spaceId?: number }[];
+  catalog: TesterCatalog;
+}
 
 export interface PlayerInfo {
   id: PlayerId;
@@ -85,6 +111,16 @@ export interface ClientToServerEvents {
   'viewer:join': (req: ViewerJoinRequest, ack: Ack<{ viewerId: string }>) => void;
   /** Host → espectador (`to` = id) ou espectador → host (`to` = 'host'). */
   'rtc:signal': (msg: { to: string; data: RtcSignal }) => void;
+
+  // ── Painel de tester (só em `npm run dev`) ───────────────
+  /** O ecrã /teste anuncia-se como o host de teste (substitui o anterior). */
+  'tester:host': () => void;
+  /** O painel do telemóvel liga-se (não é jogador). */
+  'tester:join': () => void;
+  /** Painel → ecrã /teste. */
+  'tester:cmd': (cmd: TesterCmd) => void;
+  /** Ecrã /teste → painéis. */
+  'tester:state': (state: TesterState) => void;
 }
 
 export interface ServerToClientEvents {
@@ -102,6 +138,12 @@ export interface ServerToClientEvents {
   'viewer:left': (viewerId: string) => void;
   /** Sinalização WebRTC (`from` = id do espectador, ou 'host'). */
   'rtc:signal': (msg: { from: string; data: RtcSignal }) => void;
+  /** Só para o host de teste: comando do painel. */
+  'tester:cmd': (cmd: TesterCmd) => void;
+  /** Só para painéis: estado do ecrã /teste. */
+  'tester:state': (state: TesterState) => void;
+  /** Só para painéis: há um ecrã /teste ligado? */
+  'tester:hostStatus': (connected: boolean) => void;
 }
 
 /** Resposta de GET /api/info — usada pelo host para gerar o URL/QR de entrada. */

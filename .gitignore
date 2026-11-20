@@ -21,3 +21,4 @@ apps/web/public/dev-lista.json
 /.mcp.json
 /CLAUDE.md
 # <<< code-review-graph install files <<<
+.superpowers/
