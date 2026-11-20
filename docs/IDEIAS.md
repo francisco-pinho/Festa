@@ -154,7 +154,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Mapa do vulcão dentro de um vulcão
+### [x] Mapa do vulcão dentro de um vulcão
 
 - **Tipo:** mapa, visual
 - **Prioridade (alta / média / baixa):**
@@ -164,11 +164,11 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):** mapa do castelo (as paredes não deixam ver o infinito)
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** Feito: o tabuleiro passa a estar dentro da cratera. Paredes de rocha basáltica com 60 m em arco à volta (atrás e dos lados; à frente fica aberto para a câmara, como no castelo), com a orla de cima recortada, cascatas de lava a escorrer, um rio de lava ao pé da parede e céu de fumo avermelhado. O cone do meio fica, como cone interior da cratera. Falta confirmares no jogo.
 
 ---
 
-### [ ] Não se ver o cenário infinito
+### [x] Não se ver o cenário infinito
 
 - **Tipo:** visual, mapa
 - **Prioridade (alta / média / baixa):**
@@ -178,7 +178,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):** mapa do castelo
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** Feito nos mapas: vulcão (paredes da cratera), parque (colinas altas à volta), cidade (arranha-céus com janelas acesas à volta); o castelo já tinha paredes e a ilha fica com o mar. Nos minijogos, os que usam o cenário do mapa já tinham um fundo alto e fechado. Os que se passam num sítio próprio (cais no mar, rio, lago, neve, praia do vólei) ficam como estão, porque o horizonte faz parte do sítio. Ainda não fiz os desportos (dúvida 2). Falta confirmares no jogo.
 
 ---
 
@@ -210,7 +210,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 
 ---
 
-### [ ] Cenário dos minijogos coerente com o mapa
+### [x] Cenário dos minijogos coerente com o mapa
 
 - **Tipo:** minijogo, visual
 - **Prioridade (alta / média / baixa):**
@@ -220,7 +220,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:**
+- **Notas do Claude:** Feito: na Pontaria, a floresta à volta passa a usar o cenário do mapa (árvores na ilha e no parque; rochas altas e árvores secas no vulcão; prédios na cidade; árvores secas e campas no castelo) e o chão tem a cor do mapa. Na Canoa a Pares, as margens também seguem o mapa. Os minijogos de fila e de arena já usavam o tema do mapa. Falta confirmares no jogo.
 
 ---
 

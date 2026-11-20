@@ -118,6 +118,13 @@ export function themeScenery(
   place(lk.back, 30, inner + 16, inner + 24, lk.backH);
 }
 
+/** Adereços do tema (para minijogos que montam o seu próprio cenário, ex.: a floresta da Pontaria). */
+export function themeProps(theme: Theme | undefined): { small: readonly string[]; tall: readonly string[] } {
+  const lk = look(theme ?? 'island');
+  // Coisas altas para fazer uma parede de cenário (na cidade, prédios em vez de carros gigantes).
+  return { small: lk.small, tall: theme === 'city' ? lk.back : lk.big };
+}
+
 /** Cor do chão do tema (para minijogos que fazem o seu próprio chão). */
 export function themeGround(theme: Theme | undefined): string {
   return look(theme ?? 'island').ground;
