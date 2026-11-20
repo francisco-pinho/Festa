@@ -4,7 +4,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 
 const SERVER = `http://localhost:${process.env.SERVER_PORT ?? 3000}`;
 
-/** Em dev, /play → /play.html (em produção o servidor Express faz o mesmo). */
+/** Em dev, /play → /play.html e /ver → /ver.html (em produção o servidor Express faz o mesmo); /teste e /tester só existem em dev. */
 const controllerRoute = (): Plugin => ({
   name: 'festa-controller-route',
   configureServer(server) {
@@ -14,6 +14,13 @@ const controllerRoute = (): Plugin => ({
       }
       if (req.url === '/ver' || req.url?.startsWith('/ver?')) {
         req.url = req.url.replace('/ver', '/ver.html');
+      }
+      // Modo tester (só em dev): /teste é o jogo com o QR do painel; /tester é o painel no telemóvel.
+      if (req.url === '/teste' || req.url?.startsWith('/teste?')) {
+        req.url = req.url.replace('/teste', '/index.html');
+      }
+      if (req.url === '/tester' || req.url?.startsWith('/tester?')) {
+        req.url = req.url.replace('/tester', '/tester.html');
       }
       next();
     });
