@@ -23,6 +23,7 @@ export class BlenderTheme implements BoardTheme {
     this.bounds = { minX: Math.min(...xs), maxX: Math.max(...xs), minZ: Math.min(...zs), maxZ: Math.max(...zs) };
     this.water.mesh.position.y = -0.6;
     this.group.add(this.water.mesh, this.clouds.group);
+    scene.add(this.group);
     new GLTFLoader()
       .loadAsync(board.scenery!)
       .then((gltf) => {
