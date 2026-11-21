@@ -134,6 +134,8 @@ export interface Board {
   zoneEvents: Record<string, EventKind>;
   /** Planaltos (ilhotas sobre rochas) que o cenário desenha por baixo das casas: centro, raio e altura. */
   plateaus?: { x: number; z: number; r: number; y: number }[];
+  /** Montanhas em cone (centro, raio da base e altura) onde os caminhos sobem: o cenário desenha-as. */
+  mountains?: { x: number; z: number; r: number; h: number }[];
 }
 
 export function getSpace(board: Board, id: number): Space {
@@ -392,9 +394,41 @@ export function createIslandBoard(): Board {
   const caveFrom = shipEnd;
   const caveTo = cave.entry;
   b.link(caveFrom, caveTo);
-  // Trilho da selva: do caminho de cima da aldeia até ao topo do vulcão (portão com alavanca).
+  // Montanha do Coqueiro, ao meio da ilha: caminhos que sobem às voltas até ao cume e descem
+  // para a encosta do vulcão (a norte ou a oeste). As casas ficam à altura da encosta.
+  const M = { x: 0, z: -12, r: 15, h: 9 };
+  const heightAt = (x: number, z: number) => Math.max(0, M.h * (1 - Math.hypot(x - M.x, z - M.z) / M.r));
+  const onSlope = (ids: number[]) => {
+    for (const id of ids) {
+      const sp = b.spaces[id]!;
+      sp.y = Math.max(sp.y ?? 0, heightAt(sp.x, sp.z));
+    }
+    return ids;
+  };
+  /** Espiral à volta da montanha: começa no ângulo `a0` e raio `r0`, dá `turns` voltas e acaba no raio `r1`. */
+  const spiral = (a0: number, r0: number, r1: number, turns: number, n: number): Point[] =>
+    resample((t) => {
+      const a = a0 + t * turns * Math.PI * 2;
+      const rr = r0 + (r1 - r0) * t;
+      return { x: M.x + Math.cos(a) * rr, z: M.z + Math.sin(a) * rr };
+    }, n, false);
+  const summit = one(M.x, M.z, 'mountain');
+  b.spaces[summit]!.y = M.h;
+  /** Distância e ângulo de uma casa ao centro da montanha. */
+  const polar = (id: number) => {
+    const sp = b.spaces[id]!;
+    return { r: Math.hypot(sp.x - M.x, sp.z - M.z), a: Math.atan2(sp.z - M.z, sp.x - M.x) };
+  };
+  // Trilho da selva (portão com alavanca na aldeia): sobe da aldeia pela encosta oeste, em meia volta.
   const jungleFrom = village.sideB[2]!;
-  const jungle = b.addBranch(jungleFrom, volcano[8]!, 10, null, 'jungle');
+  const jp = polar(jungleFrom);
+  const jungle = onSlope(run(jungleFrom, spiral(jp.a, jp.r - 3, 1.5, 0.4, 11), summit, 'jungle'));
+  // Subida do cais do navio, pela encosta este e sul (sempre aberta).
+  const shipClimbFrom = ship[3]!;
+  const sp0 = polar(shipClimbFrom);
+  onSlope(run(shipClimbFrom, spiral(sp0.a, sp0.r - 3, 1.5, 0.24, 13), summit, 'mountain'));
+  // Do cume desce-se para norte, até ao meio da encosta do vulcão.
+  onSlope(run(summit, resample(line(M, b.spaces[volcano[8]!]!), 6, false), volcano[8]!, 'mountain'));
   const jungleLever = village.entry;
   b.set(jungleLever, 'lever');
   // Canhão pirata na praia das conchas: dispara para o norte.
@@ -458,6 +492,7 @@ export function createIslandBoard(): Board {
     initialFlags: { highTide: false, jungle: false },
     eventKind: 'tornado',
     plateaus,
+    mountains: [M],
   };
 }
 

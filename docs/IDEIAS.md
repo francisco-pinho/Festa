@@ -192,7 +192,7 @@ minijogo · desporto · tabuleiro · mapa · personagem · comando (telemóvel) 
 - **Como se ganha / o que acontece no fim:**
 - **Inspirado em (jogo, vídeo, link, imagem…):**
 - **Fotos (nomes dos ficheiros em `ideias-fotos/`):**
-- **Notas do Claude:** A fazer, mapa a mapa. Ilha refeita ao estilo dos mapas do Super Mario Party Jamboree (Goomba Lagoon), ver ideias-fotos/ilha-colar-de-ilhotas.svg: colar de 4 ilhotas em cima de rochas (aldeia, doca, gruta, praia das conchas). Em cada ilhota o caminho divide-se em dois à volta e volta a juntar-se. Entre ilhotas: cais do navio (com a Taberna do Navio, 3.ª loja) e carreiro na encosta do vulcão. Atalhos: ponte sobre a baía (maré baixa), túnel da gruta (maré alta) e trilho da selva da aldeia ao topo do vulcão (alavanca). 104 casas, 7 cruzamentos. Falta veres no jogo, sobretudo as rochas das ilhotas e as rampas entre ilhotas e caminhos, antes de eu fazer os outros mapas.
+- **Notas do Claude:** A fazer, mapa a mapa. Ilha refeita ao estilo dos mapas do Super Mario Party Jamboree (ver ideias-fotos/ilha-colar-de-ilhotas.svg): colar de 4 ilhotas em cima de rochas (aldeia, doca, gruta, praia das conchas), com dois caminhos à volta de cada uma; cais do navio (Taberna do Navio, 3.ª loja); encosta do vulcão a norte; e a Montanha do Coqueiro ao meio, com bandeira no cume: o trilho da selva sobe da aldeia (alavanca), outra subida sai do cais do navio, e do cume desce-se para a encosta do vulcão. As casas da montanha sobem com a encosta (até 9 m). Ponte sobre a baía (maré baixa) e túnel da gruta (maré alta). 125 casas, 8 cruzamentos. Falta veres no jogo antes de eu fazer os outros mapas.
 
 ---
 
