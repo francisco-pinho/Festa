@@ -16,6 +16,8 @@
  *  - **Banco**: quem passa deposita moedas; quem lá para leva o cofre todo.
  *  - **Eventos por zona**: a casa "?" faz coisas diferentes conforme a zona.
  */
+import { boardFromLayout } from './layout';
+import { LAYOUTS } from './maps';
 import { createRng, type Rng } from './rng';
 
 export type SpaceType =
@@ -136,6 +138,8 @@ export interface Board {
   plateaus?: { x: number; z: number; r: number; y: number }[];
   /** Montanhas em cone (centro, raio da base e altura) onde os caminhos sobem: o cenário desenha-as. */
   mountains?: { x: number; z: number; r: number; h: number }[];
+  /** Cenário feito no Blender (.glb, em apps/web/public): substitui o cenário feito em código. */
+  scenery?: string;
 }
 
 export function getSpace(board: Board, id: number): Space {
@@ -893,12 +897,15 @@ export function createParkBoard(): Board {
   };
 }
 
+/** Usa o mapa do Blender, se houver (maps/index.ts); senão, o desenhado aqui no código. */
+const orBlender = (id: string, make: () => Board) => (): Board => (LAYOUTS[id] ? boardFromLayout(LAYOUTS[id]) : make());
+
 export const BOARDS: { id: string; create: () => Board }[] = [
-  { id: 'ilha', create: createIslandBoard },
-  { id: 'cidade', create: createCityBoard },
-  { id: 'vulcao', create: createVolcanoBoard },
-  { id: 'castelo', create: createCastleBoard },
-  { id: 'parque', create: createParkBoard },
+  { id: 'ilha', create: orBlender('ilha', createIslandBoard) },
+  { id: 'cidade', create: orBlender('cidade', createCityBoard) },
+  { id: 'vulcao', create: orBlender('vulcao', createVolcanoBoard) },
+  { id: 'castelo', create: orBlender('castelo', createCastleBoard) },
+  { id: 'parque', create: orBlender('parque', createParkBoard) },
 ];
 
 export function createBoard(id: string): Board {

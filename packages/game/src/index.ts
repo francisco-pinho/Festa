@@ -3,3 +3,4 @@ export * from './characters';
 export * from './board';
 export * from './party';
 export * from './items';
+export * from './layout';
