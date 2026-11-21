@@ -1,0 +1,1442 @@
+{
+  "apps/desktop/build.mjs": {
+    "mtime": 1794422195.4942782,
+    "seen": 1795170641.27107,
+    "ast_hash": "f66cd7fe30b90c14d204146b5233fd74",
+    "semantic_hash": "f66cd7fe30b90c14d204146b5233fd74"
+  },
+  "apps/desktop/package.json": {
+    "mtime": 1794865981.45436,
+    "seen": 1795170641.2710767,
+    "ast_hash": "7ad1180413f62bfdc8ebe794e2cbe398",
+    "semantic_hash": "7ad1180413f62bfdc8ebe794e2cbe398"
+  },
+  "apps/desktop/src/main.ts": {
+    "mtime": 1794865981.4553833,
+    "seen": 1795170641.271079,
+    "ast_hash": "cc748675e6ac7d1c1e95726bc50ba7dd",
+    "semantic_hash": "cc748675e6ac7d1c1e95726bc50ba7dd"
+  },
+  "apps/desktop/src/preload.ts": {
+    "mtime": 1794499571.5456283,
+    "seen": 1795170641.2710805,
+    "ast_hash": "2749a3a9d01a2129389a1c403002ad02",
+    "semantic_hash": "2749a3a9d01a2129389a1c403002ad02"
+  },
+  "apps/desktop/tsconfig.json": {
+    "mtime": 1794421929.2726228,
+    "seen": 1795170641.2710814,
+    "ast_hash": "d400b7e0684e21255de36dce3955202b",
+    "semantic_hash": "d400b7e0684e21255de36dce3955202b"
+  },
+  "apps/server/package.json": {
+    "mtime": 1794956521.747519,
+    "seen": 1795170641.2710824,
+    "ast_hash": "bce19a05d925a09c8ecc7e1be1e3f3fb",
+    "semantic_hash": "bce19a05d925a09c8ecc7e1be1e3f3fb"
+  },
+  "apps/server/src/app.ts": {
+    "mtime": 1794956521.7496192,
+    "seen": 1795170641.2710836,
+    "ast_hash": "d811d7e2337f1e55b6640351a4a1459a",
+    "semantic_hash": "d811d7e2337f1e55b6640351a4a1459a"
+  },
+  "apps/server/src/index.ts": {
+    "mtime": 1794956521.7486484,
+    "seen": 1795170641.2710848,
+    "ast_hash": "e3137cfa7ae427b226c82b7064f2703a",
+    "semantic_hash": "e3137cfa7ae427b226c82b7064f2703a"
+  },
+  "apps/server/src/network.ts": {
+    "mtime": 1794346184.2037117,
+    "seen": 1795170641.2710855,
+    "ast_hash": "d088d020bacbe3727f524a00f5d819b5",
+    "semantic_hash": "d088d020bacbe3727f524a00f5d819b5"
+  },
+  "apps/server/src/rooms.ts": {
+    "mtime": 1795029328.001019,
+    "seen": 1795170641.2710865,
+    "ast_hash": "a761489e90e9d273be132bf5652a4ca6",
+    "semantic_hash": "a761489e90e9d273be132bf5652a4ca6"
+  },
+  "apps/server/src/socketServer.ts": {
+    "mtime": 1795029328.0020308,
+    "seen": 1795170641.2710872,
+    "ast_hash": "0f2cd3bb10d6f301c1f9b2dcb4e070ac",
+    "semantic_hash": "0f2cd3bb10d6f301c1f9b2dcb4e070ac"
+  },
+  "apps/server/src/tunnel.ts": {
+    "mtime": 1794422549.0226138,
+    "seen": 1795170641.2710881,
+    "ast_hash": "570c0c4188b778cf9a1fc3b27d860fba",
+    "semantic_hash": "570c0c4188b778cf9a1fc3b27d860fba"
+  },
+  "apps/server/test/rooms.test.ts": {
+    "mtime": 1795029345.1291914,
+    "seen": 1795170641.2710888,
+    "ast_hash": "fe5c96fb90e7172517f1958c09cc4198",
+    "semantic_hash": "fe5c96fb90e7172517f1958c09cc4198"
+  },
+  "apps/server/test/socket.test.ts": {
+    "mtime": 1794418185.6136835,
+    "seen": 1795170641.2710896,
+    "ast_hash": "19a68d9cc6c714f0d487d2fcc8cc279e",
+    "semantic_hash": "19a68d9cc6c714f0d487d2fcc8cc279e"
+  },
+  "apps/server/tsconfig.json": {
+    "mtime": 1794345703.6477182,
+    "seen": 1795170641.2710905,
+    "ast_hash": "a6094fca367e311e85b142d115f59c25",
+    "semantic_hash": "a6094fca367e311e85b142d115f59c25"
+  },
+  "apps/web/package.json": {
+    "mtime": 1794359282.8263092,
+    "seen": 1795170641.2710912,
+    "ast_hash": "0fef120a7bc301bd151bc072b6754124",
+    "semantic_hash": "0fef120a7bc301bd151bc072b6754124"
+  },
+  "apps/web/src/common/emitter.ts": {
+    "mtime": 1794345919.8436317,
+    "seen": 1795170641.271092,
+    "ast_hash": "ad770fbe26dd2b264dac3f1a7b7f338c",
+    "semantic_hash": "ad770fbe26dd2b264dac3f1a7b7f338c"
+  },
+  "apps/web/src/common/ice.ts": {
+    "mtime": 1794418236.494991,
+    "seen": 1795170641.271093,
+    "ast_hash": "0a1ccea470c634c558ac2c19f2ca6db7",
+    "semantic_hash": "0a1ccea470c634c558ac2c19f2ca6db7"
+  },
+  "apps/web/src/common/icons.ts": {
+    "mtime": 1794961541.7877643,
+    "seen": 1795170641.271094,
+    "ast_hash": "25560ef057894af3fab74b93a1708d68",
+    "semantic_hash": "25560ef057894af3fab74b93a1708d68"
+  },
+  "apps/web/src/common/screenViewer.ts": {
+    "mtime": 1794418237.9120686,
+    "seen": 1795170641.2710948,
+    "ast_hash": "ab515750606f82ad8c6c8d00f908d5d4",
+    "semantic_hash": "ab515750606f82ad8c6c8d00f908d5d4"
+  },
+  "apps/web/src/common/socket.ts": {
+    "mtime": 1794345919.8779366,
+    "seen": 1795170641.2710958,
+    "ast_hash": "8a7fcf5138b5c4c4495b759a76bab4d5",
+    "semantic_hash": "8a7fcf5138b5c4c4495b759a76bab4d5"
+  },
+  "apps/web/src/controller/boardview.ts": {
+    "mtime": 1794448687.134044,
+    "seen": 1795170641.2710965,
+    "ast_hash": "8ad7a72148352e0b3604e50d680ad46a",
+    "semantic_hash": "8ad7a72148352e0b3604e50d680ad46a"
+  },
+  "apps/web/src/controller/haptics.ts": {
+    "mtime": 1794443537.953224,
+    "seen": 1795170641.2710977,
+    "ast_hash": "462bf45ca7867e561c377813ec1cd7b5",
+    "semantic_hash": "462bf45ca7867e561c377813ec1cd7b5"
+  },
+  "apps/web/src/controller/infoview.ts": {
+    "mtime": 1794443548.979921,
+    "seen": 1795170641.2710986,
+    "ast_hash": "f77cb4c9ddb9644fc6a491b3a618712a",
+    "semantic_hash": "f77cb4c9ddb9644fc6a491b3a618712a"
+  },
+  "apps/web/src/controller/joystick.ts": {
+    "mtime": 1794346246.776074,
+    "seen": 1795170641.2710993,
+    "ast_hash": "0718905af5189116c843a45d5fd73f56",
+    "semantic_hash": "0718905af5189116c843a45d5fd73f56"
+  },
+  "apps/web/src/controller/main.ts": {
+    "mtime": 1795029337.2973964,
+    "seen": 1795170641.2711005,
+    "ast_hash": "3a809cc08a34eb6996ce561f957a5bcf",
+    "semantic_hash": "3a809cc08a34eb6996ce561f957a5bcf"
+  },
+  "apps/web/src/controller/motion.ts": {
+    "mtime": 1794412209.1972368,
+    "seen": 1795170641.2711012,
+    "ast_hash": "da4ccdee5273e7d2ea591552ce6140a3",
+    "semantic_hash": "da4ccdee5273e7d2ea591552ce6140a3"
+  },
+  "apps/web/src/controller/pad.ts": {
+    "mtime": 1794955935.2577221,
+    "seen": 1795170641.271102,
+    "ast_hash": "af02f2ee3970bee1ffe0818b30793d3c",
+    "semantic_hash": "af02f2ee3970bee1ffe0818b30793d3c"
+  },
+  "apps/web/src/controller/pickview.ts": {
+    "mtime": 1794956339.707848,
+    "seen": 1795170641.271103,
+    "ast_hash": "5d5412ca9a9ac3f23ba50581dc9a6042",
+    "semantic_hash": "5d5412ca9a9ac3f23ba50581dc9a6042"
+  },
+  "apps/web/src/controller/sensors.ts": {
+    "mtime": 1794370464.9567366,
+    "seen": 1795170641.2711034,
+    "ast_hash": "669afa8829f949dd8f3edbe5334910be",
+    "semantic_hash": "669afa8829f949dd8f3edbe5334910be"
+  },
+  "apps/web/src/host/HostConnection.ts": {
+    "mtime": 1794418202.8766303,
+    "seen": 1795170641.2711046,
+    "ast_hash": "9535d44d218d01a9de02b9e0629a319a",
+    "semantic_hash": "9535d44d218d01a9de02b9e0629a319a"
+  },
+  "apps/web/src/host/PlayerHub.ts": {
+    "mtime": 1794956339.6663973,
+    "seen": 1795170641.2711053,
+    "ast_hash": "10f356db99cd2a903fbf554f33280a57",
+    "semantic_hash": "10f356db99cd2a903fbf554f33280a57"
+  },
+  "apps/web/src/host/ScreenShare.ts": {
+    "mtime": 1794855208.350885,
+    "seen": 1795170641.271106,
+    "ast_hash": "93261042c7361c3863532bfdf285293a",
+    "semantic_hash": "93261042c7361c3863532bfdf285293a"
+  },
+  "apps/web/src/host/audio/Narrator.ts": {
+    "mtime": 1794444601.369793,
+    "seen": 1795170641.2711067,
+    "ast_hash": "7ee5584ab8e090cb6e50a109654ef31d",
+    "semantic_hash": "7ee5584ab8e090cb6e50a109654ef31d"
+  },
+  "apps/web/src/host/audio/NarratorPortrait.ts": {
+    "mtime": 1794444601.3707774,
+    "seen": 1795170641.2711077,
+    "ast_hash": "d6dd5683aacbc19526657d66a709893e",
+    "semantic_hash": "d6dd5683aacbc19526657d66a709893e"
+  },
+  "apps/web/src/host/audio/Sound.ts": {
+    "mtime": 1794855579.2131534,
+    "seen": 1795170641.2711086,
+    "ast_hash": "5a26b04c572e1ebfb96251ded8a72865",
+    "semantic_hash": "5a26b04c572e1ebfb96251ded8a72865"
+  },
+  "apps/web/src/host/game/Director.ts": {
+    "mtime": 1795029750.2013721,
+    "seen": 1795170641.2711093,
+    "ast_hash": "881f11e9e15557ec11ca1f937d28aab3",
+    "semantic_hash": "881f11e9e15557ec11ca1f937d28aab3"
+  },
+  "apps/web/src/host/game/PartyFlow.ts": {
+    "mtime": 1794624247.3452072,
+    "seen": 1795170641.27111,
+    "ast_hash": "46a8793d666c00f8a0470dabea52db17",
+    "semantic_hash": "46a8793d666c00f8a0470dabea52db17"
+  },
+  "apps/web/src/host/game/Seats.ts": {
+    "mtime": 1794855208.9310188,
+    "seen": 1795170641.2711112,
+    "ast_hash": "6a32cfe8739a3ea256e94f465846d051",
+    "semantic_hash": "6a32cfe8739a3ea256e94f465846d051"
+  },
+  "apps/web/src/host/game/Settings.ts": {
+    "mtime": 1794855633.5350382,
+    "seen": 1795170641.271112,
+    "ast_hash": "020634b13839e3e6e3771e4b4c17c351",
+    "semantic_hash": "020634b13839e3e6e3771e4b4c17c351"
+  },
+  "apps/web/src/host/joinUrl.ts": {
+    "mtime": 1794417984.131798,
+    "seen": 1795170641.2711127,
+    "ast_hash": "7a624cf5797ce8d7711057a94f70e331",
+    "semantic_hash": "7a624cf5797ce8d7711057a94f70e331"
+  },
+  "apps/web/src/host/main.ts": {
+    "mtime": 1794855571.9453113,
+    "seen": 1795170641.2711136,
+    "ast_hash": "555d1793b38789422dec87d31b875c2d",
+    "semantic_hash": "555d1793b38789422dec87d31b875c2d"
+  },
+  "apps/web/src/host/minigames/ArenaMinigame.ts": {
+    "mtime": 1794507585.7776728,
+    "seen": 1795170641.2711146,
+    "ast_hash": "e6d8ed4b85d2e69f5a8219068cddb9b2",
+    "semantic_hash": "e6d8ed4b85d2e69f5a8219068cddb9b2"
+  },
+  "apps/web/src/host/minigames/Balloon.ts": {
+    "mtime": 1794508114.8029242,
+    "seen": 1795170641.2711155,
+    "ast_hash": "e7275b16c569c964a78d5a126aa627b5",
+    "semantic_hash": "e7275b16c569c964a78d5a126aa627b5"
+  },
+  "apps/web/src/host/minigames/BeachVolley.ts": {
+    "mtime": 1794496938.99891,
+    "seen": 1795170641.2711165,
+    "ast_hash": "c77edcc8fdca90c8cde827e76a3f5e9b",
+    "semantic_hash": "c77edcc8fdca90c8cde827e76a3f5e9b"
+  },
+  "apps/web/src/host/minigames/Bobsled.ts": {
+    "mtime": 1794496862.9846876,
+    "seen": 1795170641.2711172,
+    "ast_hash": "dac6b40d46a2ffcac1afee534247e0fd",
+    "semantic_hash": "dac6b40d46a2ffcac1afee534247e0fd"
+  },
+  "apps/web/src/host/minigames/Bomber.ts": {
+    "mtime": 1794507669.2642517,
+    "seen": 1795170641.2711182,
+    "ast_hash": "98d46df452d9d532861d82f0ddd00c61",
+    "semantic_hash": "98d46df452d9d532861d82f0ddd00c61"
+  },
+  "apps/web/src/host/minigames/Canoe.ts": {
+    "mtime": 1794441136.6171625,
+    "seen": 1795170641.2711189,
+    "ast_hash": "bbdfa8fad6b88b28a5846bdc6b43cec5",
+    "semantic_hash": "bbdfa8fad6b88b28a5846bdc6b43cec5"
+  },
+  "apps/web/src/host/minigames/CoinShower.ts": {
+    "mtime": 1794529543.2920322,
+    "seen": 1795170641.2711196,
+    "ast_hash": "ced21b64766e4e14f3f7273fe3f4199f",
+    "semantic_hash": "ced21b64766e4e14f3f7273fe3f4199f"
+  },
+  "apps/web/src/host/minigames/ColorFloor.ts": {
+    "mtime": 1794508062.325523,
+    "seen": 1795170641.2711205,
+    "ast_hash": "3764995e7a041e9f4911da6e5054c196",
+    "semantic_hash": "3764995e7a041e9f4911da6e5054c196"
+  },
+  "apps/web/src/host/minigames/ConveyorBombs.ts": {
+    "mtime": 1794507669.2652311,
+    "seen": 1795170641.2711215,
+    "ast_hash": "02b8cb3dc61fac024ee7189127e0d5a7",
+    "semantic_hash": "02b8cb3dc61fac024ee7189127e0d5a7"
+  },
+  "apps/web/src/host/minigames/CountSheep.ts": {
+    "mtime": 1794507341.9832242,
+    "seen": 1795170641.2711222,
+    "ast_hash": "f4c3a672b4e59b74b575fda509774997",
+    "semantic_hash": "f4c3a672b4e59b74b575fda509774997"
+  },
+  "apps/web/src/host/minigames/DuelMinigame.ts": {
+    "mtime": 1794512270.9321759,
+    "seen": 1795170641.2711232,
+    "ast_hash": "fe09e93b7497bf38b34a786a39422e5c",
+    "semantic_hash": "fe09e93b7497bf38b34a786a39422e5c"
+  },
+  "apps/web/src/host/minigames/FallingTiles.ts": {
+    "mtime": 1794507585.8825352,
+    "seen": 1795170641.271124,
+    "ast_hash": "ac5de3a69f317a3ef596eb04aacb45b6",
+    "semantic_hash": "ac5de3a69f317a3ef596eb04aacb45b6"
+  },
+  "apps/web/src/host/minigames/Fishing.ts": {
+    "mtime": 1794507342.0306735,
+    "seen": 1795170641.2711244,
+    "ast_hash": "8a6a176736b8bb6e7d1d6b9a59a1ab5a",
+    "semantic_hash": "8a6a176736b8bb6e7d1d6b9a59a1ab5a"
+  },
+  "apps/web/src/host/minigames/Hammer.ts": {
+    "mtime": 1794600818.1790779,
+    "seen": 1795170641.2711256,
+    "ast_hash": "98799117eaaf98304a9a88ce0f068f15",
+    "semantic_hash": "98799117eaaf98304a9a88ce0f068f15"
+  },
+  "apps/web/src/host/minigames/HotPotato.ts": {
+    "mtime": 1794507767.2390566,
+    "seen": 1795170641.2711263,
+    "ast_hash": "f3187820947a0e56b1057ea052d8eba4",
+    "semantic_hash": "f3187820947a0e56b1057ea052d8eba4"
+  },
+  "apps/web/src/host/minigames/IceRace.ts": {
+    "mtime": 1794507585.9295769,
+    "seen": 1795170641.2711272,
+    "ast_hash": "73e1fb4364159d73037c15a6c22bc4e3",
+    "semantic_hash": "73e1fb4364159d73037c15a6c22bc4e3"
+  },
+  "apps/web/src/host/minigames/JumpRope.ts": {
+    "mtime": 1794512555.2014241,
+    "seen": 1795170641.2711277,
+    "ast_hash": "f37784403ce413c667f727a189c01cec",
+    "semantic_hash": "f37784403ce413c667f727a189c01cec"
+  },
+  "apps/web/src/host/minigames/LookAway.ts": {
+    "mtime": 1794624247.3623908,
+    "seen": 1795170641.2711287,
+    "ast_hash": "cfe2dfe2d9ef62909860ece2ce61736b",
+    "semantic_hash": "cfe2dfe2d9ef62909860ece2ce61736b"
+  },
+  "apps/web/src/host/minigames/Maestro.ts": {
+    "mtime": 1794507722.3706462,
+    "seen": 1795170641.2711296,
+    "ast_hash": "dd5b5829444c41f36cc628a0c06f6eec",
+    "semantic_hash": "dd5b5829444c41f36cc628a0c06f6eec"
+  },
+  "apps/web/src/host/minigames/Marksman.ts": {
+    "mtime": 1794600818.1795762,
+    "seen": 1795170641.2711303,
+    "ast_hash": "ec6a0fbaee08c52e8f9ae4b043d9ac9e",
+    "semantic_hash": "ec6a0fbaee08c52e8f9ae4b043d9ac9e"
+  },
+  "apps/web/src/host/minigames/MemoryCards.ts": {
+    "mtime": 1794507342.14361,
+    "seen": 1795170641.271131,
+    "ast_hash": "382cb03873b91281ebad297360d06a23",
+    "semantic_hash": "382cb03873b91281ebad297360d06a23"
+  },
+  "apps/web/src/host/minigames/Meteors.ts": {
+    "mtime": 1794572824.9296982,
+    "seen": 1795170641.271132,
+    "ast_hash": "9662a89815058e9d18681275eb1d9c97",
+    "semantic_hash": "9662a89815058e9d18681275eb1d9c97"
+  },
+  "apps/web/src/host/minigames/PhotoShoot.ts": {
+    "mtime": 1794507342.1885397,
+    "seen": 1795170641.2711327,
+    "ast_hash": "ee9d5d092824313b644147be2a873be0",
+    "semantic_hash": "ee9d5d092824313b644147be2a873be0"
+  },
+  "apps/web/src/host/minigames/Pinball.ts": {
+    "mtime": 1794507342.243801,
+    "seen": 1795170641.2711337,
+    "ast_hash": "d16f3a3f5bf66e557094f888f127cc86",
+    "semantic_hash": "d16f3a3f5bf66e557094f888f127cc86"
+  },
+  "apps/web/src/host/minigames/PizzaRush.ts": {
+    "mtime": 1794507342.2928593,
+    "seen": 1795170641.2711346,
+    "ast_hash": "df1f2f16232b1b28a5e3e72bd5c85d39",
+    "semantic_hash": "df1f2f16232b1b28a5e3e72bd5c85d39"
+  },
+  "apps/web/src/host/minigames/QuickDraw.ts": {
+    "mtime": 1794600809.8740687,
+    "seen": 1795170641.2711356,
+    "ast_hash": "72122fdc482daae6e5e5c4ba14ebf34b",
+    "semantic_hash": "72122fdc482daae6e5e5c4ba14ebf34b"
+  },
+  "apps/web/src/host/minigames/RightForce.ts": {
+    "mtime": 1794572825.863119,
+    "seen": 1795170641.2711363,
+    "ast_hash": "1443e8222e6354918318ac7bc5f7fe58",
+    "semantic_hash": "1443e8222e6354918318ac7bc5f7fe58"
+  },
+  "apps/web/src/host/minigames/RowMinigame.ts": {
+    "mtime": 1794507585.749202,
+    "seen": 1795170641.271137,
+    "ast_hash": "f7d3e8215c523513e20b5a0ca36e69af",
+    "semantic_hash": "f7d3e8215c523513e20b5a0ca36e69af"
+  },
+  "apps/web/src/host/minigames/ShellSoccer.ts": {
+    "mtime": 1794507585.9075944,
+    "seen": 1795170641.2711377,
+    "ast_hash": "32992dd481004d2c44cb4b2a45786567",
+    "semantic_hash": "32992dd481004d2c44cb4b2a45786567"
+  },
+  "apps/web/src/host/minigames/Snowballs.ts": {
+    "mtime": 1794600809.8751113,
+    "seen": 1795170641.2711387,
+    "ast_hash": "31be641cb2234e425b6adfa72b3012e9",
+    "semantic_hash": "31be641cb2234e425b6adfa72b3012e9"
+  },
+  "apps/web/src/host/minigames/Sumo.ts": {
+    "mtime": 1794507585.823251,
+    "seen": 1795170641.2711394,
+    "ast_hash": "f0ec7113e80cae3b9ef6bb1737aca1a2",
+    "semantic_hash": "f0ec7113e80cae3b9ef6bb1737aca1a2"
+  },
+  "apps/web/src/host/minigames/Tag.ts": {
+    "mtime": 1794507669.266232,
+    "seen": 1795170641.27114,
+    "ast_hash": "86e29bb44e623fd2da6abc409361132e",
+    "semantic_hash": "86e29bb44e623fd2da6abc409361132e"
+  },
+  "apps/web/src/host/minigames/TugOfWar.ts": {
+    "mtime": 1794512640.5048883,
+    "seen": 1795170641.2711408,
+    "ast_hash": "4becc69862b3ce082d29612979f4103f",
+    "semantic_hash": "4becc69862b3ce082d29612979f4103f"
+  },
+  "apps/web/src/host/minigames/WallHole.ts": {
+    "mtime": 1794507585.8688285,
+    "seen": 1795170641.271142,
+    "ast_hash": "41210625062e1e4e337fc6eb950030a1",
+    "semantic_hash": "41210625062e1e4e337fc6eb950030a1"
+  },
+  "apps/web/src/host/minigames/index.ts": {
+    "mtime": 1794512626.1312053,
+    "seen": 1795170641.2711427,
+    "ast_hash": "1724af8425472c0d1639c1533379b965",
+    "semantic_hash": "1724af8425472c0d1639c1533379b965"
+  },
+  "apps/web/src/host/minigames/rank.ts": {
+    "mtime": 1794507280.4450421,
+    "seen": 1795170641.2711434,
+    "ast_hash": "174709e09b9284a849aa960b39a78905",
+    "semantic_hash": "174709e09b9284a849aa960b39a78905"
+  },
+  "apps/web/src/host/minigames/scenery.ts": {
+    "mtime": 1794600809.8735542,
+    "seen": 1795170641.2711444,
+    "ast_hash": "b2db84d897b4882133b8e3eb34130006",
+    "semantic_hash": "b2db84d897b4882133b8e3eb34130006"
+  },
+  "apps/web/src/host/minigames/types.ts": {
+    "mtime": 1794508094.3158226,
+    "seen": 1795170641.271145,
+    "ast_hash": "0b5c870df3a868ecb2b0a6f2af48a191",
+    "semantic_hash": "0b5c870df3a868ecb2b0a6f2af48a191"
+  },
+  "apps/web/src/host/services.ts": {
+    "mtime": 1794345969.5990248,
+    "seen": 1795170641.271146,
+    "ast_hash": "953f9003b628a44b9920a5edeb744d04",
+    "semantic_hash": "953f9003b628a44b9920a5edeb744d04"
+  },
+  "apps/web/src/host/sports/SportStage.ts": {
+    "mtime": 1794493971.1688685,
+    "seen": 1795170641.271147,
+    "ast_hash": "b7b221782e85687b027e283687c8f5ab",
+    "semantic_hash": "b7b221782e85687b027e283687c8f5ab"
+  },
+  "apps/web/src/host/sports/baseball/BaseballStage.ts": {
+    "mtime": 1794865981.492938,
+    "seen": 1795170641.2711477,
+    "ast_hash": "724102b4f4159cd649391f1a6f940407",
+    "semantic_hash": "724102b4f4159cd649391f1a6f940407"
+  },
+  "apps/web/src/host/sports/baseball/sport.ts": {
+    "mtime": 1794413604.0272262,
+    "seen": 1795170641.2711484,
+    "ast_hash": "b4e7aa96baee2382d11b29729fd64b51",
+    "semantic_hash": "b4e7aa96baee2382d11b29729fd64b51"
+  },
+  "apps/web/src/host/sports/bowling/BowlingStage.ts": {
+    "mtime": 1794865981.4944868,
+    "seen": 1795170641.2711494,
+    "ast_hash": "c067deea6f66d1f58dfaa4379367eed4",
+    "semantic_hash": "c067deea6f66d1f58dfaa4379367eed4"
+  },
+  "apps/web/src/host/sports/bowling/lanePhysics.ts": {
+    "mtime": 1794423127.7575772,
+    "seen": 1795170641.27115,
+    "ast_hash": "f236b7c60f0b24ea38302a78ab951a0a",
+    "semantic_hash": "f236b7c60f0b24ea38302a78ab951a0a"
+  },
+  "apps/web/src/host/sports/bowling/sport.ts": {
+    "mtime": 1794413604.0262012,
+    "seen": 1795170641.2711518,
+    "ast_hash": "8755dfa175de139d2cf3dc9f0520bb73",
+    "semantic_hash": "8755dfa175de139d2cf3dc9f0520bb73"
+  },
+  "apps/web/src/host/sports/boxing/BoxingStage.ts": {
+    "mtime": 1794865981.559834,
+    "seen": 1795170641.2711527,
+    "ast_hash": "142317817e313fb6e0ee04d3ca5b971b",
+    "semantic_hash": "142317817e313fb6e0ee04d3ca5b971b"
+  },
+  "apps/web/src/host/sports/boxing/sport.ts": {
+    "mtime": 1794423506.9842014,
+    "seen": 1795170641.2711537,
+    "ast_hash": "696ed00bf8b8fb88be279f026e6ad2fa",
+    "semantic_hash": "696ed00bf8b8fb88be279f026e6ad2fa"
+  },
+  "apps/web/src/host/sports/golf/GolfStage.ts": {
+    "mtime": 1794600809.8776495,
+    "seen": 1795170641.2711544,
+    "ast_hash": "92aaf8a1e28bfb5312deaf674e18207f",
+    "semantic_hash": "92aaf8a1e28bfb5312deaf674e18207f"
+  },
+  "apps/web/src/host/sports/golf/miniMap.ts": {
+    "mtime": 1794423586.9484985,
+    "seen": 1795170641.271155,
+    "ast_hash": "4c7e335cf2442d374d338e425bcf24ca",
+    "semantic_hash": "4c7e335cf2442d374d338e425bcf24ca"
+  },
+  "apps/web/src/host/sports/golf/sport.ts": {
+    "mtime": 1794413604.0256891,
+    "seen": 1795170641.2711563,
+    "ast_hash": "018f83da3ae537a8f79dceed0c323e53",
+    "semantic_hash": "018f83da3ae537a8f79dceed0c323e53"
+  },
+  "apps/web/src/host/sports/index.ts": {
+    "mtime": 1794351021.1039364,
+    "seen": 1795170641.271157,
+    "ast_hash": "a8075942e9eed61fb52d64826d64eee6",
+    "semantic_hash": "a8075942e9eed61fb52d64826d64eee6"
+  },
+  "apps/web/src/host/sports/tennis/TennisStage.ts": {
+    "mtime": 1794865981.5200222,
+    "seen": 1795170641.2711577,
+    "ast_hash": "6a6932c39886eabf0b0929789e074cfa",
+    "semantic_hash": "6a6932c39886eabf0b0929789e074cfa"
+  },
+  "apps/web/src/host/sports/tennis/sport.ts": {
+    "mtime": 1794432759.800457,
+    "seen": 1795170641.2711585,
+    "ast_hash": "91d0d2925698f7298382f316c47dc490",
+    "semantic_hash": "91d0d2925698f7298382f316c47dc490"
+  },
+  "apps/web/src/host/sports/types.ts": {
+    "mtime": 1794413409.749214,
+    "seen": 1795170641.2711594,
+    "ast_hash": "3b287ea1fd45af484a33c019e1aff67f",
+    "semantic_hash": "3b287ea1fd45af484a33c019e1aff67f"
+  },
+  "apps/web/src/host/stages/BoardStage.ts": {
+    "mtime": 1795030460.17618,
+    "seen": 1795170641.2711601,
+    "ast_hash": "a46136b826358d63f6d281499c3ab2f7",
+    "semantic_hash": "a46136b826358d63f6d281499c3ab2f7"
+  },
+  "apps/web/src/host/stages/ResultsStage.ts": {
+    "mtime": 1794507456.2610474,
+    "seen": 1795170641.2711608,
+    "ast_hash": "fab26d5f129e9ab44da189e97cd79052",
+    "semantic_hash": "fab26d5f129e9ab44da189e97cd79052"
+  },
+  "apps/web/src/host/stages/ShowcaseStage.ts": {
+    "mtime": 1795028169.7703989,
+    "seen": 1795170641.2711616,
+    "ast_hash": "6cc75dd0ff7a22993abe884cbf8d6763",
+    "semantic_hash": "6cc75dd0ff7a22993abe884cbf8d6763"
+  },
+  "apps/web/src/host/stages/boardExtras.ts": {
+    "mtime": 1795031396.9261127,
+    "seen": 1795170641.2711625,
+    "ast_hash": "662d7131520aed88429692b43d6c8b35",
+    "semantic_hash": "662d7131520aed88429692b43d6c8b35"
+  },
+  "apps/web/src/host/stages/boardObjects.ts": {
+    "mtime": 1794417680.7480035,
+    "seen": 1795170641.2711635,
+    "ast_hash": "7b5ead6728c9c6e138d65f5fa779c042",
+    "semantic_hash": "7b5ead6728c9c6e138d65f5fa779c042"
+  },
+  "apps/web/src/host/stages/boardThemes.ts": {
+    "mtime": 1795032095.0588448,
+    "seen": 1795170641.2711644,
+    "ast_hash": "b58b15f25b50bfc1547581df9492c177",
+    "semantic_hash": "b58b15f25b50bfc1547581df9492c177"
+  },
+  "apps/web/src/host/stages/crtScreen.ts": {
+    "mtime": 1795029720.7152972,
+    "seen": 1795170641.2711651,
+    "ast_hash": "4636319d89e33e5a1b947362396b4447",
+    "semantic_hash": "4636319d89e33e5a1b947362396b4447"
+  },
+  "apps/web/src/host/stages/environment.ts": {
+    "mtime": 1794529813.7845395,
+    "seen": 1795170641.2711658,
+    "ast_hash": "2bf8ee8dc52beefad088e01d02058974",
+    "semantic_hash": "2bf8ee8dc52beefad088e01d02058974"
+  },
+  "apps/web/src/host/stages/livingRoom.ts": {
+    "mtime": 1795028703.069728,
+    "seen": 1795170641.2711668,
+    "ast_hash": "2a41573ada412e2f05b629b8d5239733",
+    "semantic_hash": "2a41573ada412e2f05b629b8d5239733"
+  },
+  "apps/web/src/host/stages/realism.ts": {
+    "mtime": 1794441573.2393942,
+    "seen": 1795170641.2711675,
+    "ast_hash": "9cf887ae13431558e26d9a992f8dbb7c",
+    "semantic_hash": "9cf887ae13431558e26d9a992f8dbb7c"
+  },
+  "apps/web/src/host/stages/rideVehicles.ts": {
+    "mtime": 1795030460.1751556,
+    "seen": 1795170641.2711682,
+    "ast_hash": "63e6d97235eff812fa3b7a0b48be32c8",
+    "semantic_hash": "63e6d97235eff812fa3b7a0b48be32c8"
+  },
+  "apps/web/src/host/stages/stainedGlass.ts": {
+    "mtime": 1795032095.059356,
+    "seen": 1795170641.271169,
+    "ast_hash": "c1b5681d50d2ec487107cbc20d77687b",
+    "semantic_hash": "c1b5681d50d2ec487107cbc20d77687b"
+  },
+  "apps/web/src/host/three/CharacterModel.ts": {
+    "mtime": 1794955770.6002634,
+    "seen": 1795170641.2711701,
+    "ast_hash": "9392b1e966eb4f8eddc53439d320a6ad",
+    "semantic_hash": "9392b1e966eb4f8eddc53439d320a6ad"
+  },
+  "apps/web/src/host/three/Dice.ts": {
+    "mtime": 1795029644.5481932,
+    "seen": 1795170641.2711709,
+    "ast_hash": "1af43a3477511d4071804dbb6b40e0a5",
+    "semantic_hash": "1af43a3477511d4071804dbb6b40e0a5"
+  },
+  "apps/web/src/host/three/Engine.ts": {
+    "mtime": 1794575769.8496804,
+    "seen": 1795170641.2711718,
+    "ast_hash": "499a5a536df823166277bac73c02800a",
+    "semantic_hash": "499a5a536df823166277bac73c02800a"
+  },
+  "apps/web/src/host/three/accessories.ts": {
+    "mtime": 1794363400.6778793,
+    "seen": 1795170641.2711725,
+    "ast_hash": "ba96559f53955659aaaff6cc45ee3b04",
+    "semantic_hash": "ba96559f53955659aaaff6cc45ee3b04"
+  },
+  "apps/web/src/host/three/characterAssets.ts": {
+    "mtime": 1794600619.1347995,
+    "seen": 1795170641.2711735,
+    "ast_hash": "f2c5f8b06a92e21168db5e847e475a22",
+    "semantic_hash": "f2c5f8b06a92e21168db5e847e475a22"
+  },
+  "apps/web/src/host/three/coinArt.ts": {
+    "mtime": 1794448230.344082,
+    "seen": 1795170641.2711744,
+    "ast_hash": "6da74dbae3487d0cf461368739ffc85a",
+    "semantic_hash": "6da74dbae3487d0cf461368739ffc85a"
+  },
+  "apps/web/src/host/three/explosion.ts": {
+    "mtime": 1794507649.366621,
+    "seen": 1795170641.2711751,
+    "ast_hash": "733ce0df8f6d20a7b6ca5db7bd0deef2",
+    "semantic_hash": "733ce0df8f6d20a7b6ca5db7bd0deef2"
+  },
+  "apps/web/src/host/three/groundDetail.ts": {
+    "mtime": 1794439995.3724482,
+    "seen": 1795170641.2711759,
+    "ast_hash": "cdd3fcf743f6bb63d6b3b579c4b0890c",
+    "semantic_hash": "cdd3fcf743f6bb63d6b3b579c4b0890c"
+  },
+  "apps/web/src/host/three/materials.ts": {
+    "mtime": 1794448678.8398015,
+    "seen": 1795170641.2711768,
+    "ast_hash": "c8bc904bea36d1a6890d2cd08fc7139b",
+    "semantic_hash": "c8bc904bea36d1a6890d2cd08fc7139b"
+  },
+  "apps/web/src/host/three/physics.ts": {
+    "mtime": 1794359308.92155,
+    "seen": 1795170641.2711778,
+    "ast_hash": "7f5a1265180c71771fd60fbbdeb6e9e2",
+    "semantic_hash": "7f5a1265180c71771fd60fbbdeb6e9e2"
+  },
+  "apps/web/src/host/three/portraits.ts": {
+    "mtime": 1794531968.583666,
+    "seen": 1795170641.2711782,
+    "ast_hash": "3926d2098a443451e49e1ccb73aafcda",
+    "semantic_hash": "3926d2098a443451e49e1ccb73aafcda"
+  },
+  "apps/web/src/host/three/props.ts": {
+    "mtime": 1795031402.9128609,
+    "seen": 1795170641.271179,
+    "ast_hash": "ad911389bb795019e4a0e69a321e2499",
+    "semantic_hash": "ad911389bb795019e4a0e69a321e2499"
+  },
+  "apps/web/src/host/three/tweens.ts": {
+    "mtime": 1794347221.9474585,
+    "seen": 1795170641.27118,
+    "ast_hash": "faa8959d02ccdd917c730434c7e53f57",
+    "semantic_hash": "faa8959d02ccdd917c730434c7e53f57"
+  },
+  "apps/web/src/host/ui/GameMenu.ts": {
+    "mtime": 1795029735.6010437,
+    "seen": 1795170641.2711809,
+    "ast_hash": "56525f4a7ecf982cf279250cd487a116",
+    "semantic_hash": "56525f4a7ecf982cf279250cd487a116"
+  },
+  "apps/web/src/host/ui/Hud.ts": {
+    "mtime": 1794512144.115659,
+    "seen": 1795170641.2711818,
+    "ast_hash": "d70501ea06058501b3260d531adc2d08",
+    "semantic_hash": "d70501ea06058501b3260d531adc2d08"
+  },
+  "apps/web/src/host/ui/ScreenMenu.ts": {
+    "mtime": 1794575113.3061192,
+    "seen": 1795170641.2711825,
+    "ast_hash": "28cbd4cc8615e016ccd84ebbeee5848c",
+    "semantic_hash": "28cbd4cc8615e016ccd84ebbeee5848c"
+  },
+  "apps/web/src/host/ui/credits.ts": {
+    "mtime": 1795029703.4757974,
+    "seen": 1795170641.2711833,
+    "ast_hash": "189e6c06c03d96fc1338b85e3afbbfac",
+    "semantic_hash": "189e6c06c03d96fc1338b85e3afbbfac"
+  },
+  "apps/web/src/host/ui/loading.ts": {
+    "mtime": 1794865981.4908917,
+    "seen": 1795170641.2711844,
+    "ast_hash": "7f418ced916371267b71778f0690e9f6",
+    "semantic_hash": "7f418ced916371267b71778f0690e9f6"
+  },
+  "apps/web/src/viewer/main.ts": {
+    "mtime": 1794865981.491914,
+    "seen": 1795170641.2711852,
+    "ast_hash": "2c309ae86a8c6edbd95ff7ddc80cf15b",
+    "semantic_hash": "2c309ae86a8c6edbd95ff7ddc80cf15b"
+  },
+  "apps/web/tools/bump-bowling.ts": {
+    "mtime": 1794423080.9128506,
+    "seen": 1795170641.2711859,
+    "ast_hash": "a0f99981e93c9eb398b067e4bddfeba4",
+    "semantic_hash": "a0f99981e93c9eb398b067e4bddfeba4"
+  },
+  "apps/web/tools/tune-bowling.ts": {
+    "mtime": 1794369806.309125,
+    "seen": 1795170641.2711866,
+    "ast_hash": "06f59a78652e9b4148cf144484b2b3d8",
+    "semantic_hash": "06f59a78652e9b4148cf144484b2b3d8"
+  },
+  "apps/web/tsconfig.json": {
+    "mtime": 1794345703.7240794,
+    "seen": 1795170641.2711878,
+    "ast_hash": "d9a013847adbf67cd4e27d9d67cde006",
+    "semantic_hash": "d9a013847adbf67cd4e27d9d67cde006"
+  },
+  "apps/web/vite.config.ts": {
+    "mtime": 1794418271.2093134,
+    "seen": 1795170641.2711885,
+    "ast_hash": "dfaaf3cdd69f10bae8f85215c54f7d7a",
+    "semantic_hash": "dfaaf3cdd69f10bae8f85215c54f7d7a"
+  },
+  "package.json": {
+    "mtime": 1794424416.3240862,
+    "seen": 1795170641.2711892,
+    "ast_hash": "1cf320260bf09eeee647f714a52a69fa",
+    "semantic_hash": "1cf320260bf09eeee647f714a52a69fa"
+  },
+  "packages/game/package.json": {
+    "mtime": 1794351788.5395818,
+    "seen": 1795170641.2711902,
+    "ast_hash": "c95795fa4e2458629461d7d90ec01098",
+    "semantic_hash": "c95795fa4e2458629461d7d90ec01098"
+  },
+  "packages/game/src/board.ts": {
+    "mtime": 1794417140.9686227,
+    "seen": 1795170641.2711914,
+    "ast_hash": "081cb59398530d65c3f852a08a23529a",
+    "semantic_hash": "081cb59398530d65c3f852a08a23529a"
+  },
+  "packages/game/src/characters.ts": {
+    "mtime": 1794865981.620298,
+    "seen": 1795170641.2711923,
+    "ast_hash": "f39cf3670237ae70b41856a2fc8a5066",
+    "semantic_hash": "f39cf3670237ae70b41856a2fc8a5066"
+  },
+  "packages/game/src/index.ts": {
+    "mtime": 1794364894.8437493,
+    "seen": 1795170641.271193,
+    "ast_hash": "24175c05cbe800230e861e4b296052a9",
+    "semantic_hash": "24175c05cbe800230e861e4b296052a9"
+  },
+  "packages/game/src/items.ts": {
+    "mtime": 1794364835.8318245,
+    "seen": 1795170641.2711937,
+    "ast_hash": "c95279361ad5405a49506ddfefdbc081",
+    "semantic_hash": "c95279361ad5405a49506ddfefdbc081"
+  },
+  "packages/game/src/party.ts": {
+    "mtime": 1794448847.1245713,
+    "seen": 1795170641.2711947,
+    "ast_hash": "3c606265132d865f131f0a115874695c",
+    "semantic_hash": "3c606265132d865f131f0a115874695c"
+  },
+  "packages/game/src/rng.ts": {
+    "mtime": 1794347006.7510808,
+    "seen": 1795170641.2711957,
+    "ast_hash": "3863407740d12f6e6c3dd4d2926bd8e4",
+    "semantic_hash": "3863407740d12f6e6c3dd4d2926bd8e4"
+  },
+  "packages/game/src/sports/baseball.ts": {
+    "mtime": 1794493861.4201176,
+    "seen": 1795170641.2711964,
+    "ast_hash": "d35fb701e2041f97c693dad4b8ab8353",
+    "semantic_hash": "d35fb701e2041f97c693dad4b8ab8353"
+  },
+  "packages/game/src/sports/bowling.ts": {
+    "mtime": 1794356108.4860883,
+    "seen": 1795170641.271197,
+    "ast_hash": "c6e8aa51148501095ac1d2a643696b40",
+    "semantic_hash": "c6e8aa51148501095ac1d2a643696b40"
+  },
+  "packages/game/src/sports/boxing.ts": {
+    "mtime": 1794370438.064076,
+    "seen": 1795170641.2711983,
+    "ast_hash": "35388a968c9425987760c30c4550e40d",
+    "semantic_hash": "35388a968c9425987760c30c4550e40d"
+  },
+  "packages/game/src/sports/golf.ts": {
+    "mtime": 1794494033.9492865,
+    "seen": 1795170641.271199,
+    "ast_hash": "b7311ca2cd008254a1e8a9e426c0a8d8",
+    "semantic_hash": "b7311ca2cd008254a1e8a9e426c0a8d8"
+  },
+  "packages/game/src/sports/tennis.ts": {
+    "mtime": 1794410504.8951375,
+    "seen": 1795170641.2711997,
+    "ast_hash": "a4962f81082e2139ce349894636efe39",
+    "semantic_hash": "a4962f81082e2139ce349894636efe39"
+  },
+  "packages/game/test/baseball.test.ts": {
+    "mtime": 1794371309.1554613,
+    "seen": 1795170641.2712004,
+    "ast_hash": "85eb081e2f6fac97cbc7adeef553bd82",
+    "semantic_hash": "85eb081e2f6fac97cbc7adeef553bd82"
+  },
+  "packages/game/test/boards.test.ts": {
+    "mtime": 1794417130.0796313,
+    "seen": 1795170641.2712014,
+    "ast_hash": "5ff0aa62f981ace8c055c0142e185423",
+    "semantic_hash": "5ff0aa62f981ace8c055c0142e185423"
+  },
+  "packages/game/test/bowling.test.ts": {
+    "mtime": 1794356108.487617,
+    "seen": 1795170641.2712023,
+    "ast_hash": "14e0979b1c0634eb87de23b0b25b461b",
+    "semantic_hash": "14e0979b1c0634eb87de23b0b25b461b"
+  },
+  "packages/game/test/boxing.test.ts": {
+    "mtime": 1794370449.0336564,
+    "seen": 1795170641.271203,
+    "ast_hash": "3aa93e8caf3d87bb4020b9d6b0b76a31",
+    "semantic_hash": "3aa93e8caf3d87bb4020b9d6b0b76a31"
+  },
+  "packages/game/test/golf.test.ts": {
+    "mtime": 1794409727.2666423,
+    "seen": 1795170641.271204,
+    "ast_hash": "68db2993eb03f0a62d71e4bb0e5558a4",
+    "semantic_hash": "68db2993eb03f0a62d71e4bb0e5558a4"
+  },
+  "packages/game/test/party.test.ts": {
+    "mtime": 1794448863.4653592,
+    "seen": 1795170641.271205,
+    "ast_hash": "26345a4a2616c590c6048fdbc40949d2",
+    "semantic_hash": "26345a4a2616c590c6048fdbc40949d2"
+  },
+  "packages/game/test/tennis.test.ts": {
+    "mtime": 1794410505.1245224,
+    "seen": 1795170641.2712057,
+    "ast_hash": "95605202bfb5d849c3ad085f13228559",
+    "semantic_hash": "95605202bfb5d849c3ad085f13228559"
+  },
+  "packages/game/tsconfig.json": {
+    "mtime": 1794346922.0178893,
+    "seen": 1795170641.2712066,
+    "ast_hash": "3e84e78b6fe0864359c66cba66d8dda4",
+    "semantic_hash": "3e84e78b6fe0864359c66cba66d8dda4"
+  },
+  "packages/shared/package.json": {
+    "mtime": 1794345723.8577445,
+    "seen": 1795170641.2712073,
+    "ast_hash": "0eb5c6d112c0d3e0d7e4570497e86f69",
+    "semantic_hash": "0eb5c6d112c0d3e0d7e4570497e86f69"
+  },
+  "packages/shared/src/constants.ts": {
+    "mtime": 1794347114.0570867,
+    "seen": 1795170641.2712083,
+    "ast_hash": "f5fe91126af76d12e17756704e486509",
+    "semantic_hash": "f5fe91126af76d12e17756704e486509"
+  },
+  "packages/shared/src/index.ts": {
+    "mtime": 1794345784.5136309,
+    "seen": 1795170641.271209,
+    "ast_hash": "a29066787e21cd0baadc78d927422b5e",
+    "semantic_hash": "a29066787e21cd0baadc78d927422b5e"
+  },
+  "packages/shared/src/protocol.ts": {
+    "mtime": 1795029327.9671607,
+    "seen": 1795170641.2712097,
+    "ast_hash": "dffdcc75eb3b731a8a7806d9d00a0668",
+    "semantic_hash": "dffdcc75eb3b731a8a7806d9d00a0668"
+  },
+  "packages/shared/src/schemas.ts": {
+    "mtime": 1794956339.662389,
+    "seen": 1795170641.2712104,
+    "ast_hash": "3a81b87dabcfcd89ba68498476b48932",
+    "semantic_hash": "3a81b87dabcfcd89ba68498476b48932"
+  },
+  "packages/shared/tsconfig.json": {
+    "mtime": 1794345703.5682514,
+    "seen": 1795170641.2712116,
+    "ast_hash": "1b342801babcd08458867954995b636f",
+    "semantic_hash": "1b342801babcd08458867954995b636f"
+  },
+  "tools/board-svg.ts": {
+    "mtime": 1794416866.9127731,
+    "seen": 1795170641.2712123,
+    "ast_hash": "2d4fa88f0b3faf51a8e53974340518ef",
+    "semantic_hash": "2d4fa88f0b3faf51a8e53974340518ef"
+  },
+  "tools/online.ts": {
+    "mtime": 1794865981.6208098,
+    "seen": 1795170641.271213,
+    "ast_hash": "d2f65e960c782c5a1df2484b06faec78",
+    "semantic_hash": "d2f65e960c782c5a1df2484b06faec78"
+  },
+  "tsconfig.base.json": {
+    "mtime": 1794345703.4034414,
+    "seen": 1795170641.2712138,
+    "ast_hash": "55a0b285e589b2ac41d90134ec166f8c",
+    "semantic_hash": "55a0b285e589b2ac41d90134ec166f8c"
+  },
+  "README.md": {
+    "mtime": 1794865981.453353,
+    "seen": 1795170641.271215,
+    "ast_hash": "65302c448f3e1f0dd06432e1cce6f314",
+    "semantic_hash": "65302c448f3e1f0dd06432e1cce6f314"
+  },
+  "apps/desktop/resources/bin/CLOUDFLARED-LICENCA.txt": {
+    "mtime": 1794865981.4548721,
+    "seen": 1795170641.2712157,
+    "ast_hash": "a89b86b222b378c930cb8aba2e6981c3",
+    "semantic_hash": "a89b86b222b378c930cb8aba2e6981c3"
+  },
+  "apps/web/index.html": {
+    "mtime": 1794865981.4672978,
+    "seen": 1795170641.2712164,
+    "ast_hash": "69f953061fc047b8734c5e1c2ca5c273",
+    "semantic_hash": "69f953061fc047b8734c5e1c2ca5c273"
+  },
+  "apps/web/play.html": {
+    "mtime": 1794865981.4771445,
+    "seen": 1795170641.2712173,
+    "ast_hash": "61277f1544d9ba1767316cc80d7b6183",
+    "semantic_hash": "61277f1544d9ba1767316cc80d7b6183"
+  },
+  "apps/web/ver.html": {
+    "mtime": 1794865981.4864006,
+    "seen": 1795170641.271218,
+    "ast_hash": "954f2c33131f08056c96c3aff23ec9c9",
+    "semantic_hash": "954f2c33131f08056c96c3aff23ec9c9"
+  },
+  "docs/ARQUITETURA.md": {
+    "mtime": 1794353378.044462,
+    "seen": 1795170641.271219,
+    "ast_hash": "9d6c1d2fedb8abfc272c39389cbc0d4d",
+    "semantic_hash": "9d6c1d2fedb8abfc272c39389cbc0d4d"
+  },
+  "docs/ASSETS.md": {
+    "mtime": 1794857124.6494658,
+    "seen": 1795170641.2712197,
+    "ast_hash": "ad362b3dcd95456c29f59c4a1ee8fab2",
+    "semantic_hash": "ad362b3dcd95456c29f59c4a1ee8fab2"
+  },
+  "docs/CATALOGO.md": {
+    "mtime": 1794437364.5149605,
+    "seen": 1795170641.2712204,
+    "ast_hash": "a176cebbb8140ca3956af06029ca3d3b",
+    "semantic_hash": "a176cebbb8140ca3956af06029ca3d3b"
+  },
+  "docs/COMO-JOGAR.md": {
+    "mtime": 1794862600.1542325,
+    "seen": 1795170641.2712214,
+    "ast_hash": "75388a6b85a8909d41449cf8116e3a31",
+    "semantic_hash": "75388a6b85a8909d41449cf8116e3a31"
+  },
+  "docs/CREDITOS.md": {
+    "mtime": 1794855266.6259775,
+    "seen": 1795170641.2712224,
+    "ast_hash": "72ab10f62ec616cd288b16143376ca99",
+    "semantic_hash": "72ab10f62ec616cd288b16143376ca99"
+  },
+  "docs/IDEIAS.md": {
+    "mtime": 1795028704.4199126,
+    "seen": 1795170641.2712247,
+    "ast_hash": "68df61fd093b023dae01deb057a733cd",
+    "semantic_hash": "68df61fd093b023dae01deb057a733cd"
+  },
+  "docs/MINIJOGOS-LISTA.md": {
+    "mtime": 1794865981.6197867,
+    "seen": 1795170641.2712305,
+    "ast_hash": "2b4e53965356a47015111940da6157ac",
+    "semantic_hash": "2b4e53965356a47015111940da6157ac"
+  },
+  "docs/ONLINE.md": {
+    "mtime": 1794418556.8402503,
+    "seen": 1795170641.2712314,
+    "ast_hash": "a2dbf434a8eeda738189e8e148faf810",
+    "semantic_hash": "a2dbf434a8eeda738189e8e148faf810"
+  },
+  "docs/PLANO.md": {
+    "mtime": 1794424416.3326292,
+    "seen": 1795170641.2712324,
+    "ast_hash": "2cfe8838863e038e2ccc3d3280011750",
+    "semantic_hash": "2cfe8838863e038e2ccc3d3280011750"
+  },
+  "docs/ideias-fotos/LEIA-ME.txt": {
+    "mtime": 1794504410.267616,
+    "seen": 1795170641.271233,
+    "ast_hash": "975af404a118159e5f2c15ab69c87ccb",
+    "semantic_hash": "975af404a118159e5f2c15ab69c87ccb"
+  },
+  "apps/web/public/jingles/jingles_PIZZI00.ogg": {
+    "mtime": 1794494961.4274197,
+    "seen": 1795170641.2712338,
+    "ast_hash": "adb6b8fa1b15778072467c597dff25e6",
+    "semantic_hash": "adb6b8fa1b15778072467c597dff25e6"
+  },
+  "apps/web/public/jingles/jingles_PIZZI01.ogg": {
+    "mtime": 1794494961.43356,
+    "seen": 1795170641.2712348,
+    "ast_hash": "a19bf05407063a207508c350bf2dd60d",
+    "semantic_hash": "a19bf05407063a207508c350bf2dd60d"
+  },
+  "apps/web/public/jingles/jingles_PIZZI02.ogg": {
+    "mtime": 1794494961.4391785,
+    "seen": 1795170641.2712355,
+    "ast_hash": "2a21ef914965194a4737da6d58e226bd",
+    "semantic_hash": "2a21ef914965194a4737da6d58e226bd"
+  },
+  "apps/web/public/jingles/jingles_PIZZI03.ogg": {
+    "mtime": 1794494961.4448097,
+    "seen": 1795170641.2712364,
+    "ast_hash": "a89ccab24f234568bec932403c2bfd9f",
+    "semantic_hash": "a89ccab24f234568bec932403c2bfd9f"
+  },
+  "apps/web/public/jingles/jingles_PIZZI04.ogg": {
+    "mtime": 1794494961.454542,
+    "seen": 1795170641.2712371,
+    "ast_hash": "a8c863a2c2486b7dc6c61bf004c4bd64",
+    "semantic_hash": "a8c863a2c2486b7dc6c61bf004c4bd64"
+  },
+  "apps/web/public/jingles/jingles_PIZZI05.ogg": {
+    "mtime": 1794494961.4601731,
+    "seen": 1795170641.2712379,
+    "ast_hash": "5c71f757ea78c33ec1ba07b3a458f8a7",
+    "semantic_hash": "5c71f757ea78c33ec1ba07b3a458f8a7"
+  },
+  "apps/web/public/jingles/jingles_PIZZI06.ogg": {
+    "mtime": 1794494961.4688857,
+    "seen": 1795170641.2712386,
+    "ast_hash": "0bfc605c758cb5c4190e269ac5f99f32",
+    "semantic_hash": "0bfc605c758cb5c4190e269ac5f99f32"
+  },
+  "apps/web/public/jingles/jingles_PIZZI07.ogg": {
+    "mtime": 1794494961.4755294,
+    "seen": 1795170641.2712395,
+    "ast_hash": "c1295c7f230d9cd5108e25455405daa8",
+    "semantic_hash": "c1295c7f230d9cd5108e25455405daa8"
+  },
+  "apps/web/public/jingles/jingles_PIZZI08.ogg": {
+    "mtime": 1794494961.4821897,
+    "seen": 1795170641.2712402,
+    "ast_hash": "af9bea17ded18b401362ac243c0c7827",
+    "semantic_hash": "af9bea17ded18b401362ac243c0c7827"
+  },
+  "apps/web/public/jingles/jingles_PIZZI09.ogg": {
+    "mtime": 1794494961.487849,
+    "seen": 1795170641.2712412,
+    "ast_hash": "30d1c0c27916f1aa0fc9840f09758e5a",
+    "semantic_hash": "30d1c0c27916f1aa0fc9840f09758e5a"
+  },
+  "apps/web/public/jingles/jingles_PIZZI10.ogg": {
+    "mtime": 1794494961.4945018,
+    "seen": 1795170641.2712417,
+    "ast_hash": "a1821b8ca2a2d458e2d1ad74b7db8fdd",
+    "semantic_hash": "a1821b8ca2a2d458e2d1ad74b7db8fdd"
+  },
+  "apps/web/public/jingles/jingles_PIZZI11.ogg": {
+    "mtime": 1794494961.5001483,
+    "seen": 1795170641.2712424,
+    "ast_hash": "6b704c86c4a4bad3500cab63ec3e8c2b",
+    "semantic_hash": "6b704c86c4a4bad3500cab63ec3e8c2b"
+  },
+  "apps/web/public/jingles/jingles_PIZZI12.ogg": {
+    "mtime": 1794494961.5057914,
+    "seen": 1795170641.2712436,
+    "ast_hash": "25dc964fae9c91815a412b8ac613304f",
+    "semantic_hash": "25dc964fae9c91815a412b8ac613304f"
+  },
+  "apps/web/public/jingles/jingles_PIZZI13.ogg": {
+    "mtime": 1794494961.511442,
+    "seen": 1795170641.2712443,
+    "ast_hash": "9996a3c17922da276be3bcabcc23555c",
+    "semantic_hash": "9996a3c17922da276be3bcabcc23555c"
+  },
+  "apps/web/public/jingles/jingles_PIZZI14.ogg": {
+    "mtime": 1794494961.5165617,
+    "seen": 1795170641.271245,
+    "ast_hash": "2da70cbd014793290eff5128c1f47d26",
+    "semantic_hash": "2da70cbd014793290eff5128c1f47d26"
+  },
+  "apps/web/public/jingles/jingles_PIZZI15.ogg": {
+    "mtime": 1794494961.5221777,
+    "seen": 1795170641.2712457,
+    "ast_hash": "3f55b19605e43cbfcb316162eed07e2c",
+    "semantic_hash": "3f55b19605e43cbfcb316162eed07e2c"
+  },
+  "apps/web/public/jingles/jingles_PIZZI16.ogg": {
+    "mtime": 1794494961.5278072,
+    "seen": 1795170641.2712467,
+    "ast_hash": "7a8371dec16b2f38bffd381175a3d33f",
+    "semantic_hash": "7a8371dec16b2f38bffd381175a3d33f"
+  },
+  "apps/web/public/jingles/jingles_SAX00.ogg": {
+    "mtime": 1794494961.2276416,
+    "seen": 1795170641.2712474,
+    "ast_hash": "1aa0bc152025211fbf4e2872f4adc2fc",
+    "semantic_hash": "1aa0bc152025211fbf4e2872f4adc2fc"
+  },
+  "apps/web/public/jingles/jingles_SAX01.ogg": {
+    "mtime": 1794494961.2332733,
+    "seen": 1795170641.271248,
+    "ast_hash": "ea0d4e3a9eaffdad596a1a0a6c0ef6dd",
+    "semantic_hash": "ea0d4e3a9eaffdad596a1a0a6c0ef6dd"
+  },
+  "apps/web/public/jingles/jingles_SAX02.ogg": {
+    "mtime": 1794494961.2394397,
+    "seen": 1795170641.2712488,
+    "ast_hash": "629f417d2a040f7d63095e58937f736f",
+    "semantic_hash": "629f417d2a040f7d63095e58937f736f"
+  },
+  "apps/web/public/jingles/jingles_SAX03.ogg": {
+    "mtime": 1794494961.2450752,
+    "seen": 1795170641.2712498,
+    "ast_hash": "a1a916a22b31af684dfc5420261074db",
+    "semantic_hash": "a1a916a22b31af684dfc5420261074db"
+  },
+  "apps/web/public/jingles/jingles_SAX04.ogg": {
+    "mtime": 1794494961.250682,
+    "seen": 1795170641.2712505,
+    "ast_hash": "9c3d4a30ab917f656b3606abf57132aa",
+    "semantic_hash": "9c3d4a30ab917f656b3606abf57132aa"
+  },
+  "apps/web/public/jingles/jingles_SAX05.ogg": {
+    "mtime": 1794494961.2568395,
+    "seen": 1795170641.2712514,
+    "ast_hash": "5279decc2ac61155a65f9b8f72b833fe",
+    "semantic_hash": "5279decc2ac61155a65f9b8f72b833fe"
+  },
+  "apps/web/public/jingles/jingles_SAX06.ogg": {
+    "mtime": 1794494961.262983,
+    "seen": 1795170641.2712522,
+    "ast_hash": "2c8595c44d0ce75c6bd9cb354c4f10ba",
+    "semantic_hash": "2c8595c44d0ce75c6bd9cb354c4f10ba"
+  },
+  "apps/web/public/jingles/jingles_SAX07.ogg": {
+    "mtime": 1794494961.2686095,
+    "seen": 1795170641.2712533,
+    "ast_hash": "a9e43b0420510287ac63872ecdbdd15d",
+    "semantic_hash": "a9e43b0420510287ac63872ecdbdd15d"
+  },
+  "apps/web/public/jingles/jingles_SAX08.ogg": {
+    "mtime": 1794494961.2752738,
+    "seen": 1795170641.271254,
+    "ast_hash": "82e6397fd5a9316862250ca6957a546a",
+    "semantic_hash": "82e6397fd5a9316862250ca6957a546a"
+  },
+  "apps/web/public/jingles/jingles_SAX09.ogg": {
+    "mtime": 1794494961.280904,
+    "seen": 1795170641.2712548,
+    "ast_hash": "361302e0c1add0bbc715d40d8d6544ed",
+    "semantic_hash": "361302e0c1add0bbc715d40d8d6544ed"
+  },
+  "apps/web/public/jingles/jingles_SAX10.ogg": {
+    "mtime": 1794494961.2870417,
+    "seen": 1795170641.2712557,
+    "ast_hash": "400f71a6913eab27899bd03c0b4e4668",
+    "semantic_hash": "400f71a6913eab27899bd03c0b4e4668"
+  },
+  "apps/web/public/jingles/jingles_SAX11.ogg": {
+    "mtime": 1794494961.293692,
+    "seen": 1795170641.2712567,
+    "ast_hash": "114a263f94c45af09ba0f1708a6adc51",
+    "semantic_hash": "114a263f94c45af09ba0f1708a6adc51"
+  },
+  "apps/web/public/jingles/jingles_SAX12.ogg": {
+    "mtime": 1794494961.300366,
+    "seen": 1795170641.2712574,
+    "ast_hash": "add467abc09150fc0aec70a5d1ac493d",
+    "semantic_hash": "add467abc09150fc0aec70a5d1ac493d"
+  },
+  "apps/web/public/jingles/jingles_SAX13.ogg": {
+    "mtime": 1794494961.3054955,
+    "seen": 1795170641.271258,
+    "ast_hash": "4ec75e2084a2adf22ccdc0fdb2945d51",
+    "semantic_hash": "4ec75e2084a2adf22ccdc0fdb2945d51"
+  },
+  "apps/web/public/jingles/jingles_SAX14.ogg": {
+    "mtime": 1794494961.3116398,
+    "seen": 1795170641.2712588,
+    "ast_hash": "e629aeffd6f4461c3fbc97eb53a473ee",
+    "semantic_hash": "e629aeffd6f4461c3fbc97eb53a473ee"
+  },
+  "apps/web/public/jingles/jingles_SAX15.ogg": {
+    "mtime": 1794494961.3172889,
+    "seen": 1795170641.27126,
+    "ast_hash": "9482ec4d2f7bf3e31d6d8d62846d20b4",
+    "semantic_hash": "9482ec4d2f7bf3e31d6d8d62846d20b4"
+  },
+  "apps/web/public/jingles/jingles_SAX16.ogg": {
+    "mtime": 1794494961.32599,
+    "seen": 1795170641.2712605,
+    "ast_hash": "e0401d152ba6a8b86e9916dc6ced7e7a",
+    "semantic_hash": "e0401d152ba6a8b86e9916dc6ced7e7a"
+  },
+  "apps/web/public/jingles/jingles_STEEL00.ogg": {
+    "mtime": 1794494961.3316073,
+    "seen": 1795170641.2712612,
+    "ast_hash": "d5ab0aa9c6d7ab8425a4ea7ab66664dc",
+    "semantic_hash": "d5ab0aa9c6d7ab8425a4ea7ab66664dc"
+  },
+  "apps/web/public/jingles/jingles_STEEL01.ogg": {
+    "mtime": 1794494961.3367276,
+    "seen": 1795170641.2712622,
+    "ast_hash": "1a793a1bbf8597931efec3780e6f53b5",
+    "semantic_hash": "1a793a1bbf8597931efec3780e6f53b5"
+  },
+  "apps/web/public/jingles/jingles_STEEL02.ogg": {
+    "mtime": 1794494961.3433878,
+    "seen": 1795170641.271263,
+    "ast_hash": "8e256ded41ba097605d607bf86da0c8a",
+    "semantic_hash": "8e256ded41ba097605d607bf86da0c8a"
+  },
+  "apps/web/public/jingles/jingles_STEEL03.ogg": {
+    "mtime": 1794494961.3485186,
+    "seen": 1795170641.2712638,
+    "ast_hash": "e8640c984cd94dc96a342bc36e56443a",
+    "semantic_hash": "e8640c984cd94dc96a342bc36e56443a"
+  },
+  "apps/web/public/jingles/jingles_STEEL04.ogg": {
+    "mtime": 1794494961.3551614,
+    "seen": 1795170641.2712646,
+    "ast_hash": "694128db99c5d66a79545102df7ec161",
+    "semantic_hash": "694128db99c5d66a79545102df7ec161"
+  },
+  "apps/web/public/jingles/jingles_STEEL05.ogg": {
+    "mtime": 1794494961.3608074,
+    "seen": 1795170641.2712653,
+    "ast_hash": "3ced12d65c4277ad32e90f9955d6b870",
+    "semantic_hash": "3ced12d65c4277ad32e90f9955d6b870"
+  },
+  "apps/web/public/jingles/jingles_STEEL06.ogg": {
+    "mtime": 1794494961.3664372,
+    "seen": 1795170641.2712662,
+    "ast_hash": "2099180d5b320fdb07948f5b56057977",
+    "semantic_hash": "2099180d5b320fdb07948f5b56057977"
+  },
+  "apps/web/public/jingles/jingles_STEEL07.ogg": {
+    "mtime": 1794494961.371564,
+    "seen": 1795170641.2712667,
+    "ast_hash": "e87f3361e78a48f30520398e2aab474e",
+    "semantic_hash": "e87f3361e78a48f30520398e2aab474e"
+  },
+  "apps/web/public/jingles/jingles_STEEL08.ogg": {
+    "mtime": 1794494961.3771975,
+    "seen": 1795170641.2712677,
+    "ast_hash": "b0ad5fac6ca8d8b53b069ff4957ef76b",
+    "semantic_hash": "b0ad5fac6ca8d8b53b069ff4957ef76b"
+  },
+  "apps/web/public/jingles/jingles_STEEL09.ogg": {
+    "mtime": 1794494961.382298,
+    "seen": 1795170641.2712686,
+    "ast_hash": "5742fbb50cde4167386bbb1b652eea3a",
+    "semantic_hash": "5742fbb50cde4167386bbb1b652eea3a"
+  },
+  "apps/web/public/jingles/jingles_STEEL10.ogg": {
+    "mtime": 1794494961.3884642,
+    "seen": 1795170641.2712693,
+    "ast_hash": "132af8950ac0d1bbc6c407eaafb12da7",
+    "semantic_hash": "132af8950ac0d1bbc6c407eaafb12da7"
+  },
+  "apps/web/public/jingles/jingles_STEEL11.ogg": {
+    "mtime": 1794494961.3935847,
+    "seen": 1795170641.2712705,
+    "ast_hash": "8a8da88002f75f7767aae12e66365b00",
+    "semantic_hash": "8a8da88002f75f7767aae12e66365b00"
+  },
+  "apps/web/public/jingles/jingles_STEEL12.ogg": {
+    "mtime": 1794494961.3992162,
+    "seen": 1795170641.2712712,
+    "ast_hash": "ff20d3c02fb3aad7e62c76be608c7c8f",
+    "semantic_hash": "ff20d3c02fb3aad7e62c76be608c7c8f"
+  },
+  "apps/web/public/jingles/jingles_STEEL13.ogg": {
+    "mtime": 1794494961.4048915,
+    "seen": 1795170641.271272,
+    "ast_hash": "ffd7e9c3d666e3c4ed445224ae26ab22",
+    "semantic_hash": "ffd7e9c3d666e3c4ed445224ae26ab22"
+  },
+  "apps/web/public/jingles/jingles_STEEL14.ogg": {
+    "mtime": 1794494961.4105217,
+    "seen": 1795170641.2712727,
+    "ast_hash": "53d9fe020bb744650228ac7efa3f36f3",
+    "semantic_hash": "53d9fe020bb744650228ac7efa3f36f3"
+  },
+  "apps/web/public/jingles/jingles_STEEL15.ogg": {
+    "mtime": 1794494961.4156275,
+    "seen": 1795170641.2712734,
+    "ast_hash": "40ec0ace2bd4bb42991781de6792d3a9",
+    "semantic_hash": "40ec0ace2bd4bb42991781de6792d3a9"
+  },
+  "apps/web/public/jingles/jingles_STEEL16.ogg": {
+    "mtime": 1794494961.4217868,
+    "seen": 1795170641.2712746,
+    "ast_hash": "501e58d90866a166896838e7c9de1631",
+    "semantic_hash": "501e58d90866a166896838e7c9de1631"
+  },
+  "apps/web/public/music/castelo.mp3": {
+    "mtime": 1794494906.9168313,
+    "seen": 1795170641.2712753,
+    "ast_hash": "bc4396994a73c9b5e8a991f498331b66",
+    "semantic_hash": "bc4396994a73c9b5e8a991f498331b66"
+  },
+  "apps/web/public/music/cidade.mp3": {
+    "mtime": 1794494915.097055,
+    "seen": 1795170641.271276,
+    "ast_hash": "eeebe3cd9ae9690b902038fad88b80fd",
+    "semantic_hash": "eeebe3cd9ae9690b902038fad88b80fd"
+  },
+  "apps/web/public/music/desportos.mp3": {
+    "mtime": 1794494936.0689654,
+    "seen": 1795170641.2712767,
+    "ast_hash": "a2f36e3a48b4989e0da1fea9959fb35f",
+    "semantic_hash": "a2f36e3a48b4989e0da1fea9959fb35f"
+  },
+  "apps/web/public/music/final.mp3": {
+    "mtime": 1794494941.4371736,
+    "seen": 1795170641.271278,
+    "ast_hash": "ca4d9109ee27026dc0ad8dec6f7de2f8",
+    "semantic_hash": "ca4d9109ee27026dc0ad8dec6f7de2f8"
+  },
+  "apps/web/public/music/ilha.mp3": {
+    "mtime": 1794494893.7968552,
+    "seen": 1795170641.2712786,
+    "ast_hash": "a04a07255f2e922c5f7e6e8b3471c1fb",
+    "semantic_hash": "a04a07255f2e922c5f7e6e8b3471c1fb"
+  },
+  "apps/web/public/music/lobby.mp3": {
+    "mtime": 1794494887.6010125,
+    "seen": 1795170641.271279,
+    "ast_hash": "f841806df7af1b769829bd8b9f133bf1",
+    "semantic_hash": "f841806df7af1b769829bd8b9f133bf1"
+  },
+  "apps/web/public/music/minijogo1.mp3": {
+    "mtime": 1794494917.9646573,
+    "seen": 1795170641.27128,
+    "ast_hash": "a7c21348a70f24bd44d2fb5589308ed2",
+    "semantic_hash": "a7c21348a70f24bd44d2fb5589308ed2"
+  },
+  "apps/web/public/music/minijogo2.mp3": {
+    "mtime": 1794494921.4185581,
+    "seen": 1795170641.271281,
+    "ast_hash": "fdaf076d61cf2f9c1deb51eaef464d49",
+    "semantic_hash": "fdaf076d61cf2f9c1deb51eaef464d49"
+  },
+  "apps/web/public/music/minijogo3.mp3": {
+    "mtime": 1794494926.4856198,
+    "seen": 1795170641.2712817,
+    "ast_hash": "e44c75bbdcc6e7ae4ebecfc72db1e508",
+    "semantic_hash": "e44c75bbdcc6e7ae4ebecfc72db1e508"
+  },
+  "apps/web/public/music/minijogo4.mp3": {
+    "mtime": 1794494930.6630893,
+    "seen": 1795170641.2712824,
+    "ast_hash": "e24d5527c03641db86d70dd4b1d256e6",
+    "semantic_hash": "e24d5527c03641db86d70dd4b1d256e6"
+  },
+  "apps/web/public/music/minijogo5.mp3": {
+    "mtime": 1794494933.3775313,
+    "seen": 1795170641.2712831,
+    "ast_hash": "9489391257b3bf52ba27edfc35a29458",
+    "semantic_hash": "9489391257b3bf52ba27edfc35a29458"
+  },
+  "apps/web/public/music/parque.mp3": {
+    "mtime": 1794494909.9367745,
+    "seen": 1795170641.2712839,
+    "ast_hash": "54afdab37b2e01f0fdee89ce85a3e6c1",
+    "semantic_hash": "54afdab37b2e01f0fdee89ce85a3e6c1"
+  },
+  "apps/web/public/music/vulcao.mp3": {
+    "mtime": 1794494900.9329133,
+    "seen": 1795170641.271285,
+    "ast_hash": "1b21d77beda1f4743c11d618e38d1113",
+    "semantic_hash": "1b21d77beda1f4743c11d618e38d1113"
+  }
+}
