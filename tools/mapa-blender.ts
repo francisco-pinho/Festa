@@ -32,19 +32,66 @@ interface GltfNode {
 
 // ── GLB (glTF binário) ─────────────────────────────────
 
-function writeGlb(path: string, json: object): void {
+function writeGlb(path: string, json: object, bin?: Buffer): void {
   let text = JSON.stringify(json);
   while (Buffer.byteLength(text) % 4) text += ' ';
   const body = Buffer.from(text);
-  const header = Buffer.alloc(20);
+  const chunk = (type: number, data: Buffer) => {
+    const h = Buffer.alloc(8);
+    h.writeUInt32LE(data.length, 0);
+    h.writeUInt32LE(type, 4);
+    return Buffer.concat([h, data]);
+  };
+  const parts = [chunk(0x4e4f534a, body), ...(bin ? [chunk(0x004e4942, bin)] : [])]; // «JSON», «BIN»
+  const header = Buffer.alloc(12);
   header.writeUInt32LE(0x46546c67, 0); // «glTF»
   header.writeUInt32LE(2, 4);
-  header.writeUInt32LE(12 + 8 + body.length, 8);
-  header.writeUInt32LE(body.length, 12);
-  header.writeUInt32LE(0x4e4f534a, 16); // «JSON»
+  header.writeUInt32LE(12 + parts.reduce((n, p) => n + p.length, 0), 8);
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, Buffer.concat([header, body]));
+  writeFileSync(path, Buffer.concat([header, ...parts]));
 }
+
+/** Disco baixo (cilindro) para marcar cada casa no Blender: posições, normais e índices. */
+function discGeometry(radius = 0.9, height = 0.3, seg = 20) {
+  const pos: number[] = [];
+  const nor: number[] = [];
+  const idx: number[] = [];
+  const h = height / 2;
+  // Tampa de cima e de baixo (centro + anel) e a parede (anel duplo com normais para fora).
+  for (const [y, ny] of [[h, 1], [-h, -1]] as const) {
+    const c = pos.length / 3;
+    pos.push(0, y, 0);
+    nor.push(0, ny, 0);
+    for (let i = 0; i < seg; i++) {
+      const a = (i / seg) * Math.PI * 2;
+      pos.push(Math.cos(a) * radius, y, Math.sin(a) * radius);
+      nor.push(0, ny, 0);
+      const j = (i + 1) % seg;
+      if (ny > 0) idx.push(c, c + 1 + j, c + 1 + i);
+      else idx.push(c, c + 1 + i, c + 1 + j);
+    }
+  }
+  const w = pos.length / 3;
+  for (let i = 0; i < seg; i++) {
+    const a = (i / seg) * Math.PI * 2;
+    for (const y of [h, -h]) {
+      pos.push(Math.cos(a) * radius, y, Math.sin(a) * radius);
+      nor.push(Math.cos(a), 0, Math.sin(a));
+    }
+    const j = (i + 1) % seg;
+    const a0 = w + i * 2;
+    const b0 = w + j * 2;
+    idx.push(a0, b0, a0 + 1, b0, b0 + 1, a0 + 1);
+  }
+  return { pos: new Float32Array(pos), nor: new Float32Array(nor), idx: new Uint16Array(idx), radius, h };
+}
+
+/** Cor de cada tipo de casa (como no jogo), para se ver no Blender. */
+const TYPE_COLOR: Record<string, string> = {
+  blue: '#2f7dff', red: '#ff3b5c', lucky: '#3bd16f', unlucky: '#8a4fff', event: '#ffd23f', shop: '#ff9a3c', item: '#33d6c8',
+  vs: '#ff6fb5', villain: '#444444', bank: '#c9a227', cannon: '#222222', lever: '#b36bff', start: '#ffffff', '': '#9a9a9a',
+};
+const rgba = (hex: string) => [1, 3, 5].map((i) => (parseInt(hex.slice(i, i + 2), 16) / 255) ** 2.2).concat(1);
 
 function readGlbJson(path: string): { nodes?: GltfNode[]; scenes?: { nodes: number[] }[]; scene?: number } {
   const buf = readFileSync(path);
@@ -99,10 +146,15 @@ function exportar(mapId: string): void {
   const def = BOARDS.find((b) => b.id === mapId);
   if (!def) throw new Error(`Mapa desconhecido: ${mapId} (há: ${BOARDS.map((b) => b.id).join(', ')})`);
   const layout = boardToLayout(def.create());
-  const nodes: GltfNode[] = [
+  // Um disco colorido por casa (cor do tipo), para se ver e agarrar bem no Blender.
+  const g = discGeometry();
+  const bin = Buffer.concat([Buffer.from(g.pos.buffer), Buffer.from(g.nor.buffer), Buffer.from(g.idx.buffer), Buffer.alloc((4 - (g.idx.byteLength % 4)) % 4)]);
+  const types = Object.keys(TYPE_COLOR);
+  const nodes: (GltfNode & { mesh?: number })[] = [
     { name: 'mapa', extras: { regras: JSON.stringify(layout.rules) } },
     ...layout.spaces.map((s) => ({
       name: s.name,
+      mesh: Math.max(0, types.indexOf(s.type ?? '')),
       translation: [r2(s.x), r2(s.y), r2(s.z)] as Vec3,
       // Propriedades em texto (no Blender aparecem em Object Properties → Custom Properties).
       extras: {
@@ -115,7 +167,29 @@ function exportar(mapId: string): void {
     })),
   ];
   const out = resolve(ROOT, 'blender', `${mapId}-casas.glb`);
-  writeGlb(out, { asset: { version: '2.0', generator: 'Festa · mapa-blender' }, scene: 0, scenes: [{ nodes: nodes.map((_, i) => i) }], nodes });
+  writeGlb(
+    out,
+    {
+      asset: { version: '2.0', generator: 'Festa · mapa-blender' },
+      scene: 0,
+      scenes: [{ nodes: nodes.map((_, i) => i) }],
+      nodes,
+      buffers: [{ byteLength: bin.length }],
+      bufferViews: [
+        { buffer: 0, byteOffset: 0, byteLength: g.pos.byteLength, target: 34962 },
+        { buffer: 0, byteOffset: g.pos.byteLength, byteLength: g.nor.byteLength, target: 34962 },
+        { buffer: 0, byteOffset: g.pos.byteLength + g.nor.byteLength, byteLength: g.idx.byteLength, target: 34963 },
+      ],
+      accessors: [
+        { bufferView: 0, componentType: 5126, count: g.pos.length / 3, type: 'VEC3', min: [-g.radius, -g.h, -g.radius], max: [g.radius, g.h, g.radius] },
+        { bufferView: 1, componentType: 5126, count: g.nor.length / 3, type: 'VEC3' },
+        { bufferView: 2, componentType: 5123, count: g.idx.length, type: 'SCALAR' },
+      ],
+      materials: types.map((t) => ({ name: `casa ${t || 'ao calhas'}`, pbrMetallicRoughness: { baseColorFactor: rgba(TYPE_COLOR[t]!), metallicFactor: 0, roughnessFactor: 0.8 } })),
+      meshes: types.map((t, i) => ({ name: `disco ${t || 'ao calhas'}`, primitives: [{ attributes: { POSITION: 0, NORMAL: 1 }, indices: 2, material: i }] })),
+    },
+    bin,
+  );
   console.log(`Feito: ${out} (${layout.spaces.length} casas). Importa no Blender: File → Import → glTF 2.0.`);
 }
 
