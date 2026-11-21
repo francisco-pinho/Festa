@@ -12,6 +12,7 @@
 import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
+import { prop } from '../three/props';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { themeScenery } from './scenery';
@@ -262,11 +263,19 @@ class TagRun extends ArenaMinigame {
       if (this.layout.pillars.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + 1)) continue;
       if (this.mines.some((m) => Math.hypot(m.x - x, m.z - z) < 2)) continue;
       const group = new THREE.Group();
-      const base = mesh(new THREE.CylinderGeometry(0.45, 0.55, 0.22, 16), toonUnique('#3a3f47'));
-      base.position.y = 0.11;
+      // Bomba da KayKit com a luz a piscar no rastilho (ou a mina feita à mão: base e luz).
+      const bomb = prop('kaykit-platformer/bomb', { height: 0.6 });
       const light = mesh(new THREE.SphereGeometry(0.16, 12, 8), toonUnique('#ff2a2a', { emissive: '#ff2a2a', emissiveIntensity: 0.4 }), { cast: false });
-      light.position.y = 0.26;
-      group.add(base, light);
+      if (bomb) {
+        light.position.y = 0.62;
+        light.scale.setScalar(0.75);
+        group.add(bomb, light);
+      } else {
+        const base = mesh(new THREE.CylinderGeometry(0.45, 0.55, 0.22, 16), toonUnique('#3a3f47'));
+        base.position.y = 0.11;
+        light.position.y = 0.26;
+        group.add(base, light);
+      }
       group.position.set(x, 0, z);
       group.scale.setScalar(0.01);
       this.scene.add(group);
@@ -488,5 +497,6 @@ export const Tag: MinigameDef = {
   controls: '🕹️ Mover  ·  Ⓐ Sprint',
   stick: true,
   buttons: [{ id: 'a', label: 'Sprint' }],
+  props: ['kaykit-platformer/bomb'],
   create: (ctx: MinigameContext) => new TagRun(ctx),
 };

@@ -15,6 +15,7 @@ const Boxing: SportDef = {
     'Os socos com a barra amarela cheia são muito mais fortes. Três quedas e é K.O.!',
   ],
   seatCount: (humans) => Math.max(2, humans),
+  props: ['kaykit-dungeon/table_small', 'kaykit-dungeon/stool', 'kaykit-tools/bucket_metal'],
   create: (ctx) => new BoxingStage(ctx),
 };
 

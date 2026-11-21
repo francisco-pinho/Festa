@@ -70,7 +70,11 @@ export class TesterHost {
     const s: TesterScenario = this.stored?.scenario ?? { kind: 'lobby' };
     engine.timeScale = this.stored?.timeScale ?? 1;
     director.testerHooks = this.hooks;
-    if (s.kind === 'lobby') return director.run();
+    if (s.kind === 'lobby') {
+      director.extraBots = s.bots ?? 0;
+      if (s.botLevel) settings.overrideBotLevel(s.botLevel as BotLevel);
+      return director.run();
+    }
 
     // Fora do lobby: sem telemóveis de jogadores, só bots (e o teclado, se pedido).
     const lock = () => connection.setLocked(true);

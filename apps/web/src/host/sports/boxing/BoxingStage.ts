@@ -30,6 +30,7 @@ import {
 } from '@festa/game/sports/boxing';
 import { CharacterModel, type CharacterAnim } from '../../three/CharacterModel';
 import { disposeObject, mesh, textSprite, toon, toonUnique } from '../../three/materials';
+import { prop } from '../../three/props';
 import { ease } from '../../three/tweens';
 import { SportStage } from '../SportStage';
 import type { SportContext, SportStanding } from '../types';
@@ -921,8 +922,9 @@ export class BoxingStage extends SportStage {
     this.scene.add(floor);
 
     // Mesa do sino.
-    const table = mesh(new THREE.BoxGeometry(1.6, 0.8, 0.7), toon('#3b2566'));
-    table.position.set(RING + 1.6, 0.4, RING + 1.2);
+    // Mesa da KayKit (tampo a 0,8 m, como a feita à mão, que fica de reserva).
+    const table = prop('kaykit-dungeon/table_small', { height: 0.8 }) ?? mesh(new THREE.BoxGeometry(1.6, 0.8, 0.7), toon('#3b2566'));
+    table.position.set(RING + 1.6, table instanceof THREE.Mesh ? 0.4 : 0, RING + 1.2);
     this.bell = new THREE.Group();
     const dome = mesh(new THREE.SphereGeometry(0.28, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), toonUnique('#ffd23f', { emissive: '#7a5a00', emissiveIntensity: 0.4 }));
     const stand = mesh(new THREE.CylinderGeometry(0.05, 0.12, 0.25), toon('#6b4423'));
@@ -930,6 +932,15 @@ export class BoxingStage extends SportStage {
     this.bell.add(dome, stand);
     this.bell.position.set(RING + 1.6, 1.05, RING + 1.2);
     this.scene.add(table, this.bell);
+
+    // Cantos dos lutadores (vermelho e azul): banco e balde, fora das cordas (KayKit).
+    for (const [cx, cz] of [[1, 1], [-1, -1]] as const) {
+      const stool = prop('kaykit-dungeon/stool', { height: 0.55 });
+      const bucket = prop('kaykit-tools/bucket_metal', { height: 0.4 });
+      if (stool) stool.position.set(cx * (RING + 0.9), 0, cz * (RING - 0.5));
+      if (bucket) bucket.position.set(cx * (RING + 0.9), 0, cz * (RING - 1.3));
+      for (const o of [stool, bucket]) if (o) this.scene.add(o);
+    }
 
     // Público: bancadas em degraus à volta (instanced).
     const spots: THREE.Matrix4[] = [];

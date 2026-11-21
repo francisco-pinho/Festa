@@ -10,6 +10,7 @@ import { disposeObject, mesh, textSprite, toon, toonUnique } from '../three/mate
 import { TEAM_COLORS } from './ArenaMinigame';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { PROPS, pickProp } from '../three/props';
 
 const W = 3.2; // largura da pista
 const PUSH = 3.2; // segundos de empurrão
@@ -57,15 +58,25 @@ class BobsledRun extends RowMinigame {
     this.scene.add(snow);
     // Pinheiros ao longo da descida
     for (let i = 0; i < 40; i++) {
+      const side = i % 2 ? 1 : -1;
+      const p = PATH[Math.min(PATH.length - 1, Math.floor((i / 40) * PATH.length))]!;
+      const x = p.x + side * (LANE_X + 5 + ((i * 7) % 6));
+      const z = p.z + ((i * 13) % 10) - 5;
+      // Pinheiro da KayKit com a base e a altura dos cones; senão os cones com neve.
+      const pine = pickProp(PROPS.pines, (i % 3) / 3, { height: 3.5 });
+      if (pine) {
+        pine.position.set(x, p.y - 1.1, z);
+        pine.rotation.y = i * 1.7;
+        this.scene.add(pine);
+        continue;
+      }
       const tree = new THREE.Group();
       const top = mesh(new THREE.ConeGeometry(1.2, 3.2, 8), toon(i % 2 ? '#2f8a5a' : '#3f9d4a'));
       top.position.y = 2;
       const cap = mesh(new THREE.ConeGeometry(0.7, 1.2, 8), toon('#ffffff'), { cast: false });
       cap.position.y = 3.3;
       tree.add(top, cap);
-      const side = i % 2 ? 1 : -1;
-      const p = PATH[Math.min(PATH.length - 1, Math.floor((i / 40) * PATH.length))]!;
-      tree.position.set(p.x + side * (LANE_X + 5 + ((i * 7) % 6)), p.y - 1.5, p.z + ((i * 13) % 10) - 5);
+      tree.position.set(x, p.y - 1.5, z);
       this.scene.add(tree);
     }
     (['blue', 'red'] as const).forEach((team, i) => {

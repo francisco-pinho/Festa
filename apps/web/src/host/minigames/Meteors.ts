@@ -9,8 +9,25 @@ import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import { ringDecor } from './scenery';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { explode } from '../three/explosion';
+import { PROPS, pickProp } from '../three/props';
 
 const R = 10;
+
+/** Pedra da KayKit com o tamanho do meteoro, centrada (roda no ar) e a brilhar (materiais próprios). */
+function rockModel(r: number, pick: number): THREE.Object3D | null {
+  const g = pickProp(PROPS.rocks, pick, { width: r * 0.9 });
+  if (!g) return null;
+  g.children[0]!.position.y -= new THREE.Box3().setFromObject(g).getSize(new THREE.Vector3()).y / 2;
+  g.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh) return;
+    const mat = (m.material as THREE.MeshStandardMaterial).clone();
+    mat.emissive.set('#ff5a1f');
+    mat.emissiveIntensity = 0.6;
+    m.material = mat;
+  });
+  return g;
+}
 
 interface Meteor {
   x: number;
@@ -18,7 +35,7 @@ interface Meteor {
   r: number;
   t: number;
   fall: number;
-  rock: THREE.Mesh;
+  rock: THREE.Object3D;
   warn: THREE.Mesh;
 }
 
@@ -86,8 +103,11 @@ class MeteorsRun extends ArenaMinigame {
     const big = this.ctx.rng.next() < 0.25 + pace * 0.25;
     const r = big ? 2.4 : 1.5;
     const fall = 1.6 - pace * 0.6;
-    const rock = mesh(this.rockGeo, toonUnique('#5a3d2b', { emissive: '#ff5a1f', emissiveIntensity: 0.6 }));
-    rock.scale.setScalar(r * 0.45);
+    let rock = rockModel(r, this.ctx.rng.next());
+    if (!rock) {
+      rock = mesh(this.rockGeo, toonUnique('#5a3d2b', { emissive: '#ff5a1f', emissiveIntensity: 0.6 }));
+      rock.scale.setScalar(r * 0.45);
+    }
     rock.position.set(x, 18, z);
     const warn = new THREE.Mesh(this.warnGeo, new THREE.MeshBasicMaterial({ color: '#ff3b5c', transparent: true, opacity: 0.2, depthWrite: false }));
     warn.rotation.x = -Math.PI / 2;
@@ -99,7 +119,8 @@ class MeteorsRun extends ArenaMinigame {
 
   private impact(m: Meteor): void {
     this.scene.remove(m.rock, m.warn);
-    (m.rock.material as THREE.Material).dispose();
+    // Só os materiais (próprios de cada meteoro); a geometria é partilhada.
+    m.rock.traverse((o) => (o as THREE.Mesh).isMesh && ((o as THREE.Mesh).material as THREE.Material).dispose());
     (m.warn.material as THREE.Material).dispose();
     explode(this.scene, new THREE.Vector3(m.x, 0.5, m.z), m.r * 0.6);
     const flash = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), new THREE.MeshBasicMaterial({ color: '#ff8c3a', transparent: true, opacity: 0.85, depthWrite: false }));

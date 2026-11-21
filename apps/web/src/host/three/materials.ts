@@ -60,7 +60,11 @@ export const FONT = '"Trebuchet MS", "Segoe UI", system-ui, sans-serif';
 /** Texto 3D que está sempre virado para a câmara. */
 export function textSprite(
   text: string,
-  opts: { color?: string; stroke?: string; height?: number; bold?: boolean } = {},
+  /**
+   * `inWorld`: placa do cenário (casas, túneis, lojas…). Fica escondida atrás do que estiver à
+   * frente (dados, personagens), em vez de se desenhar sempre por cima de tudo.
+   */
+  opts: { color?: string; stroke?: string; height?: number; bold?: boolean; inWorld?: boolean } = {},
 ): THREE.Sprite {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
@@ -94,15 +98,19 @@ export function textSprite(
   }
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, depthWrite: false, transparent: true }));
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: !!opts.inWorld, depthWrite: false, transparent: true }));
   const h = opts.height ?? 1;
   sprite.scale.set((h * canvas.width) / canvas.height, h, 1);
-  sprite.renderOrder = 10;
+  sprite.renderOrder = opts.inWorld ? 1 : 10;
   return sprite;
 }
 
 export function disposeObject(obj: THREE.Object3D): void {
-  obj.traverse((o) => {
+  // Cópias de modelos (props.ts) partilham geometria e texturas com o original em cache: não se libertam.
+  if (obj.userData.prop) return;
+  for (const c of obj.children) disposeObject(c);
+  {
+    const o = obj;
     if (o instanceof THREE.Mesh || o instanceof THREE.Sprite) {
       o.geometry?.dispose();
       const mats = Array.isArray(o.material) ? o.material : [o.material];
@@ -112,5 +120,5 @@ export function disposeObject(obj: THREE.Object3D): void {
         m.dispose();
       }
     }
-  });
+  }
 }

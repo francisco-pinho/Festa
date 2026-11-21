@@ -8,6 +8,7 @@ import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { getCharacter } from '@festa/game';
 import { disposeObject, mesh, toon, toonUnique } from '../three/materials';
+import { prop } from '../three/props';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { rankBy } from './rank';
@@ -58,6 +59,15 @@ class RightForceRun extends RowMinigame {
     goal.position.set(0, 0.1, START_Z - this.target);
     this.scene.add(goal);
     for (const side of [-1, 1]) {
+      // Bandeira da KayKit: o pano sai do mastro para -z local; roda para apontar para dentro da pista.
+      // O modelo vem centrado na caixa toda, por isso o mastro fica ~0.74 para fora do centro.
+      const model = prop('kaykit-platformer/flag_A_red', { height: 3 });
+      if (model) {
+        model.rotation.y = (side * Math.PI) / 2;
+        model.position.set((side * width) / 2 - side * 0.74, 0, START_Z - this.target);
+        this.scene.add(model);
+        continue;
+      }
       const pole = mesh(new THREE.CylinderGeometry(0.07, 0.07, 3, 8), toon('#ffffff'));
       pole.position.set((side * width) / 2, 1.5, START_Z - this.target);
       const flag = mesh(new THREE.BoxGeometry(0.9, 0.55, 0.04), toonUnique('#ff3b5c'));
@@ -83,7 +93,11 @@ class RightForceRun extends RowMinigame {
       this.scene.add(meterGroup);
       this.lanes.push({ r, ball, meter, meterGroup, power: 0, charging: false, thrown: false, v: 0, dist: 0, stopped: false, botAim: 0 });
     }
-    this.camera.position.set(0, 7.5, START_Z + 9);
+    // Afasta a câmara o suficiente para caberem todas as pistas (até 10 jogadores).
+    const half = (ctx.seats.length * 2.6) / 2 + 1;
+    const tanH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)) * this.camera.aspect;
+    const dist = Math.max(9, (half / tanH) * 1.05);
+    this.camera.position.set(0, 7.5 * (dist / 9), START_Z + dist);
     this.camera.lookAt(0, 0, START_Z - this.target * 0.55);
   }
 
@@ -201,5 +215,6 @@ export const RightForce: MinigameDef = {
   controls: 'Ⓐ segurar para carregar, largar para atirar',
   stick: false,
   buttons: [{ id: 'a', label: 'Segura e larga' }],
+  props: ['kaykit-platformer/flag_A_red'],
   create: (ctx) => new RightForceRun(ctx),
 };

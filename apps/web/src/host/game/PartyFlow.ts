@@ -12,6 +12,8 @@ import * as THREE from 'three';
 import {
   ITEMS,
   LAST_PLACE_GIFT,
+  MAX_ITEMS,
+  relocateStar,
   RULES,
   SHOP_STOCK,
   VILLAIN_LABELS,
@@ -96,6 +98,7 @@ import { settings } from './Settings';
 import { rankBy, rankWinners } from '../minigames/rank';
 import { ResultsStage } from '../stages/ResultsStage';
 import type { Theme } from '../minigames/scenery';
+import type { PartyHooks } from '../tester/PartyHooks';
 
 const PATH_COLORS = ['#ffd23f', '#3fd0ff', '#ff6fb5'];
 /** Moedas para quem acerta no vencedor de um duelo (apostas no telemóvel). */
@@ -122,6 +125,13 @@ interface RollPlan {
 export class PartyFlow {
   private state!: PartyState;
   private stage!: BoardStage;
+  /** Modo tester (só em /teste): comandos do painel consumidos nos momentos seguros. */
+  tester: PartyHooks | null = null;
+
+  /** Estado da festa em curso (para o painel de tester); undefined antes de começar. */
+  get partyState(): PartyState | undefined {
+    return this.state;
+  }
   private lastMinigame: string | null = null;
   /** Minijogos já jogados nesta festa (para não repetir enquanto houver outros). */
   private readonly playedMinigames = new Set<string>();
@@ -255,7 +265,10 @@ export class PartyFlow {
         active: p.id === activeId,
         isBot: p.isBot,
         connected: p.isBot || !!hp?.connected,
-        tag: p.items.map((i) => ITEMS[i].emoji).join('') || undefined,
+        // Ao decidir a ordem de jogo, mostra quanto cada um tirou nos dados.
+        tag: this.orderRolls
+          ? this.orderRolls.has(p.id) ? `🎲 ${this.orderRolls.get(p.id)}` : undefined
+          : p.items.map((i) => ITEMS[i].emoji).join('') || undefined,
       };
     });
     this.hud.setScoreboard(entries);
@@ -453,8 +466,13 @@ export class PartyFlow {
     }
   }
 
+  /** Somas dos dados de quem já lançou para decidir a ordem (placar); null fora disso. */
+  private orderRolls: Map<string, number> | null = null;
+
   private async turnOrder(): Promise<void> {
     const state = this.state;
+    this.orderRolls = new Map();
+    this.scoreboard();
     await this.hud.banner('Quem começa?', { sub: 'Lancem os dois dados! A maior soma joga primeiro', hold: 1.6 });
     const rolls = rollTurnOrder(state, this.rng);
     // Um de cada vez, com o bloco de dados por cima da cabeça e a câmara bem perto
@@ -480,6 +498,8 @@ export class PartyFlow {
         await this.wait(0.3);
       }
       this.ctl.setLayout(seat, { kind: 'wait', message: `Tiraste ${rolls.get(p.id)}!` });
+      this.orderRolls.set(p.id, rolls.get(p.id)!);
+      this.scoreboard(p.id);
       this.stage.token(p.id).setAnim('cheer');
       await this.wait(1.1);
       this.stage.clearDice();
@@ -489,6 +509,7 @@ export class PartyFlow {
     this.hud.hint(null);
     await this.stage.spotlight(null, true);
     applyTurnOrder(state, rolls);
+    this.orderRolls = null;
     this.scoreboard();
     this.hud.panel(`
       <h1>Ordem de jogo</h1>
@@ -506,6 +527,10 @@ export class PartyFlow {
   // ── Vez de um jogador ───────────────────────────────────
 
   private async turn(p: PartyPlayer): Promise<void> {
+    if (this.tester) {
+      this.tester.phase = 'board';
+      await this.applyTesterEdits();
+    }
     const state = this.state;
     const seat = this.seat(p.id);
     this.scoreboard(p.id);
@@ -535,7 +560,7 @@ export class PartyFlow {
     for (let i = 0; i < plan.dice; i++) {
       const ord = ['primeiro', 'segundo', 'terceiro'][i];
       await this.rollPrompt(seat, plan.dice === 1 ? 'Lança o dado!' : `Lança o ${ord} dado!`);
-      const v = rollDieFor(p, this.rng);
+      const v = this.tester?.takeDie() ?? rollDieFor(p, this.rng);
       values.push(v);
       this.buzz(p.id, [30, 30, 60]);
       await this.stage.hitDice(p.id, [v]);
@@ -550,7 +575,7 @@ export class PartyFlow {
       this.stage.token(p.id).setAnim('idle');
       this.stage.spawnDice(p.id, 1, true);
       await this.rollPrompt(seat, 'Dados iguais! Lança o terceiro dado!');
-      const third = rollDieFor(p, this.rng);
+      const third = this.tester?.takeDie() ?? rollDieFor(p, this.rng);
       values.push(third);
       await this.stage.hitDice(p.id, [third]);
       await this.wait(0.7);
@@ -1068,8 +1093,31 @@ export class PartyFlow {
       await this.hud.banner(`${ITEMS[item].emoji} ${p.name} comprou: ${ITEMS[item].name}`, { hold: 1.4 });
       await shown;
       this.stage.token(p.id).setAnim('idle');
+      await this.explainItem(p, item);
     }
     this.stage.focus(p.id);
+  }
+
+  /** Explica o item que alguém acabou de receber; avança quando essa pessoa carrega em −. */
+  private async explainItem(p: PartyPlayer, item: ItemId): Promise<void> {
+    const seat = this.seat(p.id);
+    const def = ITEMS[item];
+    this.hud.panel(`<h2>${esc(p.name)} tem um item novo</h2><h1>${def.emoji} ${esc(def.name)}</h1><p>${esc(def.description)}</p>
+      <p><span class="controls">Usa-se antes de lançar os dados, com o botão X</span></p>
+      <p><span class="controls">− para continuar</span></p>`);
+    this.ctl.setLayout(seat, { kind: 'pad', title: `${def.emoji} ${def.name}`, sub: def.description, stick: 'none', buttons: { minus: 'Continuar' } });
+    await this.waitMinus(seat);
+    this.hud.panel(null);
+  }
+
+  /** Espera que este lugar carregue em − (um bot, ou quem perdeu a ligação, avança sozinho). */
+  private async waitMinus(seat: Seat, botSeconds = 2.5): Promise<void> {
+    let pressed = false;
+    const off = this.d.hub.events.on('press', ({ player, button }) => {
+      if (player.id === seat.id && button === 'minus') pressed = true;
+    });
+    for (let t = 0; !pressed && !(this.ctl.isAuto(seat) && t >= botSeconds); t += 0.1) await this.wait(0.1);
+    off();
   }
 
   // ── Chegada: duelo e casa ───────────────────────────────
@@ -1191,6 +1239,7 @@ export class PartyFlow {
       if (!e.item) token.setAnim('cheer');
       await this.hud.banner(e.item ? `${p.name} ganhou: ${ITEMS[e.item].name}` : 'Inventário cheio: +5 moedas', { hold: 1.4 });
       await shown;
+      if (e.item) await this.explainItem(p, e.item);
       this.stage.focus(p.id);
     } else if (e.kind === 'bank') {
       const name = state.board.bankName ?? 'Banco';
@@ -1313,6 +1362,7 @@ export class PartyFlow {
   // ── Minijogos ───────────────────────────────────────────
 
   private async roundMinigame(): Promise<void> {
+    await this.applyTesterEdits();
     const state = this.state;
     this.scoreboard();
     const teams = decideMinigameTeams(state, this.rng);
@@ -1429,7 +1479,7 @@ export class PartyFlow {
   private async runMinigame(players: PartyPlayer[], teams: MinigameTeams, title: string | null, duel = false, keepScene = false): Promise<string[]> {
     let finalRun: MinigameRun | null = null;
     const def =
-      MINIGAMES.find((m) => m.id === this.d.forcedMinigame && m.modes.includes(teams.mode) && (duel || players.length === 2 || !m.duel)) ??
+      MINIGAMES.find((m) => m.id === this.d.forcedMinigame && m.modes.includes(teams.mode) && !!m.duel === duel) ?? // minijogos e duelos nunca se misturam
       (duel ? pickDuel(this.rng, this.lastMinigame, this.playedMinigames) : pickMinigame(teams.mode, this.rng, this.lastMinigame, this.playedMinigames));
     this.lastMinigame = def.id;
     this.playedMinigames.add(def.id);
@@ -1486,7 +1536,23 @@ export class PartyFlow {
       def.description(teams.mode),
       `Controlos: ${def.controls}.`,
     ];
-    await Promise.all([this.wait(3), narrator.say(intro)]);
+    const ctx: MinigameContext = {
+      engine: this.engine,
+      mode: teams.mode,
+      seats: mgSeats,
+      rng: this.rng,
+      pad: (id) => this.ctl.pad(this.seat(id)),
+      botPad: (id) => this.seat(id).botPad,
+      isBot: (id) => this.ctl.needsBot(this.seat(id)),
+      vibrate: (id, ms) => this.ctl.vibrate(this.seat(id), ms),
+      botSkill: settings.botSkill,
+      theme: this.state.board.theme as Theme,
+    };
+    this.boardWatchers.clear();
+    await loadProps([...MINIGAME_PROPS, ...(def.props ?? [])]);
+    const phaseBefore = this.tester?.phase ?? 'other';
+    // Explicação com o treino ao lado: começa quando todos carregarem em − (pronto).
+    await this.introWithPractice(def, ctx, intro);
     this.hud.panel(null);
     // As apostas fecham antes de o jogo começar: quem está de fora vê em quem apostou.
     if (duel && this.betsOpen) {
@@ -1507,20 +1573,6 @@ export class PartyFlow {
       }
     }
 
-    const ctx: MinigameContext = {
-      engine: this.engine,
-      mode: teams.mode,
-      seats: mgSeats,
-      rng: this.rng,
-      pad: (id) => this.ctl.pad(this.seat(id)),
-      botPad: (id) => this.seat(id).botPad,
-      isBot: (id) => this.ctl.needsBot(this.seat(id)),
-      vibrate: (id, ms) => this.ctl.vibrate(this.seat(id), ms),
-      botSkill: settings.botSkill,
-      theme: this.state.board.theme as Theme,
-    };
-    this.boardWatchers.clear();
-    await loadProps(MINIGAME_PROPS);
     // Vários rounds (melhor de N): ganha quem ganhar mais rondas.
     const totalRounds = def.rounds ?? 1;
     const roundWins = new Map<string, number>();
@@ -1537,7 +1589,9 @@ export class PartyFlow {
       return new Set(top.map((p) => (teams.mode === 'ffa' ? p.id : teamOf(p.id)))).size > 1;
     };
     const MAX_TIEBREAKS = 2;
-    await this.practice(def, ctx);
+    if (this.tester) this.tester.phase = 'minigame';
+    /** Fim forçado pelo painel de tester: vencedores escolhidos (null = os do minijogo). */
+    let forced: { winners: string[] | null } | null = null;
     for (let round = 1; round <= totalRounds || (totalRounds > 1 && round <= totalRounds + MAX_TIEBREAKS && tied()); round++) {
       const tiebreak = round > totalRounds;
       for (const s of this.d.seats) s.botPad.reset();
@@ -1579,16 +1633,17 @@ export class PartyFlow {
         for (const p of players) this.buzz(p.id, 120); // «Já!»
         void this.hud.big('JÁ!', 0.6);
       }
-      while (!run.finished) {
+      while (!run.finished && !this.tester?.ending) {
         updateHud();
         await this.wait(0.2);
       }
+      if (this.tester?.ending) forced = { winners: this.tester.takeEnd() };
       updateHud();
-      const roundWinners = run.winners();
+      const roundWinners = forced?.winners ?? run.winners();
       for (const id of roundWinners) roundWins.set(id, (roundWins.get(id) ?? 0) + 1);
       // Lugares desta ronda (todos contra todos: os do minijogo; equipas: quem ganhou e os outros).
       const ids = players.map((p) => p.id);
-      const roundRank = teams.mode === 'ffa' && run.ranking ? run.ranking() : rankWinners(ids, roundWinners);
+      const roundRank = teams.mode === 'ffa' && run.ranking && !forced?.winners ? run.ranking() : rankWinners(ids, roundWinners);
       let pos = 1;
       for (const g of roundRank) {
         for (const id of g) placeSum.set(id, (placeSum.get(id) ?? 0) + pos);
@@ -1604,12 +1659,14 @@ export class PartyFlow {
         });
       } else await this.hud.big('FIM!', 1.4);
       finalRun = run;
+      if (forced) break;
       // Já não há como apanhar o primeiro? Acaba mais cedo.
       const counts = [...roundWins.values()].sort((a, b) => b - a);
       const left = totalRounds - round;
       if (totalRounds > 1 && (counts[0] ?? 0) > (counts[1] ?? 0) + left) break;
     }
     this.waitAll('Fim do minijogo!');
+    if (this.tester) this.tester.phase = phaseBefore;
     const best = Math.max(0, ...roundWins.values());
     const winners = best > 0 ? players.filter((p) => roundWins.get(p.id) === best).map((p) => p.id) : [];
     // Lugares finais (prémio por lugar e ordem de jogada): quem ganhou primeiro; depois mais rondas
@@ -1636,6 +1693,7 @@ export class PartyFlow {
   // ── Final ───────────────────────────────────────────────
 
   async finale(state: PartyState): Promise<void> {
+    if (this.tester) this.tester.phase = 'finale';
     this.d.menu.mode = 'off';
     this.waitAll('Fim da festa! Olha para o ecrã.');
     this.hud.setScoreboard(null);
@@ -1738,6 +1796,7 @@ export class PartyFlow {
     panel.classList.remove('compact');
     this.hud.panel(null);
     this.hud.hint(null);
+    if (this.tester) this.tester.phase = 'other';
   }
 
   /** Desenvolvimento: só o minijogo de ronda, em ciclo (usado por /?minigame=…). */
@@ -1779,40 +1838,122 @@ export class PartyFlow {
   }
 
   /**
-   * Treino (como no Mario Party): antes de contar, o minijogo corre uns segundos a fingir para todos
-   * experimentarem os comandos. Acaba ao fim de 12 s, quando alguém carregar em − (ou Enter/Espaço
-   * no PC) ou se o minijogo acabar sozinho. Nada do que acontece conta.
+   * Explicação do minijogo com o treino numa janela ao lado (como no Super Mario Party Jamboree):
+   * enquanto se lê a explicação, cada um já controla a sua personagem numa versão de treino que
+   * não conta. Cada jogador carrega em − quando estiver pronto (o painel mostra quem já está) e o
+   * minijogo a sério só começa quando todos estiverem prontos. Bots e quem perdeu a ligação ficam
+   * prontos sozinhos; no PC, Enter põe todos prontos. Só com bots não há treino.
    */
-  private async practice(def: MinigameDef, ctx: MinigameContext): Promise<void> {
+  private async introWithPractice(def: MinigameDef, ctx: MinigameContext, intro: string[]): Promise<void> {
     const humans = ctx.seats.filter((s) => !ctx.isBot(s.id));
-    if (!humans.length) return; // só bots: não há nada para treinar
+    if (!humans.length) {
+      await Promise.all([this.wait(3), narrator.say(intro)]);
+      return;
+    }
+    if (this.tester) this.tester.phase = 'practice';
+    const panel = this.hud.panelElement();
+    panel.classList.add('with-practice');
+    panel.querySelector('.timerbar')?.remove(); // já não há tempo fixo: espera-se por todos
+    const ready = new Set<string>();
+    const list = document.createElement('div');
+    list.className = 'ready-list';
+    panel.appendChild(list);
+    const draw = () => {
+      list.innerHTML = humans
+        .map((s) => `<span class="chip${ready.has(s.id) ? ' ready' : ''}">${esc(s.name)} ${ready.has(s.id) ? '✔ pronto' : '· a treinar'}</span>`)
+        .join('');
+    };
+    draw();
+    const win = document.createElement('div');
+    win.className = 'practice-window';
+    win.innerHTML = '<span>TREINO · carrega em − quando estiveres pronto</span>';
+    document.getElementById('ui')!.appendChild(win);
     for (const s of this.d.seats) s.botPad.reset();
     this.d.hub.clearPresses();
-    const run = def.create({ ...ctx, round: 1, rounds: 1 });
-    this.engine.setStage(run, false);
-    let skip = false;
-    const off = this.d.hub.events.on('press', ({ button }) => {
-      if (button === 'minus') skip = true;
+    const startRun = () => {
+      const run = def.create({ ...ctx, round: 1, rounds: 1 });
+      this.engine.setInset(run, win);
+      run.start();
+      return run;
+    };
+    let run = startRun();
+    const markReady = (id: string) => {
+      if (ready.has(id) || !humans.some((h) => h.id === id)) return;
+      ready.add(id);
+      draw();
+      this.ctl.vibrate(this.seat(id), 60);
+    };
+    const off = this.d.hub.events.on('press', ({ player, button }) => {
+      if (button === 'minus') markReady(player.id);
     });
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Enter' || e.code === 'Space') skip = true;
+      if (e.code === 'Enter') for (const h of humans) markReady(h.id);
     };
     window.addEventListener('keydown', onKey);
-    this.hud.setRound('TREINO · − para começar a sério');
-    void this.hud.big('Treino!', 0.9);
-    run.start();
-    const LIMIT = 12;
-    let t = 0;
-    while (!skip && !run.finished && t < LIMIT) {
-      await this.wait(0.2);
-      t += 0.2;
-      this.hud.setRound(`TREINO · ${Math.ceil(LIMIT - t)} s · − para começar a sério`);
+    const allReady = () => humans.every((h) => ready.has(h.id) || this.ctl.isAuto(this.seat(h.id)));
+    void narrator.say(intro);
+    for (let t = 0; !(t >= 2 && allReady()) && !this.tester?.ending; t += 0.1) {
+      if (this.tester?.takeSkipPractice()) for (const h of humans) markReady(h.id);
+      // O treino recomeça sozinho se acabar.
+      if (run.finished) run = startRun();
+      await this.wait(0.1);
     }
     off();
     window.removeEventListener('keydown', onKey);
-    run.dispose();
+    narrator.stop();
+    this.engine.setInset(null);
+    win.remove();
+    list.remove();
+    panel.classList.remove('with-practice');
     this.hud.setRound(null);
     await this.hud.banner('Agora a sério!', { hold: 1.1, color: '#ffd23f' });
+  }
+
+  /** Modo tester: aplica as alterações pedidas no painel (moedas, estrelas, itens, casa, ronda, estrela). */
+  private async applyTesterEdits(): Promise<void> {
+    const edits = this.tester?.takeEdits() ?? [];
+    if (!edits.length || !this.state) return;
+    const find = (id: string) => this.state.players.find((p) => p.id === id);
+    let moved = false;
+    for (const e of edits) {
+      if (e.t === 'round') {
+        this.state.round = Math.min(e.round, this.state.totalRounds);
+        this.hud.setRound(`Ronda ${this.state.round} / ${this.state.totalRounds}`);
+      } else if (e.t === 'moveStar') {
+        relocateStar(this.state, this.rng);
+        await this.stage.placeStar(this.state.starSpaceId, true);
+      } else {
+        const p = find(e.playerId);
+        if (!p) continue;
+        if (e.t === 'teleport') {
+          if (this.state.board.spaces.some((s) => s.id === e.spaceId)) {
+            p.spaceId = e.spaceId;
+            moved = true;
+          }
+        } else if (e.t === 'takeItem') p.items.splice(e.index, 1);
+        else {
+          if (e.coins) addCoins(p, e.coins);
+          if (e.stars) p.stars = Math.max(0, p.stars + e.stars);
+          if (e.item && e.item in ITEMS && p.items.length < MAX_ITEMS) p.items.push(e.item as ItemId);
+        }
+      }
+    }
+    if (moved) await this.arrangeAll(true);
+    this.scoreboard(this.activeId);
+    this.refreshBoards();
+  }
+
+  /** Desenvolvimento: só o fim da festa, com moedas, estrelas e estatísticas ao calhas. */
+  async testFinale(boardId: string): Promise<void> {
+    await this.minigameSetup(boardId);
+    for (const p of this.state.players) {
+      p.coins = this.rng.int(0, 60);
+      p.stars = this.rng.int(0, 4);
+      for (const k of Object.keys(p.stats) as (keyof typeof p.stats)[]) {
+        if (typeof p.stats[k] === 'number') (p.stats as unknown as Record<string, number>)[k] = this.rng.int(0, 20);
+      }
+    }
+    await this.finale(this.state);
   }
 
   /** Desenvolvimento: duelos seguidos entre os dois primeiros jogadores. */

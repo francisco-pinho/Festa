@@ -25,7 +25,7 @@ export const ROOM_SEATS: { x: number; z: number; yaw: number; y?: number; anim: 
   { x: -3.5, z: -3.05, yaw: 1.05, y: 0.62, anim: 'sit' },
   { x: 3.5, z: -3.05, yaw: -1.05, y: 0.62, anim: 'sit' },
   // Pufes no chão, à frente da mesa.
-  { x: -2.1, z: -1.15, yaw: 0.3, y: 0.32, anim: 'sit' },
+  { x: -1.7, z: -1.15, yaw: 0.3, y: 0.32, anim: 'sit' },
   { x: 2.1, z: -1.15, yaw: -0.3, y: 0.32, anim: 'sit' },
   // De pé, a mexer nas mãos: um ao lado do cadeirão esquerdo, um à frente da lareira (virado para
   // a câmara) e um no canto direito.
@@ -53,6 +53,8 @@ export const ROOM_PROPS: readonly string[] = [
   'kaykit-holiday/hot_chocolate_decorated',
   'kaykit-holiday/footstool_red',
   'kaykit-holiday/footstool_green',
+  // Não é da sala: a moeda que cai no ecrã de resultados (ResultsStage), carregada aqui no arranque.
+  'kaykit-boardgame/coin_gold',
 ];
 
 /** Parede de trás (face da frente do lambrim): onde se encostam estantes, quadros e a lareira. */
@@ -678,7 +680,7 @@ export function buildLivingRoom(scene: THREE.Scene): LivingRoom {
 
   // ── No chão, à frente da mesa: dois pufes (KayKit Holiday «footstool»), em cima de um tapete oval ──
   // Sem os modelos, uma almofada amarela e um puff verde feitos à mão.
-  const seat5 = Object.assign(ROOM_SEATS[5]!, { x: -2.1, z: TABLE_Z + 2.6, yaw: 0.3 });
+  const seat5 = Object.assign(ROOM_SEATS[5]!, { x: -1.7, z: TABLE_Z + 2.6, yaw: 0.3 });
   const seat6 = Object.assign(ROOM_SEATS[6]!, { x: 2.1, z: TABLE_Z + 2.6, yaw: -0.3 });
   let pile: THREE.Object3D | null = prop('kaykit-holiday/footstool_red', { width: 1.5 });
   if (pile) place(g, pile, seat5.x, 0, seat5.z, seat5.yaw);

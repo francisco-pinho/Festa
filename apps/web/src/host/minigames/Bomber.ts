@@ -11,6 +11,9 @@ import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import { ringDecor } from './scenery';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { explode } from '../three/explosion';
+import { prop } from '../three/props';
+
+const BOMB = 'kaykit-platformer/bomb';
 
 const R = 11;
 const TOWER_Z = -15;
@@ -22,7 +25,7 @@ interface Bomb {
   x: number;
   z: number;
   t: number;
-  ball: THREE.Mesh;
+  ball: THREE.Object3D;
   warn: THREE.Mesh;
 }
 
@@ -121,7 +124,10 @@ class BomberRun extends ArenaMinigame {
   }
 
   private drop(): void {
-    const ball = mesh(this.ballGeo, toon('#26232f'));
+    // Bomba da KayKit (corpo com o raio da esfera, centrado nela); senão a esfera.
+    const model = prop(BOMB, { width: 1.1 });
+    if (model) model.children[0]!.position.y -= 0.55;
+    const ball = model ?? mesh(this.ballGeo, toon('#26232f'));
     ball.position.set(this.aim.x, 14, this.aim.z);
     const warn = new THREE.Mesh(this.warnGeo, new THREE.MeshBasicMaterial({ color: '#ff3b5c', transparent: true, opacity: 0.25, depthWrite: false }));
     warn.rotation.x = -Math.PI / 2;
@@ -271,5 +277,6 @@ export const Bomber: MinigameDef = {
   controls: '🕹️ Mover (ou a mira) · Ⓐ Sprint (ou bomba)',
   stick: true,
   buttons: [{ id: 'a', label: 'Ação' }],
+  props: [BOMB],
   create: (ctx) => new BomberRun(ctx),
 };

@@ -74,16 +74,21 @@ export class BoardObjects {
     return best;
   }
 
-  /** Ponto ao lado da casa (perpendicular ao caminho), do lado com mais espaço livre. */
+  /**
+   * Ponto ao lado da casa (perpendicular ao caminho). Prefere o lado de lá do caminho (longe da
+   * câmara, que olha de +Z para −Z), para não tapar o tabuleiro; só usa o lado de cá se do outro
+   * lado não houver espaço livre.
+   */
   private beside(s: Space, dist: number): { pos: THREE.Vector2; out: THREE.Vector2 } {
     const n = getSpace(this.board, s.next[0] ?? s.id);
     const dir = n === s ? new THREE.Vector2(1, 0) : new THREE.Vector2(n.x - s.x, n.z - s.z).normalize();
-    let best = { pos: new THREE.Vector2(), out: new THREE.Vector2(), clear: -1 };
+    let best = { pos: new THREE.Vector2(), out: new THREE.Vector2(), score: -Infinity };
     for (const sign of [1, -1]) {
       const out = new THREE.Vector2(-dir.y * sign, dir.x * sign);
       const pos = new THREE.Vector2(s.x + out.x * dist, s.z + out.y * dist);
       const clear = this.clearance(pos.x, pos.y);
-      if (clear > best.clear) best = { pos, out, clear };
+      const score = Math.min(clear, 2) + (out.y <= 0.05 && clear >= 1 ? 3 : 0);
+      if (score > best.score) best = { pos, out, score };
     }
     return best;
   }
@@ -100,16 +105,21 @@ export class BoardObjects {
       const hole = mesh(new THREE.BoxGeometry(1.8, 2.6, 0.1), toon('#0d0718'), { cast: false });
       hole.position.set(0, 1.3, -0.1);
       const shelf = new THREE.Group();
-      const body = mesh(new THREE.BoxGeometry(2.3, 3, 0.6), toon('#5a3a22'));
-      body.position.y = 1.5;
-      shelf.add(body);
-      const colors = ['#c0392b', '#2f7dff', '#25c26b', '#ffd23f', '#7b3fd1'];
-      for (let row = 0; row < 3; row++)
-        for (let i = 0; i < 7; i++) {
-          const book = mesh(new THREE.BoxGeometry(0.22, 0.6 + ((i * 7 + row) % 3) * 0.08, 0.4), toon(colors[(i + row) % colors.length]!), { cast: false });
-          book.position.set(-0.85 + i * 0.28, 0.55 + row * 0.9, 0.12);
-          shelf.add(book);
-        }
+      // Estante do pack (KayKit Dungeon); sem ela, a estante com livros feita à mão.
+      const packShelf = prop('kaykit-dungeon/shelves', { height: 2.9 });
+      if (packShelf) shelf.add(packShelf);
+      else {
+        const body = mesh(new THREE.BoxGeometry(2.3, 3, 0.6), toon('#5a3a22'));
+        body.position.y = 1.5;
+        shelf.add(body);
+        const colors = ['#c0392b', '#2f7dff', '#25c26b', '#ffd23f', '#7b3fd1'];
+        for (let row = 0; row < 3; row++)
+          for (let i = 0; i < 7; i++) {
+            const book = mesh(new THREE.BoxGeometry(0.22, 0.6 + ((i * 7 + row) % 3) * 0.08, 0.4), toon(colors[(i + row) % colors.length]!), { cast: false });
+            book.position.set(-0.85 + i * 0.28, 0.55 + row * 0.9, 0.12);
+            shelf.add(book);
+          }
+      }
       g.add(hole, shelf);
       // Atrás da casa, de costas para o caminho de onde se vem.
       g.position.set(a.x - dir.x * 0.1 + dir.y * 2, y, a.z - dir.y * 0.1 - dir.x * 2);
@@ -133,7 +143,7 @@ export class BoardObjects {
     const arm = mesh(new THREE.BoxGeometry(2.6, 0.22, 0.14), stripes('#ff3b5c', '#ffffff'));
     arm.position.x = 1.3;
     pivot.add(arm);
-    const sign = textSprite('🚧', { height: 0.7 });
+    const sign = textSprite('🚧', { height: 0.7, inWorld: true });
     sign.position.set(1.3, 0.6, 0);
     pivot.add(sign);
     g.add(pivot);
@@ -147,6 +157,16 @@ export class BoardObjects {
     const g = new THREE.Group();
     g.position.set(pos.x, s.y ?? 0, pos.y);
     g.rotation.y = Math.atan2(out.x, out.y);
+    // Alavanca do pack (KayKit Platformer): o manípulo é um nó à parte, com o eixo na base.
+    const model = prop('kaykit-platformer/lever_floor_base_red', { height: 1.6 });
+    const handle = model?.getObjectByName('lever_floor_red');
+    if (model && handle) {
+      handle.rotation.x = -0.6;
+      g.add(model);
+      this.group.add(g);
+      this.levers.set(spaceId, { stick: handle, target: -0.6 });
+      return;
+    }
     const base = mesh(new THREE.BoxGeometry(0.9, 0.45, 0.6), toon('#5b5f6b'));
     base.position.y = 0.22;
     const pivot = new THREE.Group();
@@ -189,7 +209,7 @@ export class BoardObjects {
     pivot.add(arm);
     g.add(pivot);
     this.group.add(g);
-    const label = textSprite(`💰 ${cost} 🪙`, { height: 0.75 });
+    const label = textSprite(`💰 ${cost} 🪙`, { height: 0.75, inWorld: true });
     label.position.set(booth.position.x, y + 2.7, booth.position.z);
     this.group.add(label);
     this.tolls.set(key, { arm: pivot, target: 0, label, cost, at: booth.position.clone().setY(y + 2.7) });
@@ -264,7 +284,10 @@ export class BoardObjects {
       col.position.set(x, 1.25, 0.95);
       g.add(col);
     }
-    const coin = mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.1, 20), toonUnique('#ffd23f', { emissive: '#c98a00', emissiveIntensity: 0.4 }));
+    // Moeda do pack (KayKit Board Game), de pé na fachada: deitada, roda para ficar virada para a frente.
+    const coin =
+      prop('kaykit-boardgame/coin_gold', { width: 0.9 }) ??
+      mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.1, 20), toonUnique('#ffd23f', { emissive: '#c98a00', emissiveIntensity: 0.4 }));
     coin.rotation.x = Math.PI / 2;
     coin.position.set(0, 2.45, 0.75);
     g.add(coin);
@@ -293,7 +316,7 @@ export class BoardObjects {
       this.group.remove(this.bankLabel);
       disposeObject(this.bankLabel);
     }
-    this.bankLabel = textSprite(`🏦 ${amount} 🪙`, { height: 0.9, color: '#ffe680' });
+    this.bankLabel = textSprite(`🏦 ${amount} 🪙`, { height: 0.9, color: '#ffe680', inWorld: true });
     this.bankLabel.position.copy(this.bankAt);
     this.group.add(this.bankLabel);
   }
@@ -308,7 +331,7 @@ export class BoardObjects {
     if (!t) return;
     this.group.remove(t.label);
     disposeObject(t.label);
-    t.label = textSprite(owner ? `💰 ${t.cost} 🪙 → ${owner}` : `💰 ${t.cost} 🪙`, { height: 0.75 });
+    t.label = textSprite(owner ? `💰 ${t.cost} 🪙 → ${owner}` : `💰 ${t.cost} 🪙`, { height: 0.75, inWorld: true });
     t.label.position.copy(t.at);
     this.group.add(t.label);
   }

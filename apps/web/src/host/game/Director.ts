@@ -29,6 +29,7 @@ import type { GameMenu } from '../ui/GameMenu';
 import { BOT_LEVELS, settings } from './Settings';
 import { BotPad, SeatControl, type Seat } from './Seats';
 import { PartyFlow } from './PartyFlow';
+import type { PartyHooks } from '../tester/PartyHooks';
 import { creditsHtml, creditsLines } from '../ui/credits';
 import { loading } from '../ui/loading';
 
@@ -41,6 +42,12 @@ export class Director {
   private seats: Seat[] = [];
   private rng: Rng = createRng();
   private forcedMinigame: string | null = null;
+  /** Modo tester: lugares só com bots (e o teclado num lugar), sem telemóveis. */
+  private testerSeats: { keyboardSeat: number | null } | null = null;
+  /** Modo tester: ganchos entregues a cada festa nova. */
+  testerHooks: PartyHooks | null = null;
+  /** Modo tester: bots a mais na festa saída do lobby (o total fica par, como sempre). */
+  extraBots = 0;
   /** Versão portátil da app: o menu principal tem «Testar minijogos». */
   private portable = false;
   /** Lugar de cada jogador na sala de estar (ecrã inicial). */
@@ -98,7 +105,7 @@ export class Director {
   flow: PartyFlow | null = null;
 
   private partyFlow(): PartyFlow {
-    return (this.flow = new PartyFlow({
+    this.flow = new PartyFlow({
       engine: this.engine,
       hud: this.hud,
       hub: this.hub,
@@ -107,7 +114,9 @@ export class Director {
       rng: this.rng,
       menu: this.menu,
       forcedMinigame: this.forcedMinigame,
-    }));
+    });
+    this.flow.tester = this.testerHooks;
+    return this.flow;
   }
 
   /** Quem escolhe nos menus: o VIP (telemóvel) ou o primeiro jogador de teclado. */
@@ -293,12 +302,21 @@ export class Director {
       ensurePicks();
       ensureRoomSeats();
       const list = players();
-      stage.setLineup(
-        list.map((p) => {
+      // Modo tester: os bots a mais já se sentam na sala (personagens e lugares que sobram).
+      const botTotal = !this.extraBots ? 0 : list.length ? seatCount(list.length + this.extraBots) - list.length : this.extraBots;
+      const usedChars = new Set(list.map((p) => this.picks.get(p.id)!.char));
+      const usedSeats = new Set(this.roomSeats.values());
+      const freeSeats = ROOM_SEATS.map((_, i) => i).filter((i) => !usedSeats.has(i));
+      const lobbyBots = CHARACTERS.filter((c) => !usedChars.has(c.id))
+        .slice(0, Math.min(botTotal, freeSeats.length))
+        .map((c, i) => ({ key: `bot-${c.id}`, characterId: c.id, label: `🤖 ${c.name}`, labelColor: '#9fd3ff', seat: freeSeats[i] }));
+      stage.setLineup([
+        ...list.map((p) => {
           const pick = this.picks.get(p.id)!;
           return { key: p.id, characterId: pick.char, label: `${p.isVip ? '⭐ ' : ''}${p.name}`, labelColor: pick.ready ? '#ffd23f' : '#ffffff', seat: this.roomSeats.get(p.id) };
         }),
-      );
+        ...lobbyBots,
+      ]);
       for (const p of list) {
         const pick = this.picks.get(p.id)!;
         stage.setAnim(p.id, pick.ready ? 'cheer' : 'idle');
@@ -318,7 +336,7 @@ export class Director {
         })
         .join('');
       const humans = list.length;
-      const bots = humans ? seatCount(humans) - humans : 0;
+      const bots = humans ? seatCount(humans + this.extraBots) - humans : 0;
       const waiting = list.filter((p) => !this.picks.get(p.id)?.ready && p.connected).map((p) => p.name);
       ui.querySelector('#help')!.textContent = !humans
         ? 'Lê o código com o telemóvel para entrar!'
@@ -655,8 +673,10 @@ export class Director {
       used.add(char);
       return { id: h.id, name: h.name, characterId: char, isBot: false, botPad: new BotPad() };
     });
-    const botCount = Math.max(0, seats(humans.length) - humans.length);
-    const free = this.rng.shuffle(CHARACTERS.filter((c) => !used.has(c.id)));
+    const botCount = Math.max(0, Math.min(MAX_PLAYERS, seats(humans.length + this.extraBots)) - humans.length);
+    const left = CHARACTERS.filter((c) => !used.has(c.id));
+    // Com bots a mais (tester), entram os mesmos que estavam sentados na sala.
+    const free = this.extraBots ? left : this.rng.shuffle(left);
     for (let i = 0; i < botCount; i++) {
       const c = free[i]!;
       this.seats.push({ id: `bot-${c.id}`, name: c.name, characterId: c.id, isBot: true, botPad: new BotPad() });
@@ -684,8 +704,9 @@ export class Director {
    * Modo de testes (só na versão portátil): lista de todos os minijogos; escolhe-se um (e o modo)
    * e joga-se logo, com quem está ligado e bots até 4. No fim volta à lista.
    */
-  private async testMenu(): Promise<void> {
-    await this.buildSeats((h) => Math.max(4, h));
+  async testMenu(players?: number): Promise<void> {
+    if (players) this.devSeats(Math.max(4, players));
+    else await this.buildSeats((h) => Math.max(4, h));
     this.menu.mode = 'game';
     const flow = this.partyFlow();
     const MODE_NAME: Record<MinigameMode, string> = { ffa: 'Todos contra todos', teams: 'Equipas', oneVsAll: '1 contra todos' };
@@ -727,12 +748,7 @@ export class Director {
     if (duel) players = Math.max(4, players);
     this.menu.mode = 'game';
     await this.engine.wait(1.5); // deixa a lista de telemóveis sincronizar
-    const humans = this.hub.players.slice(0, players);
-    const bots = CHARACTERS.slice(humans.length, players);
-    this.seats = [
-      ...humans.map((h, i) => ({ id: h.id, name: h.name, characterId: CHARACTERS[i]!.id, isBot: false, botPad: new BotPad() })),
-      ...bots.map((c) => ({ id: `bot-${c.id}`, name: c.name, characterId: c.id, isBot: true, botPad: new BotPad() })),
-    ];
+    this.devSeats(players);
     const colors = this.seats.map((_, i) => (mode === 'ffa' ? 'blue' : mode === 'oneVsAll' ? (i === 0 ? 'red' : 'blue') : i % 2 ? 'red' : 'blue')) as ('blue' | 'red')[];
     this.forcedMinigame = id;
     if (duel) await this.partyFlow().duelLoop('ilha');
@@ -742,15 +758,46 @@ export class Director {
   /** Desenvolvimento: festa de N rondas diretamente num mapa, só com bots e quem estiver ligado (/?party=<mapa>). */
   async testParty(boardId: string, players = 4, rounds = 2): Promise<void> {
     await this.engine.wait(1.5);
-    const humans = this.hub.players.slice(0, players);
-    const total = Math.max(seatCount(humans.length), players);
-    this.seats = [
-      ...humans.map((h, i) => ({ id: h.id, name: h.name, characterId: CHARACTERS[i]!.id, isBot: false, botPad: new BotPad() })),
-      ...CHARACTERS.slice(humans.length, total).map((c) => ({ id: `bot-${c.id}`, name: c.name, characterId: c.id, isBot: true, botPad: new BotPad() })),
-    ];
+    this.devSeats(players, seatCount);
     const flow = this.partyFlow();
     const state = await flow.play(rounds, boardId);
     await flow.finale(state);
+  }
+
+  /** Desenvolvimento: só o fim da festa (estrelas bónus e pódio), com moedas e estrelas ao calhas. */
+  async testFinale(boardId: string, players = 4): Promise<void> {
+    await this.engine.wait(1.5);
+    this.devSeats(players, seatCount);
+    await this.partyFlow().testFinale(boardId);
+  }
+
+  /** Modo tester: a partir daqui os testes não sentam telemóveis; `keyboardSeat` é o Teclado 1. */
+  useTesterSeats(keyboardSeat: number | null): void {
+    this.testerSeats = { keyboardSeat };
+  }
+
+  /** Lugares do jogo atual (para o painel de tester). */
+  get seatList(): readonly Seat[] {
+    return this.seats;
+  }
+
+  /**
+   * Lugares dos testes: quem está ligado (telemóvel ou teclado) e bots até `players`
+   * (ou até `min(humanos)`, se for mais). No modo tester: só bots e, se pedido, o teclado.
+   */
+  private devSeats(players: number, min: (humans: number) => number = () => 0): void {
+    const kbSeat = this.testerSeats?.keyboardSeat ?? null;
+    const humans = this.testerSeats ? (kbSeat === null ? [] : [this.hub.addKeyboardPlayer('kb1')]) : this.hub.players.slice(0, players);
+    const total = Math.max(min(humans.length), players);
+    const bot = (i: number): Seat => {
+      const c = CHARACTERS[i]!;
+      return { id: `bot-${c.id}`, name: c.name, characterId: c.id, isBot: true, botPad: new BotPad() };
+    };
+    const human = (h: HubPlayer, i: number): Seat => ({ id: h.id, name: h.name, characterId: CHARACTERS[i]!.id, isBot: false, botPad: new BotPad() });
+    if (this.testerSeats) {
+      const at = kbSeat === null ? -1 : Math.min(kbSeat, total - 1);
+      this.seats = Array.from({ length: total }, (_, i) => (i === at ? human(humans[0]!, i) : bot(i)));
+    } else this.seats = [...humans.map(human), ...Array.from({ length: total - humans.length }, (_, i) => bot(humans.length + i))];
   }
 
   // ── Desportos ───────────────────────────────────────────
@@ -783,7 +830,7 @@ export class Director {
     await Promise.all([this.engine.wait(2.5), narrator.say(def.narration)]);
     this.hud.panel(null);
 
-    await loadProps(THEME_PROPS[def.id] ?? []);
+    await loadProps([...(THEME_PROPS[def.id] ?? []), ...(def.props ?? [])]);
     const run = def.create({
       engine: this.engine,
       hud: this.hud,
@@ -864,18 +911,7 @@ export class Director {
     const def = SPORTS.find((s) => s.id === id);
     if (!def) throw new Error(`Desporto desconhecido: ${id}`);
     await this.engine.wait(1.5); // deixa a lista de telemóveis sincronizar
-    const humans = this.hub.players.slice(0, players);
-    const total = Math.max(def.seatCount(humans.length), players);
-    this.seats = [
-      ...humans.map((h, i) => ({ id: h.id, name: h.name, characterId: CHARACTERS[i]!.id, isBot: false, botPad: new BotPad() })),
-      ...CHARACTERS.slice(humans.length, total).map((c) => ({
-        id: `bot-${c.id}`,
-        name: c.name,
-        characterId: c.id,
-        isBot: true,
-        botPad: new BotPad(),
-      })),
-    ];
+    this.devSeats(players, def.seatCount);
     for (;;) await this.playSport(def);
   }
 }

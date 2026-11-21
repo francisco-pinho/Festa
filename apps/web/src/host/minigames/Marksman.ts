@@ -7,11 +7,11 @@
 import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
-import { PROPS, pickProp } from '../three/props';
+import { hasProp, pickProp, prop } from '../three/props';
 import { getCharacter } from '@festa/game';
 import { DuelMinigame, type Duelist } from './DuelMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
-import { bunting, swayBunting } from './scenery';
+import { bunting, swayBunting, themeGround, themeProps } from './scenery';
 
 const SHOTS = 5;
 /** Raio do alvo (onde a mira pode ir parar). */
@@ -91,19 +91,28 @@ class MarksmanRun extends DuelMinigame {
   private clock = 0;
 
   constructor(ctx: MinigameContext) {
-    super(ctx, { ground: '#9be07a', spacing: 3 });
+    super(ctx, { ground: themeGround(ctx.theme), spacing: 3 });
     // Vista de lado: duas pistas, arqueiros à esquerda virados para os alvos à direita.
     for (const d of this.duelists) {
       const z = laneZ(d);
       d.model.root.position.set(SHOOT_X, 0, z);
       d.model.faceYaw(Math.PI / 2, true);
-      const target = new THREE.Group();
-      ['#ffffff', '#ff3b5c', '#ffffff', '#ff3b5c'].forEach((c, i) => {
-        const ring = mesh(new THREE.CylinderGeometry(1.2 - i * 0.3, 1.2 - i * 0.3, 0.1 + i * 0.02, 24), toon(c));
-        ring.rotation.z = Math.PI / 2;
-        target.add(ring);
-      });
-      target.position.set(TARGET_X, TARGET_Y, z);
+      // Alvo da KayKit (disco em XY, de frente para +z): roda para os arqueiros e assenta o centro em TARGET_Y.
+      const model = prop('kaykit-prototype/target', { width: TARGET_R * 2 });
+      let target: THREE.Group;
+      if (model) {
+        target = model;
+        target.rotation.y = -Math.PI / 2;
+        target.position.set(TARGET_X + 0.16, TARGET_Y - TARGET_R, z);
+      } else {
+        target = new THREE.Group();
+        ['#ffffff', '#ff3b5c', '#ffffff', '#ff3b5c'].forEach((c, i) => {
+          const ring = mesh(new THREE.CylinderGeometry(1.2 - i * 0.3, 1.2 - i * 0.3, 0.1 + i * 0.02, 24), toon(c));
+          ring.rotation.z = Math.PI / 2;
+          target.add(ring);
+        });
+        target.position.set(TARGET_X, TARGET_Y, z);
+      }
       const post = mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.6), toon('#7a5230'));
       post.position.set(TARGET_X + 0.1, 0.8, z);
       // Pista de terra entre o arqueiro e o alvo
@@ -157,16 +166,25 @@ class MarksmanRun extends DuelMinigame {
       bale.position.set(TARGET_X + 2.2, 0.7 + (i >= 4 ? 1.3 : 0), -3 + (i % 4) * 2);
       this.scene.add(bale);
     }
-    // Vedação ao fundo
-    for (let x = -12; x <= 12; x += 2) {
-      const postF = mesh(new THREE.BoxGeometry(0.2, 1.2, 0.2), toon('#8b5a2b'));
-      postF.position.set(x, 0.6, -5.5);
-      this.scene.add(postF);
-    }
-    for (const y of [0.45, 0.95]) {
-      const rail = mesh(new THREE.BoxGeometry(24.4, 0.12, 0.1), toon('#a8743f'));
-      rail.position.set(0, y, -5.5);
-      this.scene.add(rail);
+    // Vedação ao fundo (troços de cerca da KayKit, compridos em z: rodam para ficar ao longo de x)
+    if (hasProp('kaykit-medieval/fence_wood_straight')) {
+      for (let x = -11; x <= 11; x += 2) {
+        const f = prop('kaykit-medieval/fence_wood_straight', { width: 2 })!;
+        f.position.set(x, 0, -5.5);
+        f.rotation.y = Math.PI / 2;
+        this.scene.add(f);
+      }
+    } else {
+      for (let x = -12; x <= 12; x += 2) {
+        const postF = mesh(new THREE.BoxGeometry(0.2, 1.2, 0.2), toon('#8b5a2b'));
+        postF.position.set(x, 0.6, -5.5);
+        this.scene.add(postF);
+      }
+      for (const y of [0.45, 0.95]) {
+        const rail = mesh(new THREE.BoxGeometry(24.4, 0.12, 0.1), toon('#a8743f'));
+        rail.position.set(0, y, -5.5);
+        this.scene.add(rail);
+      }
     }
     // Bandeirinhas: uma ao longo da vedação e outra por cima das pistas.
     const masts: [number, number, number][] = [[-9, -5, 5], [9, -5, 5], [1, -4.2, 5.4], [1, 4.2, 5.4]];
@@ -186,9 +204,11 @@ class MarksmanRun extends DuelMinigame {
       obj.rotation.y = rotY;
       this.scene.add(obj);
     };
-    // Floresta à volta: atrás dos alvos e dos dois lados, cerrada, para não se ver o infinito.
+    // Cenário do mapa à volta (árvores na ilha e no parque, rochas e árvores secas no vulcão,
+    // prédios e carros na cidade…): atrás dos alvos e dos dois lados, cerrado, para não se ver o infinito.
+    const theme = themeProps(this.ctx.theme);
     const tree = (x: number, z: number, h: number) =>
-      place(pickProp(PROPS.trees, rng.next(), { height: h }) ?? fallbackTree(rng.next()), x + rng.next() * 1.2, z + rng.next() * 1.2, rng.next() * 6);
+      place(pickProp(theme.tall, rng.next(), { height: h }) ?? fallbackTree(rng.next()), x + rng.next() * 1.2, z + rng.next() * 1.2, rng.next() * 6);
     for (let x = 12; x <= 22; x += 3.2) for (let z = -24; z <= 24; z += 3) tree(x, z, 6.5 + rng.next() * 4 + (x - 12) * 0.3);
     for (const sz of [-1, 1]) {
       for (let x = -26; x < 12; x += 3) {
@@ -198,7 +218,7 @@ class MarksmanRun extends DuelMinigame {
     // Arbustos e pedras à frente das árvores.
     for (let i = 0; i < 26; i++) {
       const sz = i % 2 ? 1 : -1;
-      place(pickProp([...PROPS.plants, ...PROPS.rocks], rng.next(), { height: 0.6 + rng.next() * 0.8 }), -18 + rng.next() * 30, sz * (6.4 + rng.next() * 1.4), rng.next() * 6);
+      place(pickProp(theme.small, rng.next(), { height: 0.6 + rng.next() * 0.8 }), -18 + rng.next() * 30, sz * (6.4 + rng.next() * 1.4), rng.next() * 6);
     }
     place(pickProp(['kaykit-medieval/tent'], rng.next(), { height: 2.6 }), -11, -5, 0.6); // afastada para não tapar a câmara (atrás dos arqueiros)
     place(pickProp(['kaykit-medieval/barrel', 'kenney-pirate/barrel'], 0, { height: 1 }) ?? barrel(), -8.2, 2.6);
@@ -329,5 +349,6 @@ export const Marksman: MinigameDef = {
   controls: 'Ⓐ Apontar (horizontal) · Ⓐ Disparar (vertical)',
   stick: false,
   buttons: [{ id: 'a', label: 'Apontar / Disparar' }],
+  props: ['kaykit-prototype/target'],
   create: (ctx) => new MarksmanRun(ctx),
 };

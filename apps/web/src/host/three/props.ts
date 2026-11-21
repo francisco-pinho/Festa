@@ -261,8 +261,10 @@ export const PROPS = {
   holiday: K('kaykit-holiday', ['christmas_tree_decorated', 'snowman_A', 'snowman_B', 'snowball_pile', 'present_A_red', 'present_B_blue', 'present_C_green', 'lantern_decorated', 'candycane_small']),
 } as const;
 
-/** Objetos interativos usados em todos os tabuleiros (baú do tesouro, canhão). */
-const BOARD_COMMON = ['kaykit-dungeon/chest_gold', 'kenney-pirate/cannon'];
+/** Objetos interativos usados em todos os tabuleiros (baú do tesouro, canhão, alavanca, estrela, moedas). */
+const BOARD_COMMON = ['kaykit-dungeon/chest_gold', 'kenney-pirate/cannon', 'kaykit-platformer/lever_floor_base_red', 'kaykit-platformer/star_yellow', 'kaykit-boardgame/coin_gold'];
+/** Bancas do mercado (lojas da ilha, do vulcão, do castelo e do parque). */
+const MARKET_STALLS = K('kaykit-medieval', ['building_market_blue', 'building_market_green', 'building_market_red', 'building_market_yellow']);
 
 /** Cenário comum dos minijogos (árvores, tendas, barris…). */
 export const MINIGAME_PROPS: readonly string[] = [
@@ -284,9 +286,9 @@ export const MINIGAME_PROPS: readonly string[] = [
 
 /** Que modelos cada tema/desporto precisa. */
 export const THEME_PROPS: Record<string, readonly string[]> = {
-  island: [...PROPS.palms, ...PROPS.sandRocks, ...PROPS.beach, ...PROPS.islandHuts, ...PROPS.tallRocks, ...PROPS.ships, ...PROPS.pirateBits, ...PROPS.plants, ...PROPS.rocks, ...PROPS.pebbles, ...PROPS.trees, ...PROPS.fantasyProps],
+  island: [...BOARD_COMMON, ...MARKET_STALLS, ...PROPS.palms, ...PROPS.sandRocks, ...PROPS.beach, ...PROPS.islandHuts, ...PROPS.tallRocks, ...PROPS.ships, ...PROPS.pirateBits, ...PROPS.plants, ...PROPS.rocks, ...PROPS.pebbles, ...PROPS.trees, ...PROPS.fantasyProps],
   city: [...BOARD_COMMON, ...PROPS.buildings, ...PROPS.cars, ...PROPS.street, ...PROPS.trees.slice(0, 5), ...PROPS.plants.slice(0, 2), 'kaykit-city/watertower'],
-  volcano: [...BOARD_COMMON, ...PROPS.tallRocks, ...PROPS.rocks, ...PROPS.mountains, ...PROPS.camp, ...PROPS.deadTrees, ...PROPS.pebbles, ...PROPS.fences, 'kaykit-medieval/building_mine_red'],
+  volcano: [...BOARD_COMMON, ...PROPS.tallRocks, ...PROPS.rocks, ...PROPS.mountains, ...PROPS.camp, ...PROPS.deadTrees, ...PROPS.pebbles, ...PROPS.fences, ...MARKET_STALLS, 'kaykit-medieval/building_mine_red', 'kaykit-halloween/post_lantern'],
   castle: [...BOARD_COMMON, ...PROPS.castleKit, ...PROPS.fantasyProps],
   park: [...BOARD_COMMON, ...PROPS.park, ...PROPS.minigolf, ...PROPS.food, ...PROPS.trees, ...PROPS.plants, ...PROPS.fantasyProps, 'kaykit-city/streetlight'],
   golf: [...PROPS.trees, ...PROPS.pines, ...PROPS.treesFall,...PROPS.plants, ...PROPS.rocks, ...PROPS.pebbles, ...PROPS.natureBits, ...PROPS.medievalNature],

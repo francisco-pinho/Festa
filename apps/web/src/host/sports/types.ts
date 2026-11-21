@@ -47,6 +47,8 @@ export interface SportDef {
   narration: string[];
   /** Quantos lugares no total (humanos + bots) para `humans` jogadores. */
   seatCount(humans: number): number;
+  /** Modelos (props.ts) que este desporto usa, além dos de THEME_PROPS; carregam antes de `create`. */
+  props?: readonly string[];
   create(ctx: SportContext): SportRun;
 }
 

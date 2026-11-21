@@ -132,7 +132,8 @@ export class ShowcaseStage implements Stage {
         slot.model.faceYaw(-a * 0.6, true);
       }
       // Nomes em duas alturas alternadas, para não se sobreporem quando há muitas personagens.
-      slot.labelLift = n > 5 && i % 2 === 1 ? 0.6 : 0;
+      // Na sala cada um tem o seu lugar: o nome fica logo acima da cabeça (mais baixo se sentado).
+      slot.labelLift = seat ? (seat.anim === 'sit' ? -0.75 : -0.45) : n > 5 && i % 2 === 1 ? 0.6 : 0;
       this.setLabel(e.key, e.label ?? null, e.labelColor);
     });
   }
@@ -146,7 +147,7 @@ export class ShowcaseStage implements Stage {
       slot.label = null;
     }
     if (!text) return;
-    slot.label = textSprite(text, { height: 0.55, color });
+    slot.label = textSprite(text, { height: this.room ? 0.38 : 0.55, color });
     slot.label.position.y = 2.9 + (slot.labelLift ?? 0);
     slot.model.root.add(slot.label);
   }

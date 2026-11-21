@@ -700,10 +700,11 @@ export class BowlingStage extends SportStage {
     // Mobília da sala de espera (KayKit Furniture e Restaurant).
     const place = (key: string, size: { height?: number; width?: number }, x: number, z: number, rotY = Math.PI) => {
       const o = prop(key, size);
-      if (!o) return;
+      if (!o) return false;
       o.position.set(x, key.includes('rug') ? -0.17 : -0.2, z);
       o.rotation.y = rotY;
       this.scene.add(o);
+      return true;
     };
     place('kaykit-furniture/rug_rectangle_stripes_A', { width: 12 }, 0, 10.4, 0);
     for (const sx of [-1, 1]) {
@@ -715,11 +716,14 @@ export class BowlingStage extends SportStage {
     place('kaykit-furniture/table_low', { width: 2.2 }, 0, 13.4, 0);
     place('kaykit-restaurant/food_burger', { height: 0.5 }, 0.3, 13.4, 0.4);
     place('kaykit-furniture/shelf_B_large_decorated', { width: 3 }, -12, 14, Math.PI / 2);
-    const table = mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.08, 20), toon('#e8e2f0'));
-    table.position.set(5.6, 0.75, 9.2);
-    const leg = mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.75), toon('#8a8f99'));
-    leg.position.set(5.6, 0.37, 9.2);
-    this.scene.add(table, leg);
+    // Mesinha redonda (KayKit Restaurant); sem o modelo, a feita à mão.
+    if (!place('kaykit-restaurant/table_round_A_small_decorated', { height: 1 }, 5.6, 9.2, 0)) {
+      const table = mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.08, 20), toon('#e8e2f0'));
+      table.position.set(5.6, 0.75, 9.2);
+      const leg = mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.75), toon('#8a8f99'));
+      leg.position.set(5.6, 0.37, 9.2);
+      this.scene.add(table, leg);
+    }
 
     // Teto escuro com faixas de luz e luzes ao longo da pista.
     const ceiling = mesh(new THREE.PlaneGeometry(40, 70), toon('#120a24'), { cast: false });

@@ -6,10 +6,11 @@
 import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { mesh, toon, toonUnique } from '../three/materials';
-import { PROPS, pickProp } from '../three/props';
+import { pickProp, prop } from '../three/props';
 import { Water } from '../stages/environment';
 import { TEAM_COLORS } from './ArenaMinigame';
 import { RowMinigame, type Rower } from './RowMinigame';
+import { themeGround, themeProps } from './scenery';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 
 const START = -24;
@@ -49,19 +50,20 @@ class CanoeRun extends RowMinigame {
   constructor(ctx: MinigameContext) {
     super(ctx, { ground: null, decor: false });
     this.scene.add(this.water.mesh);
-    // Margens com árvores
+    // Margens com o cenário do mapa (árvores, rochas, prédios…)
+    const theme = themeProps(ctx.theme);
     for (const side of [-1, 1]) {
-      const bank = mesh(new THREE.BoxGeometry(90, 1.2, 8), toon('#7ccf5b'), { receive: true });
+      const bank = mesh(new THREE.BoxGeometry(90, 1.2, 8), toon(themeGround(ctx.theme)), { receive: true });
       bank.position.set(0, -0.2, side * 10);
       this.scene.add(bank);
       // Na margem do lado da câmara só plantas baixas (as árvores tapavam a vista).
       const near = side === 1;
       for (let i = 0; i < 16; i++) {
         const t = near
-          ? pickProp(PROPS.plants, ctx.rng.next(), { height: 0.5 + ctx.rng.next() * 0.6 })
+          ? pickProp(theme.small, ctx.rng.next(), { height: 0.5 + ctx.rng.next() * 0.6 })
           : i % 3 === 2
-            ? pickProp(PROPS.plants, ctx.rng.next(), { height: 0.6 + ctx.rng.next() * 0.8 })
-            : pickProp(PROPS.trees, ctx.rng.next(), { height: 3.5 + ctx.rng.next() * 3.5 });
+            ? pickProp(theme.small, ctx.rng.next(), { height: 0.6 + ctx.rng.next() * 0.8 })
+            : pickProp(theme.tall, ctx.rng.next(), { height: 3.5 + ctx.rng.next() * 3.5 });
         if (!t) continue;
         t.position.set(-40 + i * 5.3 + ctx.rng.next() * 2, 0.4, side * (near ? 8 + ctx.rng.next() * 1.5 : 8 + ctx.rng.next() * 4));
         this.scene.add(t);
@@ -72,6 +74,15 @@ class CanoeRun extends RowMinigame {
     flag.position.set(FINISH, 0.05, 0);
     this.scene.add(flag);
     for (const side of [-1, 1]) {
+      // Bandeira da KayKit a marcar a meta (o modelo vem centrado na caixa: o mastro fica ~0.99 para +z local, que a rotação leva para +x),
+      // com o pano virado para trás (-x), para a linha de partida.
+      const flag = prop('kaykit-platformer/flag_A_red', { height: 4 });
+      if (flag) {
+        flag.rotation.y = Math.PI / 2;
+        flag.position.set(FINISH - 0.99, 0, side * 6.5);
+        this.scene.add(flag);
+        continue;
+      }
       const post = mesh(new THREE.CylinderGeometry(0.15, 0.15, 4, 8), toon('#ff3b5c'));
       post.position.set(FINISH, 2, side * 6.5);
       this.scene.add(post);
@@ -248,5 +259,6 @@ export const Canoe: MinigameDef = {
   controls: 'Ⓐ Remar (alternem!)',
   stick: false,
   buttons: [{ id: 'a', label: 'Remar' }],
+  props: ['kaykit-platformer/flag_A_red'],
   create: (ctx) => new CanoeRun(ctx),
 };

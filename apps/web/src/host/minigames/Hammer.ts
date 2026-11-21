@@ -6,10 +6,12 @@
 import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { disposeObject, mesh, textSprite, toon } from '../three/materials';
-import { pickProp } from '../three/props';
+import { pickProp, prop } from '../three/props';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import { ringDecor } from './scenery';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+
+const MALLET = 'kaykit-tools/mallet';
 
 const HALF = 11;
 const OBSTACLES = [
@@ -43,12 +45,17 @@ class HammerRun extends ArenaMinigame {
     this.giant = this.actors.find((a) => a.seat.team === 'blue');
     // Martelo
     this.hammer = new THREE.Group();
-    const handle = mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.2, 8), toon('#8b5a2b'));
-    handle.position.y = 1.1;
-    const head = mesh(new THREE.CylinderGeometry(0.55, 0.55, 1.1, 16), toon('#ff3b5c'));
-    head.rotation.z = Math.PI / 2;
-    head.position.y = 2.2;
-    this.hammer.add(handle, head);
+    // Maço da KayKit do tamanho do martelo feito à mão (cabo 2,2 + cabeça); senão o feito à mão.
+    const mallet = prop(MALLET, { height: 2.75 });
+    if (mallet) this.hammer.add(mallet);
+    else {
+      const handle = mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.2, 8), toon('#8b5a2b'));
+      handle.position.y = 1.1;
+      const head = mesh(new THREE.CylinderGeometry(0.55, 0.55, 1.1, 16), toon('#ff3b5c'));
+      head.rotation.z = Math.PI / 2;
+      head.position.y = 2.2;
+      this.hammer.add(handle, head);
+    }
     if (this.giant) {
       this.giant.pos.set(0, 0, -7);
       this.giant.model.root.scale.setScalar(1.7);
@@ -187,5 +194,6 @@ export const Hammer: MinigameDef = {
   controls: '🕹️ Correr · Ⓐ Martelada (gigante) / Arranque',
   stick: true,
   buttons: [{ id: 'a', label: 'Martelar/Correr' }],
+  props: [MALLET],
   create: (ctx) => new HammerRun(ctx),
 };

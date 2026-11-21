@@ -45,14 +45,38 @@ interface Reaction {
   splat?: THREE.Object3D;
 }
 
-/** Banana em arco (pistola ou projétil). */
+/**
+ * Banana de desenho animado (pistola ou projétil): corpo curvo, gordo ao meio e fino nas pontas,
+ * com o pé verde-acastanhado numa ponta e a pontinha escura na outra.
+ */
 function banana(scale = 1): THREE.Group {
   const g = new THREE.Group();
-  const body = mesh(new THREE.TorusGeometry(0.32, 0.09, 8, 16, Math.PI * 0.9), toonUnique('#ffd93b', { emissive: '#ffcc00', emissiveIntensity: 0.15 }));
-  body.rotation.z = Math.PI * 0.55;
-  const tip = mesh(new THREE.SphereGeometry(0.06, 8, 6), toon('#5b3a1e'), { cast: false });
-  tip.position.set(-0.28, -0.12, 0);
-  g.add(body, tip);
+  const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.34, 0.1, 0), new THREE.Vector3(0, -0.2, 0), new THREE.Vector3(0.34, 0.1, 0));
+  const SEG = 24;
+  const RAD = 8;
+  const geo = new THREE.TubeGeometry(curve, SEG, 0.1, RAD, false);
+  // Afina as pontas: cada anel do tubo encolhe conforme a distância ao meio.
+  const pos = geo.attributes.position!;
+  const c = new THREE.Vector3();
+  const v = new THREE.Vector3();
+  for (let i = 0; i <= SEG; i++) {
+    const t = i / SEG;
+    curve.getPoint(t, c);
+    const k = 0.25 + 0.75 * Math.pow(Math.sin(t * Math.PI), 0.7);
+    for (let j = 0; j <= RAD; j++) {
+      const idx = i * (RAD + 1) + j;
+      v.fromBufferAttribute(pos, idx).sub(c).multiplyScalar(k).add(c);
+      pos.setXYZ(idx, v.x, v.y, v.z);
+    }
+  }
+  geo.computeVertexNormals();
+  const body = mesh(geo, toonUnique('#ffd93b', { emissive: '#ffcc00', emissiveIntensity: 0.12 }));
+  const stem = mesh(new THREE.CylinderGeometry(0.022, 0.03, 0.12, 6), toon('#6b7a2a'), { cast: false });
+  stem.position.set(0.37, 0.15, 0);
+  stem.rotation.z = -0.7;
+  const tip = mesh(new THREE.SphereGeometry(0.03, 8, 6), toon('#4a2f18'), { cast: false });
+  tip.position.set(-0.35, 0.11, 0);
+  g.add(body, stem, tip);
   g.scale.setScalar(scale);
   return g;
 }
@@ -94,6 +118,8 @@ class QuickDrawRun extends DuelMinigame {
   private readonly flagCloth: THREE.Mesh;
   private readonly clothBase: Float32Array;
   private flagOut = 0;
+  /** Coice da pistola ao disparar (1 → 0). */
+  private recoil = 0;
   private flagTarget = 0;
 
   // Câmara lenta e câmara que segue a banana.
@@ -122,6 +148,11 @@ class QuickDrawRun extends DuelMinigame {
     this.referee.root.position.set(0, FLOOR + 0.4, -2.6);
     this.referee.faceYaw(0, true);
     this.scene.add(this.referee.root);
+    // Braço direito sempre esticado para cima, com a pistola na mão (alvo por cima do ombro).
+    const armUp = new THREE.Object3D();
+    armUp.position.set(-0.45, 2.75, 0.1);
+    this.referee.root.add(armUp);
+    this.referee.reach(null, armUp);
     const metal = toon('#3b3f4a');
     const body = mesh(new THREE.BoxGeometry(0.14, 0.3, 0.13), metal);
     body.position.y = 0.12;
@@ -213,6 +244,8 @@ class QuickDrawRun extends DuelMinigame {
       const f = pickProp(PROPS.fences, rng.next(), { width: 2.2 });
       if (!f) continue;
       f.position.set(x, 0, -4.6);
+      // As cercas da medieval são compridas em z (as do Halloween em x): rodam para ficar ao longo do estrado.
+      if (String(f.userData.prop).startsWith('kaykit-medieval/')) f.rotation.y = Math.PI / 2;
       this.scene.add(f);
     }
   }
@@ -284,6 +317,7 @@ class QuickDrawRun extends DuelMinigame {
   private popFlag(color: string): void {
     this.setFlagColor(color);
     this.flagTarget = 1;
+    this.recoil = 1;
     sound.play('pop');
     const p = new THREE.Vector3();
     this.gun.localToWorld(p.set(0, 0.7, 0));
@@ -515,11 +549,18 @@ class QuickDrawRun extends DuelMinigame {
         this.botAt.delete(d.seat.id);
       }
     }
+    if (this.phase === 'result') {
+      // Quem carregou depois do outro já ter disparado não perde nada: a carregadela não conta
+      // (antes ficava guardada e virava falso arranque na vez seguinte — duas vidas de uma vez).
+      for (const d of this.duelists) {
+        this.pressed(d, 'a');
+        this.pressed(d, 'b');
+      }
+    }
     if (this.phase === 'ready' || this.phase === 'fake') {
       // Bandeira amarela: sai da pistola e volta a entrar (não se dispara!).
       if (this.fakeAt > 0 && this.t >= this.fakeAt && this.phase === 'ready') {
         this.phase = 'fake';
-        this.referee.setAnim('uppercut');
         this.popFlag('#ffd23f');
         this.setSign('Amarela! Não dispares!', '#ffd23f');
       }
@@ -538,7 +579,6 @@ class QuickDrawRun extends DuelMinigame {
       if (this.t >= this.goAt && this.phase === 'ready' && this.flagOut < 0.1) {
         this.phase = 'go';
         this.t = 0;
-        this.referee.setAnim('cheer');
         this.popFlag('#ff2a2a');
         this.setSign('🚩 VERMELHA! Dispara!', '#ff3b5c');
         sound.play('go');
@@ -586,7 +626,9 @@ class QuickDrawRun extends DuelMinigame {
   private updateGun(dt: number): void {
     this.referee.update(dt);
     this.referee.hand('right').getWorldPosition(this.gun.position);
-    this.gun.rotation.set(-0.15, 0, -0.1);
+    this.recoil = Math.max(0, this.recoil - dt * 5);
+    this.gun.rotation.set(-0.15 - this.recoil * 0.5, 0, -0.1);
+    this.gun.position.y -= this.recoil * 0.08;
     const target = this.flagTarget;
     this.flagOut += (target - this.flagOut) * Math.min(1, dt * (target > this.flagOut ? 16 : 10));
     this.flagPole.scale.y = Math.max(0.001, this.flagOut);

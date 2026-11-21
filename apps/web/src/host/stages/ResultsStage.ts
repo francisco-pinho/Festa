@@ -10,6 +10,7 @@ import type { Engine, Stage } from '../three/Engine';
 import { CharacterModel } from '../three/CharacterModel';
 import { coinMaterials } from '../three/coinArt';
 import { disposeObject, mesh, textSprite, toonUnique } from '../three/materials';
+import { prop } from '../three/props';
 
 export interface ResultEntry {
   id: string;
@@ -30,7 +31,7 @@ export class ResultsStage implements Stage {
   private readonly center = new THREE.Vector3();
   private readonly back = new THREE.Vector3();
   private orbit = 0;
-  private readonly coins: { m: THREE.Mesh; from: THREE.Vector3; to: THREE.Vector3; t: number; delay: number }[] = [];
+  private readonly coins: { m: THREE.Object3D; from: THREE.Vector3; to: THREE.Vector3; t: number; delay: number }[] = [];
   private readonly coinGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.06, 16);
   private readonly coinMat = coinMaterials(false);
 
@@ -73,7 +74,8 @@ export class ResultsStage implements Stage {
       this.models.push(model);
       // Moedas ganhas: caem uma a uma para dentro da personagem.
       for (let c = 0; c < Math.min(12, e.gained); c++) {
-        const m = new THREE.Mesh(this.coinGeo, this.coinMat);
+        // Moeda da KayKit (Board Game, carregada com a sala); sem ela, a desenhada.
+        const m = prop('kaykit-boardgame/coin_gold', { width: 0.5 }) ?? new THREE.Mesh(this.coinGeo, this.coinMat);
         m.rotation.x = Math.PI / 2;
         m.visible = false;
         this.group.add(m);

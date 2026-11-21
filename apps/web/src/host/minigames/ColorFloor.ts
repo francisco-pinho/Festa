@@ -7,6 +7,7 @@
 import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { mesh, textSprite, toon, toonUnique, disposeObject } from '../three/materials';
+import { prop } from '../three/props';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 
@@ -136,6 +137,36 @@ class ColorFloorRun extends ArenaMinigame {
       }
   }
 
+  /** Barco feito à mão (alternativa ao modelo): casco, convés e cabine (a motor) ou mastro e vela. */
+  private buildBoat(g: THREE.Group, color: string, i: number): void {
+    // Casco: meio cilindro deitado (fundo redondo), com convés de madeira por cima.
+    const hull = mesh(new THREE.CylinderGeometry(1, 1, 5, 12, 1, false, Math.PI / 2, Math.PI), toon(color), { cast: false });
+    hull.rotation.z = Math.PI / 2;
+    hull.scale.set(1, 1, 0.9);
+    const deck = mesh(new THREE.BoxGeometry(5, 0.12, 1.8), toon('#b88a55'), { cast: false });
+    deck.position.y = 0.02;
+    g.add(hull, deck);
+    if (i % 3 === 2) {
+      // Barco a motor: cabine.
+      const cab = mesh(new THREE.BoxGeometry(1.6, 1, 1.3), toon('#f4f4f4'), { cast: false });
+      cab.position.set(-0.4, 0.55, 0);
+      const roof = mesh(new THREE.BoxGeometry(1.9, 0.12, 1.5), toon(color), { cast: false });
+      roof.position.set(-0.4, 1.1, 0);
+      g.add(cab, roof);
+    } else {
+      // Veleiro: mastro e vela triangular.
+      const mast = mesh(new THREE.CylinderGeometry(0.06, 0.08, 5, 6), toon('#5c3d22'), { cast: false });
+      mast.position.set(0.3, 2.5, 0);
+      const shape = new THREE.Shape();
+      shape.moveTo(0, 0);
+      shape.lineTo(-2.2, 0);
+      shape.lineTo(0, 4.3);
+      const sail = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshToonMaterial({ color: i % 2 ? '#ffffff' : '#ffe0b0', side: THREE.DoubleSide }));
+      sail.position.set(0.22, 0.45, 0);
+      g.add(mast, sail);
+    }
+  }
+
   /** Mar aberto (sempre água a sério, mesmo no vulcão) com barcos a balançar ao fundo. */
   private buildSea(ctx: MinigameContext): void {
     const wm = this.water.mesh.material as THREE.MeshStandardMaterial;
@@ -146,31 +177,14 @@ class ColorFloorRun extends ArenaMinigame {
     for (let i = 0; i < 7; i++) {
       const g = new THREE.Group();
       const color = hullColors[i % hullColors.length]!;
-      // Casco: meio cilindro deitado (fundo redondo), com convés de madeira por cima.
-      const hull = mesh(new THREE.CylinderGeometry(1, 1, 5, 12, 1, false, Math.PI / 2, Math.PI), toon(color), { cast: false });
-      hull.rotation.z = Math.PI / 2;
-      hull.scale.set(1, 1, 0.9);
-      const deck = mesh(new THREE.BoxGeometry(5, 0.12, 1.8), toon('#b88a55'), { cast: false });
-      deck.position.y = 0.02;
-      g.add(hull, deck);
-      if (i % 3 === 2) {
-        // Barco a motor: cabine.
-        const cab = mesh(new THREE.BoxGeometry(1.6, 1, 1.3), toon('#f4f4f4'), { cast: false });
-        cab.position.set(-0.4, 0.55, 0);
-        const roof = mesh(new THREE.BoxGeometry(1.9, 0.12, 1.5), toon(color), { cast: false });
-        roof.position.set(-0.4, 1.1, 0);
-        g.add(cab, roof);
+      // Veleiros: o da Kenney (comprido em z: roda para o comprido do casco feito à mão, em x; quilha debaixo de água).
+      const ship = i % 3 === 2 ? null : prop('kenney-pirate/ship-small', { width: 5 });
+      if (ship) {
+        ship.rotation.y = Math.PI / 2;
+        ship.position.y = -0.6;
+        g.add(ship);
       } else {
-        // Veleiro: mastro e vela triangular.
-        const mast = mesh(new THREE.CylinderGeometry(0.06, 0.08, 5, 6), toon('#5c3d22'), { cast: false });
-        mast.position.set(0.3, 2.5, 0);
-        const shape = new THREE.Shape();
-        shape.moveTo(0, 0);
-        shape.lineTo(-2.2, 0);
-        shape.lineTo(0, 4.3);
-        const sail = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshToonMaterial({ color: i % 2 ? '#ffffff' : '#ffe0b0', side: THREE.DoubleSide }));
-        sail.position.set(0.22, 0.45, 0);
-        g.add(mast, sail);
+        this.buildBoat(g, color, i);
       }
       // Ao fundo e dos lados (nunca entre a câmara e o cais).
       const ang = Math.PI * (1.08 + (i / 6) * 0.84) + (ctx.rng.next() - 0.5) * 0.15;
@@ -425,5 +439,6 @@ export const ColorFloor: MinigameDef = {
     { id: 'a', label: 'Mergulho' },
     { id: 'b', label: 'Saltar' },
   ],
+  props: ['kenney-pirate/ship-small'],
   create: (ctx) => new ColorFloorRun(ctx),
 };

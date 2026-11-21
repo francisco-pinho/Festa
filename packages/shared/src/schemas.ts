@@ -270,7 +270,7 @@ const keyboardSeat = z.number().int().min(0).max(MAX_PLAYERS - 1).nullable();
 
 /** Cenário que o ecrã /teste lança (e volta a lançar depois de recarregar). */
 export const testerScenarioSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('lobby') }),
+  z.object({ kind: z.literal('lobby'), bots: z.number().int().min(0).max(MAX_PLAYERS).optional(), botLevel: botLevel.optional() }),
   z.object({ kind: z.literal('menu'), players: testPlayers, botLevel, keyboardSeat }),
   z.object({ kind: z.literal('party'), board: id, rounds: z.number().int().min(1).max(30), players: testPlayers, botLevel, keyboardSeat }),
   z.object({ kind: z.literal('minigame'), id, mode: z.enum(['ffa', 'teams', 'oneVsAll']), players: testPlayers, botLevel, keyboardSeat }),

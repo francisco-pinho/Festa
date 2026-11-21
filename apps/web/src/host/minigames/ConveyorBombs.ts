@@ -11,6 +11,9 @@ import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { rankBy } from './rank';
 import { explode } from '../three/explosion';
+import { prop } from '../three/props';
+
+const BOMB = 'kaykit-platformer/bomb';
 
 const LEN = 9; // comprimento da passadeira
 const LIVES = 3;
@@ -111,9 +114,12 @@ class ConveyorRun extends RowMinigame {
 
   private spawn(lane: number): void {
     const obj = new THREE.Group();
-    const ball = mesh(new THREE.SphereGeometry(0.42, 16, 12), toon('#26232f'));
+    // Bomba da KayKit (corpo com 0.42 de raio, centrado como a esfera); a faísca fica na ponta do rastilho.
+    const model = prop(BOMB, { width: 0.84 });
+    if (model) model.children[0]!.position.y -= 0.42;
+    const ball = model ?? mesh(new THREE.SphereGeometry(0.42, 16, 12), toon('#26232f'));
     const fuse = mesh(new THREE.SphereGeometry(0.1, 8, 6), toonUnique('#ffb020', { emissive: '#ff6a00', emissiveIntensity: 1.2 }), { cast: false });
-    fuse.position.y = 0.5;
+    fuse.position.y = model ? 0.64 : 0.5;
     obj.add(ball, fuse);
     obj.position.set(this.lanes[lane]!.r.x, 1, this.laneZ(0));
     this.scene.add(obj);
@@ -237,5 +243,6 @@ export const ConveyorBombs: MinigameDef = {
   controls: 'Ⓐ Inverter a passadeira',
   stick: false,
   buttons: [{ id: 'a', label: 'Inverter' }],
+  props: [BOMB],
   create: (ctx) => new ConveyorRun(ctx),
 };

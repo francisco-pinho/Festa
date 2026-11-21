@@ -10,6 +10,9 @@ import type { ButtonId } from '@festa/shared';
 import { disposeObject, mesh, textSprite, toon } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
+import { prop } from '../three/props';
+
+const FENCE = 'kaykit-medieval/fence_wood_straight';
 import { rankBy } from './rank';
 
 interface Sheep {
@@ -75,15 +78,28 @@ class CountSheepRun extends RowMinigame {
       r.model.faceYaw(Math.PI, true);
       this.guess.set(r.seat.id, 0);
     }
-    // Cerca ao fundo
-    for (let i = -8; i <= 8; i++) {
-      const post = mesh(new THREE.BoxGeometry(0.15, 1.1, 0.15), toon('#a8743f'));
-      post.position.set(i * 1.6, 0.55, -7.5);
-      this.scene.add(post);
+    // Cerca ao fundo (troços da KayKit esticados para cobrir os 26 m; senão estacas e corrimão).
+    const first = prop(FENCE, { height: 1.1 });
+    if (first) {
+      const len = new THREE.Box3().setFromObject(first).getSize(new THREE.Vector3()).z;
+      const n = Math.ceil(26 / len);
+      for (let i = 0; i < n; i++) {
+        const f = i ? prop(FENCE, { height: 1.1 })! : first;
+        f.scale.z = 26 / n / len;
+        f.rotation.y = Math.PI / 2;
+        f.position.set(-13 + ((i + 0.5) * 26) / n, 0, -7.5);
+        this.scene.add(f);
+      }
+    } else {
+      for (let i = -8; i <= 8; i++) {
+        const post = mesh(new THREE.BoxGeometry(0.15, 1.1, 0.15), toon('#a8743f'));
+        post.position.set(i * 1.6, 0.55, -7.5);
+        this.scene.add(post);
+      }
+      const rail = mesh(new THREE.BoxGeometry(26, 0.12, 0.08), toon('#a8743f'), { cast: false });
+      rail.position.set(0, 0.85, -7.5);
+      this.scene.add(rail);
     }
-    const rail = mesh(new THREE.BoxGeometry(26, 0.12, 0.08), toon('#a8743f'), { cast: false });
-    rail.position.set(0, 0.85, -7.5);
-    this.scene.add(rail);
     // Plano das ovelhas: quantas, quando, a que velocidade (grupos e pausas para confundir).
     const rng = ctx.rng;
     const round = ctx.round ?? 1;
@@ -234,5 +250,6 @@ export const CountSheep: MinigameDef = {
   controls: '✚ ▲▼ mudar o número · Ⓐ confirmar',
   stick: 'dpad',
   buttons: [{ id: 'a', label: 'Confirmar' }],
+  props: [FENCE],
   create: (ctx) => new CountSheepRun(ctx),
 };

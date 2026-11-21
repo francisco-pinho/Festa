@@ -47,6 +47,7 @@ interface Form {
   players: number;
   botLevel: string;
   keyboardSeat: number | null;
+  lobbyBots: number;
 }
 const FORM_KEY = 'festa.tester.form';
 const form: Form = {
@@ -59,6 +60,7 @@ const form: Form = {
   players: 4,
   botLevel: 'normal',
   keyboardSeat: null,
+  lobbyBots: 0,
   ...readForm(),
 };
 function readForm(): Partial<Form> {
@@ -153,7 +155,10 @@ const VIEWS: Record<Tab, (s: TesterState) => string> = {
       if (mg && !mg.duel) parts.push(field('Modo', `<select data-f="mode">${mg.modes.map((m) => opt(m, MODES[m] ?? m, m === form.mode)).join('')}</select>`));
     }
     if (k === 'sport') parts.push(field('Desporto', `<select data-f="sport">${c.sports.map((x) => opt(x.id, x.name, x.id === form.sport)).join('')}</select>`));
-    if (k !== 'lobby') {
+    if (k === 'lobby') {
+      parts.push(field('Bots a mais', `<input type="number" min="0" max="${MAX_PLAYERS}" data-f="lobbyBots" value="${form.lobbyBots}">`));
+      parts.push(field('Nível dos bots', `<select data-f="botLevel">${c.botLevels.map((l) => opt(l.id, l.label, l.id === form.botLevel)).join('')}</select>`));
+    } else {
       parts.push(field('Jogadores', `<input type="number" min="1" max="${MAX_PLAYERS}" data-f="players" value="${form.players}">`));
       parts.push(field('Bots', `<select data-f="botLevel">${c.botLevels.map((l) => opt(l.id, l.label, l.id === form.botLevel)).join('')}</select>`));
     }
@@ -197,12 +202,16 @@ const VIEWS: Record<Tab, (s: TesterState) => string> = {
   },
 
   minijogo: (s) => {
-    if (s.phase !== 'minigame' && s.phase !== 'practice') return `<p class="dim">Só durante um minijogo.</p>`;
+    const cur = s.scenario?.kind === 'minigame' ? s.scenario.id : '';
+    const pick = `
+      <h3>Iniciar minijogo</h3>
+      <div class="chips">${s.catalog.minigames.map((m) => `<button class="${m.id === cur ? 'active' : ''}" data-mg="${esc(m.id)}">${esc(m.name)}${m.duel ? ' ⚔' : ''}</button>`).join('')}</div>`;
+    if (s.phase !== 'minigame' && s.phase !== 'practice') return pick;
     return `
       <div class="row">${s.phase === 'practice' ? '<button class="big" data-cmd="skip">Saltar treino</button>' : ''}<button class="big" data-cmd="end">Terminar já</button></div>
       <h3>Terminar com vencedor</h3>
       <div class="chips">${s.players.map((p) => `<button class="${winners.has(p.id) ? 'active' : ''}" data-win="${esc(p.id)}">${esc(p.name)}</button>`).join('')}</div>
-      <button class="big" data-cmd="end-win"${winners.size ? '' : ' disabled'}>Terminar com estes</button>`;
+      <button class="big" data-cmd="end-win"${winners.size ? '' : ' disabled'}>Terminar com estes</button>${pick}`;
   },
 
   estado: (s) => `
@@ -225,7 +234,7 @@ function scenario(): TesterScenario {
   const keyboardSeat = form.keyboardSeat;
   switch (form.kind) {
     case 'lobby':
-      return { kind: 'lobby' };
+      return { kind: 'lobby', bots: Math.min(MAX_PLAYERS, Math.max(0, form.lobbyBots | 0)), botLevel: form.botLevel };
     case 'menu':
       return { kind: 'menu', ...common, keyboardSeat };
     case 'party':
@@ -254,7 +263,7 @@ app.addEventListener('change', (e) => {
   const f = el.dataset.f as keyof Form | undefined;
   if (!f) return;
   if (f === 'keyboardSeat') form.keyboardSeat = Number(el.value) < 0 ? null : Number(el.value);
-  else if (f === 'players' || f === 'rounds') form[f] = Number(el.value);
+  else if (f === 'players' || f === 'rounds' || f === 'lobbyBots') form[f] = Number(el.value);
   else (form as unknown as Record<string, string>)[f] = el.value;
   saveForm();
   if (f === 'kind' || f === 'minigame') render(); // muda os campos visíveis
@@ -271,7 +280,13 @@ app.addEventListener('click', (e) => {
   else if (d.coins) send({ t: 'give', playerId: target, coins: Number(d.coins) });
   else if (d.stars) send({ t: 'give', playerId: target, stars: Number(d.stars) });
   else if (d.take) send({ t: 'takeItem', playerId: target, index: Number(d.take) });
-  else if (d.win) {
+  else if (d.mg) {
+    // Mesmo formulário do Cenário (jogadores, bots, teclado); o modo cai no primeiro válido.
+    form.kind = 'minigame';
+    form.minigame = d.mg;
+    saveForm();
+    send({ t: 'scenario', scenario: scenario() });
+  } else if (d.win) {
     if (winners.has(d.win)) winners.delete(d.win);
     else winners.add(d.win);
   } else

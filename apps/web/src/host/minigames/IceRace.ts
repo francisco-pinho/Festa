@@ -10,6 +10,7 @@ import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { rankBy } from './rank';
 import { themeScenery } from './scenery';
+import { PROPS, pickProp } from '../three/props';
 
 /** Elipses da pista: parede de fora, ilha do meio e a linha central (para os bots). */
 const OUT = { a: 14, b: 8.5 };
@@ -65,6 +66,14 @@ class IceRaceRun extends ArenaMinigame {
     this.scene.add(island);
     // Pinheiros na ilha do meio
     for (let i = 0; i < 6; i++) {
+      // Pinheiro da KayKit em cima da ilha (0.8 de altura); senão o feito à mão.
+      const model = pickProp(PROPS.pines, i / 6, { height: 2.6 });
+      if (model) {
+        model.position.set(-5 + i * 2, 0.8, (i % 2 ? 0.7 : -0.7));
+        model.rotation.y = i * 1.3;
+        this.scene.add(model);
+        continue;
+      }
       const tree = new THREE.Group();
       const trunk = mesh(new THREE.CylinderGeometry(0.15, 0.2, 0.8), toon('#7a4f28'));
       trunk.position.y = 1.2;

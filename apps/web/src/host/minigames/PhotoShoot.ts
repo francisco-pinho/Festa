@@ -8,6 +8,7 @@ import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { getCharacter } from '@festa/game';
 import { disposeObject, mesh, textSprite, toon, toonUnique } from '../three/materials';
+import { hasProp, prop } from '../three/props';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { rankBy } from './rank';
@@ -125,10 +126,20 @@ class PhotoRun extends RowMinigame {
       this.aim.set(r.seat.id, new THREE.Vector2(-6 + i * 3, 2.5));
     });
     // Cercas e flores no prado
-    for (let i = -10; i <= 10; i += 2) {
-      const post = mesh(new THREE.BoxGeometry(0.15, 1, 0.15), toon('#a8743f'));
-      post.position.set(i, 0.5, -13);
-      this.scene.add(post);
+    // Troços de cerca da KayKit (compridos em z: rodam para ficar ao longo de x), ou só as estacas.
+    if (hasProp('kaykit-medieval/fence_wood_straight')) {
+      for (let i = -10; i < 10; i += 2) {
+        const fence = prop('kaykit-medieval/fence_wood_straight', { width: 2 })!;
+        fence.rotation.y = Math.PI / 2;
+        fence.position.set(i + 1, 0, -13);
+        this.scene.add(fence);
+      }
+    } else {
+      for (let i = -10; i <= 10; i += 2) {
+        const post = mesh(new THREE.BoxGeometry(0.15, 1, 0.15), toon('#a8743f'));
+        post.position.set(i, 0.5, -13);
+        this.scene.add(post);
+      }
     }
     this.flash = new THREE.Mesh(new THREE.PlaneGeometry(60, 40), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthTest: false }));
     this.flash.renderOrder = 30;

@@ -1149,6 +1149,14 @@ function volcano(k: Kit): void {
     const x = (a.x + b.x) / 2 - (dz / len) * 1.8;
     const z = (a.z + b.z) / 2 + (dx / len) * 1.8;
     if (k.clearance(x, z) < 0.4) return;
+    // Poste com lanterna do pack (KayKit Halloween); sem ele, o feito à mão.
+    const packLamp = prop('kaykit-halloween/post_lantern', { height: 2.4 });
+    if (packLamp) {
+      packLamp.position.set(x, 0, z);
+      packLamp.rotation.y = rng.next() * 6;
+      group.add(packLamp);
+      return;
+    }
     const g = new THREE.Group();
     const post = mesh(new THREE.BoxGeometry(0.14, 2.2, 0.14), toon('#4a3020'));
     post.position.y = 1.1;
@@ -1562,6 +1570,14 @@ function park(k: Kit): void {
     const x = mx + nx * 2 * side;
     const z = mz + nz * 2 * side;
     if (k.clearance(x, z) < 0.3) return;
+    // Candeeiro de rua do pack (KayKit City); sem ele, o de globo feito à mão.
+    const packLamp = prop('kaykit-city/streetlight', { height: 3.8 });
+    if (packLamp) {
+      packLamp.position.set(x, 0, z);
+      packLamp.rotation.y = Math.atan2(-nz * side, nx * side); // braço (−x do modelo) por cima do caminho
+      group.add(packLamp);
+      return;
+    }
     const lamp = new THREE.Group();
     const post = mesh(new THREE.CylinderGeometry(0.07, 0.11, 3.2, 8), toon('#2b4a3a'));
     post.position.y = 1.6;

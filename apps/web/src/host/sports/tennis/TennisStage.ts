@@ -746,6 +746,19 @@ export class TennisStage extends SportStage {
       l.rotation.y = Math.atan2(-x, -z);
       this.scene.add(l);
     }
+    // Bancos dos jogadores do outro lado da rede, com caixote do lixo (KayKit City).
+    for (const z of [-2.6, 2.6]) {
+      const b = prop('kaykit-city/bench', { width: 2.6 });
+      if (!b) break;
+      b.position.set(-(HALF_W + 3.8), 0, z);
+      b.rotation.y = Math.PI / 2;
+      this.scene.add(b);
+    }
+    const bin = prop('kaykit-city/trash_A', { height: 1.1 });
+    if (bin) {
+      bin.position.set(-(HALF_W + 3.8), 0, 0);
+      this.scene.add(bin);
+    }
     // Placar ao fundo.
     const canvas = document.createElement('canvas');
     canvas.width = 1024;

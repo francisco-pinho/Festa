@@ -8,6 +8,7 @@ import { sound } from '../audio/Sound';
 import * as THREE from 'three';
 import { mesh, toon, toonUnique, disposeObject, textSprite } from '../three/materials';
 import { coinMaterials, glowTexture } from '../three/coinArt';
+import { prop } from '../three/props';
 import { ArenaMinigame, type Actor } from './ArenaMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { rankBy } from './rank';
@@ -219,20 +220,35 @@ class CoinShowerRun extends ArenaMinigame {
     let obj: THREE.Object3D;
     if (kind === 'bomb') {
       const g = new THREE.Group();
-      const ball = mesh(new THREE.SphereGeometry(0.55, 16, 12), toon('#2b2b38'));
-      const fuse = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.35), toon('#c9a26b'));
-      fuse.position.y = 0.6;
       const spark = mesh(new THREE.SphereGeometry(0.12, 8, 6), toonUnique('#ffb020', { emissive: '#ff6a00', emissiveIntensity: 1 }));
       spark.position.y = 0.8;
-      g.add(ball, fuse, spark);
+      // Bomba da KayKit (bola de raio ~0.55 centrada na origem, como a feita à mão), com a faísca no rastilho.
+      const bomb = prop('kaykit-platformer/bomb', { height: 1.4 });
+      if (bomb) {
+        bomb.position.y = -0.55;
+        spark.position.y = 0.88;
+        g.add(bomb, spark);
+      } else {
+        const ball = mesh(new THREE.SphereGeometry(0.55, 16, 12), toon('#2b2b38'));
+        const fuse = mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.35), toon('#c9a26b'));
+        fuse.position.y = 0.6;
+        g.add(ball, fuse, spark);
+      }
       obj = g;
     } else {
       const big = kind === 'big';
-      const coin = new THREE.Mesh(this.coinGeo, big ? this.bigMat : this.coinMat);
-      coin.castShadow = true;
-      coin.rotation.x = Math.PI / 2;
       const holder = new THREE.Group();
-      holder.add(coin);
+      // Moeda normal: a da KayKit (disco de pé, centrada na origem como a feita à mão). A grande (roxa, «3») fica desenhada.
+      const model = big ? null : prop('kaykit-prototype/Coin_A', { width: 0.8 });
+      if (model) {
+        model.position.y = -0.4;
+        holder.add(model);
+      } else {
+        const coin = new THREE.Mesh(this.coinGeo, big ? this.bigMat : this.coinMat);
+        coin.castShadow = true;
+        coin.rotation.x = Math.PI / 2;
+        holder.add(coin);
+      }
       if (big) {
         holder.scale.setScalar(1.8);
         // Aura e um feixe de luz até ao chão: vê-se logo que é a especial.
@@ -462,5 +478,6 @@ export const CoinShower: MinigameDef = {
     { id: 'a', label: 'Dash' },
     { id: 'b', label: 'Saltar' },
   ],
+  props: ['kaykit-platformer/bomb', 'kaykit-prototype/Coin_A'],
   create: (ctx) => new CoinShowerRun(ctx),
 };

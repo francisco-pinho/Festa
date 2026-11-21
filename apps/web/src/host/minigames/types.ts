@@ -73,5 +73,7 @@ export interface MinigameDef {
   shake?: boolean;
   /** Rondas (melhor de N; por omissão 1). Os jogos curtos têm várias para não acabarem num instante. */
   rounds?: number;
+  /** Modelos (props.ts) que este minijogo usa, além do cenário comum; carregam antes de `create`. */
+  props?: readonly string[];
   create(ctx: MinigameContext): MinigameRun;
 }

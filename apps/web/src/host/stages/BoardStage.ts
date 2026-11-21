@@ -14,12 +14,22 @@ import { starMesh } from './environment';
 import { createBoardTheme, rideCurve, type BoardTheme } from './boardThemes';
 import { CABLE_ABOVE, ELEVATOR_RISE, rideVehicle, type RideKind } from './rideVehicles';
 import { BoardObjects } from './boardObjects';
-import { prop } from '../three/props';
+import { PROPS, pickProp, prop } from '../three/props';
 import { drawIcon, iconFor } from '../../common/icons';
 
 const TILE_R = 1.15;
 const TILE_TOP = 0.32;
 const HEAD_Y = 2.3;
+
+/** Estrela do pack (KayKit Platformer), centrada como a feita à mão; sem ela, a estrela em código. */
+function boardStar(size: number): THREE.Object3D {
+  const model = prop('kaykit-platformer/star_yellow', { height: size * 1.9 });
+  if (!model) return starMesh(size);
+  model.position.y = -size * 0.95;
+  const g = new THREE.Group();
+  g.add(model);
+  return g;
+}
 
 export const SPACE_STYLE: Record<SpaceType, { color: string; symbol: string }> = {
   start: { color: '#ecebe4', symbol: '▶' },
@@ -57,7 +67,7 @@ export class BoardStage implements Stage {
   private readonly objects: BoardObjects;
   private readonly star = new THREE.Group();
   private readonly mapLabels = new THREE.Group();
-  private readonly trapSprites = new Map<number, THREE.Sprite>();
+  private readonly trapSprites = new Map<number, THREE.Object3D>();
   private readonly coinGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.08, 16);
   private readonly coinMat = new THREE.MeshStandardMaterial({ color: '#ffd23f', emissive: '#c98a00', emissiveIntensity: 0.5, metalness: 0.1, roughness: 0.35 });
   private mapOpen = false;
@@ -90,7 +100,7 @@ export class BoardStage implements Stage {
     this.buildSpaces();
     this.scene.add(this.mapLabels);
 
-    this.star.add(starMesh(0.8));
+    this.star.add(boardStar(0.8));
     this.starBeam = new THREE.Mesh(
       new THREE.CylinderGeometry(0.9, 1.2, 14, 20, 1, true),
       new THREE.MeshBasicMaterial({
@@ -461,7 +471,7 @@ export class BoardStage implements Stage {
     this.closeUp(id);
     await this.engine.wait(0.5);
     sound.play('star');
-    const icon = starMesh(0.9);
+    const icon = boardStar(0.9);
     const from = this.star.position.clone().add(new THREE.Vector3(0, 3.9, 0));
     // A estrela da casa «passa» para a que voa (não ficam duas, nem dentro da personagem).
     this.star.visible = false;
@@ -774,6 +784,11 @@ export class BoardStage implements Stage {
     t.setAnim('idle');
   }
 
+  /** Moeda que voa: a do pack (KayKit Board Game) ou, sem ela, a feita em código. */
+  private coin(): THREE.Object3D {
+    return prop('kaykit-boardgame/coin_gold', { width: 0.56 }) ?? new THREE.Mesh(this.coinGeo, this.coinMat);
+  }
+
   setBank(amount: number): void {
     this.objects.setBank(amount);
   }
@@ -787,7 +802,7 @@ export class BoardStage implements Stage {
     const n = Math.min(14, amount);
     const flights: Promise<void>[] = [];
     for (let i = 0; i < n; i++) {
-      const coin = new THREE.Mesh(this.coinGeo, this.coinMat);
+      const coin = this.coin();
       coin.rotation.x = Math.PI / 2;
       const a = new THREE.Vector3(root.x, root.y + 1.6, root.z);
       const [from, to] = toBank ? [a, bank] : [bank, a];
@@ -859,9 +874,12 @@ export class BoardStage implements Stage {
   async rockfall(id: string): Promise<void> {
     const t = this.token(id);
     const p = t.root.position.clone();
-    const rocks: THREE.Mesh[] = [];
+    const rocks: THREE.Object3D[] = [];
     for (let i = 0; i < 5; i++) {
-      const r = mesh(new THREE.DodecahedronGeometry(0.35 + Math.random() * 0.3), toon('#6b5a4a'));
+      // Pedras do pack (KayKit Forest) quando o tema as tem; senão, feitas à mão.
+      const r =
+        pickProp(PROPS.rocks, Math.random(), { height: 0.6 + Math.random() * 0.5 }) ??
+        mesh(new THREE.DodecahedronGeometry(0.35 + Math.random() * 0.3), toon('#6b5a4a'));
       r.position.set(p.x + (Math.random() - 0.5) * 2, p.y + 10 + i * 1.5, p.z + (Math.random() - 0.5) * 2);
       this.scene.add(r);
       rocks.push(r);
@@ -1036,7 +1054,7 @@ export class BoardStage implements Stage {
     this.sparkle(from.clone().setY(from.y + 0.3), color, 10, 2.5);
     t.root.visible = false;
     // Marcador que corre por baixo do chão (a câmara segue a personagem invisível).
-    const marker = textSprite(metro ? '🚇' : '🕳️', { height: 1.3 });
+    const marker = textSprite(metro ? '🚇' : '🕳️', { height: 1.3, inWorld: true });
     this.scene.add(marker);
     this.follow = t;
     this.followDistance = 1.4;
@@ -1174,10 +1192,14 @@ export class BoardStage implements Stage {
       const id = Number(key);
       if (this.trapSprites.has(id)) continue;
       const s = getSpace(this.board, id);
-      const sprite = textSprite('🪤', { height: 0.9 });
-      sprite.position.set(s.x + 0.7, 0.9 + (s.y ?? 0), s.z + 0.7);
-      this.scene.add(sprite);
-      this.trapSprites.set(id, sprite);
+      const trap = bearTrap();
+      trap.position.set(s.x + 0.55, 0.22 + (s.y ?? 0), s.z + 0.55);
+      trap.rotation.y = Math.random() * Math.PI * 2;
+      this.scene.add(trap);
+      this.trapSprites.set(id, trap);
+      // Aparece a saltar do chão.
+      trap.scale.setScalar(0.01);
+      void this.engine.tween(0.35, (k) => trap.scale.setScalar(Math.max(0.01, k)), ease.backOut);
     }
   }
 
@@ -1202,7 +1224,7 @@ export class BoardStage implements Stage {
     const n = Math.min(12, Math.abs(amount));
     const gain = amount > 0;
     for (let i = 0; i < n; i++) {
-      const coin = new THREE.Mesh(this.coinGeo, this.coinMat);
+      const coin = this.coin();
       coin.rotation.x = Math.PI / 2;
       const a = (i / n) * Math.PI * 2;
       const far = new THREE.Vector3(root.position.x + Math.cos(a) * 2.2, root.position.y + 0.5, root.position.z + Math.sin(a) * 2.2);
@@ -1407,4 +1429,36 @@ export class BoardStage implements Stage {
       this.scene.add(tile);
     }
   }
+}
+
+/** Armadilha de mandíbulas (aberta): base de metal, duas mandíbulas com dentes e a mola. */
+function bearTrap(): THREE.Group {
+  const g = new THREE.Group();
+  const metal = toon('#8d939c');
+  const dark = toon('#4a4f57');
+  const base = mesh(new THREE.CylinderGeometry(0.34, 0.36, 0.05, 20), dark);
+  const plate = mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.04, 14), toon('#c9a227'));
+  plate.position.y = 0.04;
+  g.add(base, plate);
+  for (const side of [-1, 1]) {
+    // Cada mandíbula é meio anel inclinado para fora, com dentes virados para cima.
+    const jaw = new THREE.Group();
+    const ring = mesh(new THREE.TorusGeometry(0.32, 0.025, 6, 16, Math.PI), metal);
+    ring.rotation.x = -Math.PI / 2;
+    jaw.add(ring);
+    for (let i = 1; i < 8; i++) {
+      const a = (i / 8) * Math.PI;
+      const tooth = mesh(new THREE.ConeGeometry(0.03, 0.09, 4), metal, { cast: false });
+      tooth.position.set(Math.cos(a) * 0.32, 0.045, -Math.sin(a) * 0.32);
+      jaw.add(tooth);
+    }
+    jaw.rotation.y = side > 0 ? 0 : Math.PI;
+    jaw.position.y = 0.03;
+    g.add(jaw);
+  }
+  const spring = mesh(new THREE.TorusGeometry(0.06, 0.02, 6, 12), dark);
+  spring.position.set(0.4, 0.03, 0);
+  spring.rotation.y = Math.PI / 2;
+  g.add(spring);
+  return g;
 }

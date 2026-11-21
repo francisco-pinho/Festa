@@ -1047,6 +1047,12 @@ export class BaseballStage extends SportStage {
       const bench = mesh(new THREE.BoxGeometry(8, 0.35, 0.6), toon('#8a5a32'));
       bench.position.set(s * 17.5, 0.18, 8.5);
       this.scene.add(dug, roof, bench);
+      // Bandeira da equipa no telhado (KayKit Medieval).
+      const flag = prop(s < 0 ? 'kaykit-medieval/flag_blue' : 'kaykit-medieval/flag_red', { height: 2.6 });
+      if (flag) {
+        flag.position.set(s * 21.4, 2.62, 9.2);
+        this.scene.add(flag);
+      }
     }
 
     // Bancadas: atrás da base e ao longo das linhas, com público (instanced).
@@ -1102,6 +1108,15 @@ export class BaseballStage extends SportStage {
       if (!f) break;
       f.position.set(x, 0, z);
       this.scene.add(f);
+      // Caixote do lixo e banco ao lado da mesa (KayKit City).
+      const bin = prop('kaykit-city/trash_A', { height: 1.2 });
+      const seat = prop('kaykit-city/bench', { width: 3 });
+      if (bin) bin.position.set(x + Math.sign(x) * 2.6, 0, z - 1.5);
+      if (seat) {
+        seat.position.set(x + Math.sign(x) * 3.2, 0, z + 1.5);
+        seat.rotation.y = -Math.sign(x) * Math.PI / 2;
+      }
+      for (const o of [bin, seat]) if (o) this.scene.add(o);
     }
     // Torres de luz.
     for (const [x, z] of [[-60, 10], [60, 10], [-85, -70], [85, -70]] as const) {

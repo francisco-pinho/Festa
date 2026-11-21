@@ -10,6 +10,9 @@ import { mesh, toon, toonUnique } from '../three/materials';
 import { RowMinigame, type Rower } from './RowMinigame';
 import type { MinigameContext, MinigameDef, MinigameScore } from './types';
 import { rankBy } from './rank';
+import { prop } from '../three/props';
+
+const TABLE = 'kaykit-restaurant/table_round_A';
 
 const BITES = 4;
 
@@ -43,12 +46,18 @@ class PizzaRun extends RowMinigame {
       const count = teams ? 6 * owners.length : 8;
       const radius = teams ? 1 + owners.length * 0.35 : 1;
       const group = new THREE.Group();
-      // Mesa
-      const table = mesh(new THREE.CylinderGeometry(radius + 0.35, radius + 0.35, 0.12, 32), toon('#8a5a2b'));
-      table.position.y = 0.95;
-      const leg = mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.95, 10), toon('#5b3a1e'));
-      leg.position.y = 0.47;
-      group.add(table, leg);
+      // Mesa redonda da KayKit com o tampo à mesma altura (1,01); senão a feita à mão.
+      const model = prop(TABLE, { width: (radius + 0.35) * 2 });
+      if (model) {
+        model.scale.y = 1.01 / new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3()).y;
+        group.add(model);
+      } else {
+        const table = mesh(new THREE.CylinderGeometry(radius + 0.35, radius + 0.35, 0.12, 32), toon('#8a5a2b'));
+        table.position.y = 0.95;
+        const leg = mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.95, 10), toon('#5b3a1e'));
+        leg.position.y = 0.47;
+        group.add(table, leg);
+      }
       const slices: Pizza['slices'] = [];
       for (let i = 0; i < count; i++) {
         const hot = i > 0 && ctx.rng.next() < hotChance;
@@ -207,5 +216,6 @@ export const PizzaRush: MinigameDef = {
     { id: 'a', label: 'Comer' },
     { id: 'b', label: 'Beber água' },
   ],
+  props: [TABLE],
   create: (ctx) => new PizzaRun(ctx),
 };

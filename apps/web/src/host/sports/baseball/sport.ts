@@ -15,6 +15,7 @@ const Baseball: SportDef = {
     'Bastão por baixo da bola dá bolas altas, por cima dá rasteiras. Três eliminados e trocam as equipas!',
   ],
   seatCount: (humans) => Math.max(2, humans % 2 === 0 ? humans : humans + 1),
+  props: ['kaykit-medieval/flag_blue', 'kaykit-medieval/flag_red'],
   create: (ctx) => new BaseballStage(ctx),
 };
 

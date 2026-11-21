@@ -13,6 +13,7 @@ import { addGrassField, pathTexture } from './realism';
 import { addBoardExtras, stoneTexture, volcanicGround } from './boardExtras';
 import { CABLE_ABOVE, ELEVATOR_RISE } from './rideVehicles';
 import { lancetArt, lancetWindow, roseArt, roseWindow } from './stainedGlass';
+import { BlenderTheme } from './blenderTheme';
 
 export interface BoardTheme {
   readonly group: THREE.Group;
@@ -32,6 +33,8 @@ const SHOP_SIGN: Record<ShopKind, { emoji: string; color: string }> = {
 };
 
 export function createBoardTheme(board: Board, scene: THREE.Scene): BoardTheme {
+  // Mapa feito no Blender: o cenário vem todo do .glb (sem decoração em código).
+  if (board.scenery) return new BlenderTheme(board, scene);
   const theme = (() => {
     switch (board.theme) {
       case 'city':
@@ -142,9 +145,30 @@ function outward(s: Space, cx: number, cz: number): THREE.Vector2 {
   return v.lengthSq() < 1e-6 ? new THREE.Vector2(0, 1) : v.normalize();
 }
 
+/**
+ * Para onde pôr um edifício ao lado de uma casa: sempre do lado de lá do caminho (longe da câmara,
+ * que olha de +Z para −Z), para nunca tapar o tabuleiro. Parte da direção «para fora» e, se essa
+ * apontar para a câmara, vira-a para trás; depois roda um pouco até o sítio não cair em cima de
+ * outro caminho.
+ */
+function behind(board: Board, s: Space, cx: number, cz: number, dist: number): THREE.Vector2 {
+  const out = outward(s, cx, cz);
+  const base = out.y > 0 ? new THREE.Vector2(out.x, -out.y) : out;
+  const segs = segmentsOf(board);
+  const origin = new THREE.Vector2();
+  for (const ang of [0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2]) {
+    const d = base.clone().rotateAround(origin, ang);
+    if (d.y > 0.05) continue;
+    const x = s.x + d.x * dist;
+    const z = s.z + d.y * dist;
+    if (segs.every(([ax, az, bx, bz]) => distToSegment(x, z, ax, az, bx, bz) > 2)) return d;
+  }
+  return base;
+}
+
 /** Loja: casinha com toldo às riscas e letreiro. */
-/** Bancas do mercado medieval (KayKit) para as lojas do castelo, numa cor por tipo de loja. */
-const CASTLE_STALL: Record<ShopKind, string> = {
+/** Bancas do mercado medieval (KayKit) para as lojas (menos as néon da cidade), numa cor por tipo de loja. */
+const MARKET_STALL: Record<ShopKind, string> = {
   geral: 'kaykit-medieval/building_market_blue',
   barata: 'kaykit-medieval/building_market_green',
   luxo: 'kaykit-medieval/building_market_red',
@@ -159,9 +183,9 @@ function shopBuilding(kind: ShopKind, name: string, neon: boolean, stall?: Recor
     // Banca do pack: só a tabuleta, o ícone e o nome por cima (a banca já tem o resto).
     const board = mesh(new THREE.BoxGeometry(2.2, 0.7, 0.12), toonUnique(sign.color));
     board.position.set(0, 2.7, 0.2);
-    const icon = textSprite(sign.emoji, { height: 1.1 });
+    const icon = textSprite(sign.emoji, { height: 1.1, inWorld: true });
     icon.position.set(0, 3.8, 0.2);
-    const label = textSprite(name, { height: 0.45, color: '#ffffff' });
+    const label = textSprite(name, { height: 0.45, color: '#ffffff', inWorld: true });
     label.position.set(0, 2.7, 0.35);
     g.add(model, board, icon, label);
     return g;
@@ -188,9 +212,9 @@ function shopBuilding(kind: ShopKind, name: string, neon: boolean, stall?: Recor
     toonUnique(sign.color, neon ? { emissive: sign.color, emissiveIntensity: 0.8 } : {}),
   );
   board.position.set(0, 2.7, 0.6);
-  const icon = textSprite(sign.emoji, { height: 1.1 });
+  const icon = textSprite(sign.emoji, { height: 1.1, inWorld: true });
   icon.position.set(0, 3.8, 0.6);
-  const label = textSprite(name, { height: 0.45, color: '#ffffff' });
+  const label = textSprite(name, { height: 0.45, color: '#ffffff', inWorld: true });
   label.position.set(0, 2.7, 0.75);
   g.add(base, awning, door, board, icon, label);
   return g;
@@ -252,6 +276,79 @@ function foamTexture(): THREE.CanvasTexture {
   return foamTex;
 }
 
+// ── Paredão à volta do tabuleiro (para não se ver o horizonte infinito) ──
+
+/**
+ * Paredão em arco à volta do tabuleiro: atrás e dos lados (à frente, do lado da câmara, fica aberto,
+ * como as paredes do salão do castelo). É alto o suficiente para nunca se ver o chão a perder-se no
+ * horizonte. Em elipse (`rx`, `rz`), com a orla de cima recortada e as cores a passar de `base`
+ * (em baixo) para `top` (em cima), com sulcos mais escuros (`groove`).
+ */
+function enclosure(
+  group: THREE.Group,
+  o: { cx: number; cz: number; rx: number; rz: number; height: number; base: string; top: string; groove: string; jag: number; seed: number },
+): THREE.Mesh {
+  const ARC = Math.PI * 1.5;
+  const geo = new THREE.CylinderGeometry(1, 1.12, o.height, 128, 16, true, (Math.PI * 2 - ARC) / 2, ARC);
+  const p = geo.attributes.position!;
+  const v = new THREE.Vector3();
+  const colors: number[] = [];
+  const cBase = new THREE.Color(o.base);
+  const cTop = new THREE.Color(o.top);
+  const cGroove = new THREE.Color(o.groove);
+  const k = o.seed * 0.37;
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const ang = Math.atan2(v.x, v.z);
+    const h = (v.y + o.height / 2) / o.height; // 0 em baixo, 1 em cima
+    const ridge = Math.sin(ang * 23 + v.y * 0.21 + k) * 0.5 + Math.sin(ang * 51 - v.y * 0.47 + k * 2) * 0.3 + Math.sin(ang * 7 + v.y * 0.05) * 0.6;
+    // Rugas na parede (para fora/dentro) e orla de cima em dentes.
+    const rad = 1 + (ridge * o.jag) / Math.max(o.rx, o.rz);
+    let y = v.y;
+    if (h > 0.97) y += (Math.sin(ang * 13 + k) * 0.5 + Math.sin(ang * 31 + k * 3) * 0.5) * o.height * 0.12;
+    p.setXYZ(i, v.x * rad, y, v.z * rad);
+    const c = cBase.clone().lerp(cTop, Math.min(1, h * 1.2));
+    c.lerp(cGroove, Math.max(0, -ridge) * 0.45);
+    colors.push(c.r, c.g, c.b);
+  }
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geo.computeVertexNormals();
+  const wall = mesh(geo, toonUnique('#ffffff', { vertexColors: true, side: THREE.DoubleSide }), { cast: false, receive: true });
+  wall.scale.set(o.rx, 1, o.rz);
+  wall.position.set(o.cx, o.height / 2 - 1.5, o.cz);
+  group.add(wall);
+  return wall;
+}
+
+/** Arranha-céus em arco à volta do tabuleiro da cidade (atrás e dos lados), com janelas acesas. */
+function skylineWall(group: THREE.Group, cx: number, cz: number, rx: number, rz: number, seed: number): void {
+  const rng = createRng(seed);
+  const windows = canvasTexture(128, (ctx, s) => {
+    ctx.fillStyle = '#1c1830';
+    ctx.fillRect(0, 0, s, s);
+    for (let y = 0; y < 8; y++)
+      for (let x = 0; x < 4; x++) {
+        ctx.fillStyle = Math.random() < 0.55 ? '#ffd98a' : '#2d2848';
+        ctx.fillRect(x * (s / 4) + 6, y * (s / 8) + 4, s / 4 - 12, s / 8 - 8);
+      }
+  });
+  windows.wrapS = windows.wrapT = THREE.RepeatWrapping;
+  const ARC = Math.PI * 1.5;
+  const n = 44;
+  for (let i = 0; i < n; i++) {
+    const a = (Math.PI * 2 - ARC) / 2 + (ARC * (i + 0.5)) / n;
+    const w = 7 + rng.next() * 6;
+    const h = 30 + rng.next() * 40;
+    const tex = windows.clone();
+    tex.needsUpdate = true;
+    tex.repeat.set(Math.round(w / 3), Math.round(h / 4));
+    const b = mesh(new THREE.BoxGeometry(w, h, w), toonUnique(['#2b2747', '#33304f', '#262238'][i % 3]!, { map: tex, emissive: '#ffffff', emissiveIntensity: 0.12, emissiveMap: tex }), { cast: false });
+    b.position.set(cx + Math.sin(a) * rx, h / 2 - 0.5, cz + Math.cos(a) * rz);
+    b.rotation.y = a;
+    group.add(b);
+  }
+}
+
 // ── Ilha ──────────────────────────────────────────────────
 
 class IslandTheme implements BoardTheme {
@@ -302,6 +399,26 @@ class IslandTheme implements BoardTheme {
     };
     layer(a + 3, b + 3, 3, -0.25, '#f2d58b');
     layer(a, b, 3, 0, '#7ccf5b');
+    // Montanhas em cone (os caminhos sobem pela encosta): rocha em baixo, relva em cima e bandeira no cume.
+    for (const m of board.mountains ?? []) {
+      const cone = mesh(new THREE.CylinderGeometry(0.01, m.r, m.h, 40, 6), toon('#7c8a5a'), { receive: true });
+      cone.position.set(m.x, m.h / 2 - 0.08, m.z); // cone exato: as casas da encosta ficam à altura certa
+      const skirt = mesh(new THREE.CylinderGeometry(m.r, m.r + 1.2, 0.6, 40), toon('#8d8f99'), { receive: true });
+      skirt.position.set(m.x, 0.2, m.z);
+      const pole = mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.4, 6), toon('#e8e2d0'));
+      pole.position.set(m.x + 0.8, m.h + 1.1, m.z);
+      const flag = mesh(new THREE.BoxGeometry(0.9, 0.55, 0.04), toonUnique('#ff3b5c'));
+      flag.position.set(m.x + 1.25, m.h + 2, m.z);
+      this.group.add(cone, skirt, pole, flag);
+    }
+    // Ilhotas em cima de rochas (planaltos onde ficam os anéis de casas).
+    for (const p of board.plateaus ?? []) {
+      const cliff = mesh(new THREE.CylinderGeometry(p.r, p.r + 0.9, p.y + 0.6, 28), toon('#8d8f99'), { receive: true });
+      cliff.position.set(p.x, (p.y + 0.6) / 2 - 0.6, p.z);
+      const top = mesh(new THREE.CylinderGeometry(p.r - 0.15, p.r, 0.25, 28), toon('#6fcf52'), { cast: false, receive: true });
+      top.position.set(p.x, p.y - 0.1, p.z);
+      this.group.add(cliff, top);
+    }
 
     // Ponto do contorno da ilha (mesma forma das camadas) no ângulo `th`.
     const outline = (aa: number, bb: number, th: number): [number, number] => {
@@ -432,7 +549,7 @@ class IslandTheme implements BoardTheme {
       const to = getSpace(board, bridgeGate.to);
       this.bridgeBarrier.position.set((from.x + to.x) / 2, 0.8, (from.z + to.z) / 2);
       this.bridgeBarrier.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
-      const sign = textSprite('🌊 Maré alta', { height: 0.6 });
+      const sign = textSprite('🌊 Maré alta', { height: 0.6, inWorld: true });
       sign.position.y = 1.2;
       this.bridgeBarrier.add(sign);
       this.group.add(this.bridgeBarrier);
@@ -460,7 +577,7 @@ class IslandTheme implements BoardTheme {
         const door = mesh(new THREE.BoxGeometry(2.3, 1.4, 0.25), toonUnique('#6b6f78'));
         door.position.set(0, 0.7, -0.4);
         this.caveDoors.push(door);
-        const label = textSprite('🕳️ Gruta', { height: 0.6 });
+        const label = textSprite('🕳️ Gruta', { height: 0.6, inWorld: true });
         label.position.set(0, 2.6, -1);
         cave.add(mouth, door, label);
         // Fica atrás da casa, na direção do túnel
@@ -473,8 +590,8 @@ class IslandTheme implements BoardTheme {
     // Lojas
     for (const shop of board.shops) {
       const s = getSpace(board, shop.spaceId);
-      const out = outward(s, cx, cz);
-      const building = shopBuilding(shop.kind, shop.name, false);
+      const out = behind(board, s, cx, cz, 3);
+      const building = shopBuilding(shop.kind, shop.name, false, MARKET_STALL);
       building.position.set(s.x + out.x * 3, 0, s.z + out.y * 3);
       building.rotation.y = Math.atan2(-out.x, -out.y);
       this.group.add(building);
@@ -736,7 +853,7 @@ function decorate(board: Board, group: THREE.Group, area: { cx: number; cz: numb
 function shopsFor(board: Board, group: THREE.Group, cx: number, cz: number, neon: boolean, stall?: Record<ShopKind, string>): void {
   for (const shop of board.shops) {
     const s = getSpace(board, shop.spaceId);
-    const out = outward(s, cx, cz);
+    const out = behind(board, s, cx, cz, 3.2);
     const building = shopBuilding(shop.kind, shop.name, neon, stall);
     building.position.set(s.x + out.x * 3.2, s.y ?? 0, s.z + out.y * 3.2);
     building.rotation.y = Math.atan2(-out.x, -out.y);
@@ -756,10 +873,43 @@ class VolcanoTheme implements BoardTheme {
   private erupting = false;
   private embers!: Particles;
 
+  /**
+   * O tabuleiro está dentro de um vulcão: paredes de rocha basáltica em arco (atrás e dos lados),
+   * com cascatas de lava a escorrer e um rio de lava a brilhar ao pé da parede.
+   */
+  private craterWalls(): void {
+    const b = this.bounds;
+    const rx = Math.max(Math.abs(b.minX), Math.abs(b.maxX)) + 20;
+    const rz = Math.max(Math.abs(b.minZ), Math.abs(b.maxZ)) + 20;
+    const H = 60;
+    enclosure(this.group, { cx: 0, cz: 0, rx, rz, height: H, base: '#4a302a', top: '#1c1210', groove: '#120b09', jag: 3, seed: 7 });
+    const lava = toonUnique('#ff5a1f', { emissive: '#ff5a1f', emissiveIntensity: 1.3 });
+    // Cascatas de lava pela parede de trás e dos lados.
+    const rng = createRng(31);
+    for (let i = 0; i < 9; i++) {
+      const a = Math.PI * 0.35 + (Math.PI * 1.3 * (i + rng.next() * 0.6)) / 9;
+      const h = 18 + rng.next() * 22;
+      const fall = mesh(new THREE.PlaneGeometry(1.2 + rng.next() * 1.4, h), lava, { cast: false });
+      fall.position.set(Math.sin(a) * rx * 0.985, h / 2 - 0.5, Math.cos(a) * rz * 0.985);
+      fall.lookAt(0, h / 2, 0);
+      this.group.add(fall);
+    }
+    // Rio de lava ao pé da parede.
+    const river = mesh(new THREE.TorusGeometry(1, 0.025, 6, 160, Math.PI * 1.5), lava, { cast: false });
+    river.rotation.set(-Math.PI / 2, 0, -Math.PI / 4); // aberto à frente (+Z), como a parede
+    river.scale.set(rx * 0.97, rz * 0.97, 1);
+    river.position.y = 0.05;
+    this.group.add(river);
+    const glow = new THREE.PointLight('#ff6a2a', 60, 90);
+    glow.position.set(0, 12, -rz * 0.8);
+    this.group.add(glow);
+  }
+
   constructor(board: Board, scene: THREE.Scene) {
     this.bounds = boundsOf(board.spaces);
-    scene.background = new THREE.Color('#4a2a3a');
-    scene.fog = new THREE.Fog('#4a2a3a', 100, 260);
+    // Dentro da cratera: céu de fumo avermelhado lá em cima e paredes de rocha à volta.
+    scene.background = new THREE.Color('#3a1a1e');
+    scene.fog = new THREE.Fog('#3a1a1e', 90, 240);
     scene.add(new THREE.HemisphereLight('#ffc9a3', '#3a2a2a', 1.6));
     const sun = new THREE.DirectionalLight('#ffd0a0', 2.2);
     sun.position.set(30, 60, 30);
@@ -773,6 +923,7 @@ class VolcanoTheme implements BoardTheme {
     ground.position.y = -0.02;
     this.group.add(ground);
     addPathStrips(board, this.group, (s, t) => ({ width: 1.3, height: 0.08, color: s.zone === 'crater' || t.zone === 'crater' ? '#2b1d1d' : '#a88a6a', y: 0.04 }));
+    this.craterWalls();
 
     // O vulcão (cone, cratera, rios de lava e fumo) é feito no boardExtras; aqui fica a luz e as pedras da erupção.
     this.glow = toonUnique('#ff5a1f', { emissive: '#ff5a1f', emissiveIntensity: 1.2 });
@@ -788,7 +939,7 @@ class VolcanoTheme implements BoardTheme {
       const b = getSpace(board, gate.to);
       this.barrier.position.set((a.x + b.x) / 2, 0.8, (a.z + b.z) / 2);
       this.barrier.rotation.y = Math.atan2(b.x - a.x, b.z - a.z);
-      const sign = textSprite('🌋 Erupção!', { height: 0.6 });
+      const sign = textSprite('🌋 Erupção!', { height: 0.6, inWorld: true });
       sign.position.y = 1.2;
       this.barrier.add(sign);
       this.group.add(this.barrier);
@@ -799,7 +950,7 @@ class VolcanoTheme implements BoardTheme {
       rails(tunnelCurve(board, t), '#9aa3ad', true, this.group);
       for (const id of [t.from, t.to]) {
         const s = getSpace(board, id);
-        const sign = textSprite('🛤️', { height: 1.1 });
+        const sign = textSprite('🛤️', { height: 1.1, inWorld: true });
         sign.position.set(s.x, 3, s.z);
         this.group.add(sign);
       }
@@ -812,7 +963,7 @@ class VolcanoTheme implements BoardTheme {
       arch.rotation.y = Math.atan2(s.x, s.z);
       this.group.add(arch);
     }
-    shopsFor(board, this.group, 0, 0, false);
+    shopsFor(board, this.group, 0, 0, false, MARKET_STALL);
     // Rochas, cristais e árvores secas
     decorate(board, this.group, { cx: 0, cz: 0, w: 140, d: 140 }, 110, 77, (rng) => {
       const r = rng.next();
@@ -861,7 +1012,7 @@ class VolcanoTheme implements BoardTheme {
     const mine = board.spaces.filter((sp) => sp.zone === 'mine');
     if (mine.length) {
       const first = mine[0]!;
-      const out = outward(first, 0, 0);
+      const out = behind(board, first, 0, 0, 4.5);
       const house = prop('kaykit-medieval/building_mine_red', { height: 4.5 });
       if (house) {
         house.position.set(first.x + out.x * 4.5, 0, first.z + out.y * 4.5);
@@ -870,7 +1021,7 @@ class VolcanoTheme implements BoardTheme {
       }
       PROPS.camp.forEach((key, i) => {
         const mid = mine[Math.floor((i / PROPS.camp.length) * mine.length)]!;
-        const o = outward(mid, 0, 0);
+        const o = behind(board, mid, 0, 0, 3.2);
         const c = prop(key, { height: key.includes('tent') ? 2.4 : key.includes('flag') ? 2.6 : 1 });
         if (!c) return;
         c.position.set(mid.x + o.x * 3.2, 0, mid.z + o.y * 3.2);
@@ -1284,7 +1435,7 @@ class CastleTheme implements BoardTheme {
       const b = getSpace(board, t.to);
       const cableY = Math.max(a.y ?? 0, b.y ?? 0) + 0.32 + ELEVATOR_RISE + CABLE_ABOVE;
       for (const s of [a, b]) {
-        const out = outward(s, 0, 0);
+        const out = behind(board, s, 0, 0, 2.2);
         const mx = s.x + out.x * 2.2;
         const mz = s.z + out.y * 2.2;
         const y0 = s.y ?? 0;
@@ -1302,7 +1453,7 @@ class CastleTheme implements BoardTheme {
         axle.position.set(s.x, cableY + 0.42, s.z);
         this.group.add(mast, arm, wheel, axle);
         this.pulleys.push(wheel);
-        const sign = textSprite('🛗', { height: 1.1 });
+        const sign = textSprite('🛗', { height: 1.1, inWorld: true });
         sign.position.set(mx, cableY + 1.6, mz);
         this.group.add(sign);
       }
@@ -1335,10 +1486,10 @@ class CastleTheme implements BoardTheme {
       this.group.add(pivot);
       this.doors.push({ gate, door: pivot });
     }
-    shopsFor(board, this.group, 0, -6, false, CASTLE_STALL);
+    shopsFor(board, this.group, 0, -6, false, MARKET_STALL);
     const b0 = boundsOf(board.spaces);
     // Fantasma
-    this.ghost = textSprite('👻', { height: 2.4 });
+    this.ghost = textSprite('👻', { height: 2.4, inWorld: true });
     this.group.add(this.ghost);
     // O salão: paredes, pilares, archotes, mobília, tapetes, lustres e o banquete.
     castleHall(board, this.group, this.flames);
@@ -1384,6 +1535,8 @@ class ParkTheme implements BoardTheme {
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.02;
     this.group.add(ground);
+    // Colinas altas à volta (atrás e dos lados), para não se ver o relvado a perder-se no horizonte.
+    enclosure(this.group, { cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2, rx: (maxX - minX) / 2 + 26, rz: (maxZ - minZ) / 2 + 24, height: 42, base: '#6fbf4f', top: '#3f7a35', groove: '#2f5c28', jag: 5, seed: 3 });
     const pathColor = (s: Space, t: Space) => (s.zone === 'midway' || t.zone === 'midway' ? '#ffd1e8' : s.zone === 'wheel' || t.zone === 'wheel' ? '#cfe8ff' : '#f2d58b');
     addPathStrips(board, this.group, (s, t) => ({ width: 1.5, height: 0.08, color: pathColor(s, t), y: 0.04 }));
 
@@ -1422,7 +1575,7 @@ class ParkTheme implements BoardTheme {
       rails(tunnelCurve(board, t), '#ff3b5c', true, this.group);
       for (const id of [t.from, t.to]) {
         const s = getSpace(board, id);
-        const sign = textSprite('🎢', { height: 1.2 });
+        const sign = textSprite('🎢', { height: 1.2, inWorld: true });
         sign.position.set(s.x, 3.2, s.z);
         this.group.add(sign);
       }
@@ -1456,7 +1609,7 @@ class ParkTheme implements BoardTheme {
     this.group.add(this.carousel);
     this.group.userData.carousel = this.carousel.position.clone();
 
-    shopsFor(board, this.group, (minX + maxX) / 2, (minZ + maxZ) / 2, false);
+    shopsFor(board, this.group, (minX + maxX) / 2, (minZ + maxZ) / 2, false, MARKET_STALL);
     // Tendas, balões e bancas
     decorate(board, this.group, { cx: 0, cz: 0, w: (maxX - minX) + 40, d: (maxZ - minZ) + 40 }, 70, 21, (rng) => {
       const r = rng.next();
@@ -1498,7 +1651,7 @@ class ParkTheme implements BoardTheme {
     const start = getSpace(board, board.startId);
     const entrance = prop('kaykit-platformer/arch_wide_red', { width: 9 });
     if (entrance) {
-      const o = outward(start, (minX + maxX) / 2, (minZ + maxZ) / 2);
+      const o = behind(board, start, (minX + maxX) / 2, (minZ + maxZ) / 2, 5);
       entrance.position.set(start.x + o.x * 5, 0, start.z + o.y * 5);
       entrance.rotation.y = Math.atan2(o.x, o.y);
       this.group.add(entrance);
@@ -1558,6 +1711,8 @@ class CityTheme implements BoardTheme {
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.02;
     this.group.add(ground);
+    // Arranha-céus à volta (atrás e dos lados): a cidade continua, sem horizonte vazio.
+    skylineWall(this.group, (minX + maxX) / 2, (minZ + maxZ) / 2, (maxX - minX) / 2 + 30, (maxZ - minZ) / 2 + 28, 55);
     // Passeios por baixo das ruas e estradas
     addPathStrips(board, this.group, () => ({ width: 4.2, height: 0.06, color: '#8d8aa0', y: 0.0 }));
     addPathStrips(board, this.group, () => ({ width: 2.8, height: 0.08, color: '#26232f', y: 0.02 }));
@@ -1653,7 +1808,7 @@ class CityTheme implements BoardTheme {
 
     // Estações de metro
     for (const s of board.spaces.filter((sp) => sp.zone === 'metro')) {
-      const out = outward(s, cx, cz);
+      const out = behind(board, s, cx, cz, 3.2);
       const st = new THREE.Group();
       const stairs = mesh(new THREE.BoxGeometry(2.6, 0.6, 2.2), toon('#2b2440'), { receive: true });
       stairs.position.y = 0.3;
@@ -1661,7 +1816,7 @@ class CityTheme implements BoardTheme {
       hole.position.y = 0.62;
       const post = mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.6), toon('#c0c0c0'));
       post.position.set(1.3, 1.3, 0);
-      const sign = textSprite('Ⓜ️', { height: 1 });
+      const sign = textSprite('Ⓜ️', { height: 1, inWorld: true });
       sign.position.set(1.3, 3, 0);
       st.add(stairs, hole, post, sign);
       st.position.set(s.x + out.x * 3.2, 0, s.z + out.y * 3.2);
@@ -1671,7 +1826,7 @@ class CityTheme implements BoardTheme {
     // Lojas com letreiro néon
     for (const shop of board.shops) {
       const s = getSpace(board, shop.spaceId);
-      const out = outward(s, cx, cz);
+      const out = behind(board, s, cx, cz, 3.4);
       const building = shopBuilding(shop.kind, shop.name, true);
       building.position.set(s.x + out.x * 3.4, 0, s.z + out.y * 3.4);
       building.rotation.y = Math.atan2(-out.x, -out.y);
