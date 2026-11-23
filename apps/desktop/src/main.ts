@@ -57,6 +57,9 @@ function createWindow(port: number): BrowserWindow {
       backgroundThrottling: false,
     },
   });
+  // Avisa o jogo quando muda (botão, F11), para o botão mostrar o texto certo.
+  w.on('enter-full-screen', () => w.webContents.send('festa:fullscreen', true));
+  w.on('leave-full-screen', () => w.webContents.send('festa:fullscreen', false));
   w.webContents.on('before-input-event', (event, input) => {
     if (input.type === 'keyDown' && input.key === 'F11') {
       w.setFullScreen(!w.isFullScreen());
@@ -152,6 +155,13 @@ ipcMain.handle('festa:goOnline', async (): Promise<{ url?: string; error?: strin
 });
 
 // Versão portátil (Festa-…-portatil.exe): o electron-builder define PORTABLE_EXECUTABLE_FILE.
+ipcMain.handle('festa:toggleFullscreen', () => {
+  if (!win) return false;
+  win.setFullScreen(!win.isFullScreen());
+  return win.isFullScreen();
+});
+ipcMain.handle('festa:isFullscreen', () => !!win?.isFullScreen());
+
 ipcMain.handle('festa:info', () => ({ portable: !!process.env.PORTABLE_EXECUTABLE_FILE }));
 
 ipcMain.handle('festa:quit', () => {

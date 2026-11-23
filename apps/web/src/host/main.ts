@@ -47,13 +47,28 @@ screenShare.events.on('changed', ({ sharing, viewers }) => {
 // Botão sempre visível: alterna entre ecrã inteiro e a janela com os separadores do browser.
 const fullscreenBtn = document.createElement('button');
 fullscreenBtn.className = 'fullscreen-btn';
-const syncFullscreen = () => {
-  fullscreenBtn.textContent = document.fullscreenElement ? '🗗 Sair do ecrã inteiro' : '⛶ Ecrã inteiro';
+// Na app (Electron) alterna a janela entre ecrã inteiro e janela normal; no browser, o ecrã inteiro do HTML.
+const desktop = (
+  window as unknown as {
+    festaDesktop?: { toggleFullscreen?(): Promise<boolean>; isFullscreen?(): Promise<boolean>; onFullscreen?(fn: (on: boolean) => void): void };
+  }
+).festaDesktop;
+const appWin = desktop?.toggleFullscreen ? desktop : null;
+const setFullscreenLabel = (on: boolean) => {
+  fullscreenBtn.textContent = on ? (appWin ? '🗗 Modo janela' : '🗗 Sair do ecrã inteiro') : '⛶ Ecrã inteiro';
 };
-syncFullscreen();
-document.addEventListener('fullscreenchange', syncFullscreen);
+if (appWin) {
+  setFullscreenLabel(true);
+  void appWin.isFullscreen?.().then(setFullscreenLabel);
+  appWin.onFullscreen?.(setFullscreenLabel);
+} else {
+  const sync = () => setFullscreenLabel(!!document.fullscreenElement);
+  sync();
+  document.addEventListener('fullscreenchange', sync);
+}
 fullscreenBtn.addEventListener('click', () => {
-  if (document.fullscreenElement) void document.exitFullscreen();
+  if (appWin) void appWin.toggleFullscreen!().then(setFullscreenLabel);
+  else if (document.fullscreenElement) void document.exitFullscreen();
   else void document.documentElement.requestFullscreen().catch(() => {});
   fullscreenBtn.blur(); // Espaço/Enter continuam a ser do jogo, não deste botão
 });
